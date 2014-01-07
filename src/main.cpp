@@ -1,4 +1,6 @@
+#ifdef WINDOWS
 #include <windows.h>
+#endif
 
 #include <algorithm>
 #include <vector>
@@ -54,7 +56,7 @@ ParticleData g_particles;
 int g_time(0);
 
 #define GRID_H 0.25
-#define TIME_STEP 0.05
+#define TIME_STEP 0.001
 #define INITIALDENSITY 400
 
 #define YOUNGSMODULUS 1.4e5
@@ -64,7 +66,7 @@ int g_time(0);
 #define LAMBDA ( YOUNGSMODULUS * POISSONRATIO / ( ( 1 + POISSONRATIO ) * ( 1 - 2 * POISSONRATIO ) ) )
 #define BETA 1
 
-#define DECLARE_WEIGHTARRAY( NAME ) float buf_##NAME[12]; float *##NAME[] = { &buf_##NAME[1], &buf_##NAME[5], &buf_##NAME[9] };
+#define DECLARE_WEIGHTARRAY( NAME ) float buf_##NAME[12]; float * NAME[] = { &buf_##NAME[1], &buf_##NAME[5], &buf_##NAME[9] };
 
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
@@ -106,7 +108,7 @@ int main(int argc, char** argv)
 	Vector3f rotVector( 1, 9, 3 );
 	rotVector.normalize();
 	float particleSpacing( 0.1 );
-	float particleVolume = 0.1 * 0.1 * 0.1;
+	float particleVolume = particleSpacing * particleSpacing * particleSpacing;
 
 	for( int i=3; i <= 7; ++i )
 	{
@@ -242,7 +244,6 @@ public:
 						{
 							float particleMass = d.particleM[p];
 							float gridCellMass = m_gridMasses[idx];
-							float weight = w[0][i] * w[1][j] * w[2][k];
 							float overallWeight = w[0][i] * w[1][j] * w[2][k] *
 								( particleMass / gridCellMass );
 
@@ -637,7 +638,7 @@ public:
 
 	static inline float N( float x )
 	{
-		float ax = abs(x);
+		float ax = fabs(x);
 		if( ax < 1 )
 		{
 			return 0.5f * ax * ax * ax - ax * ax + 2.0f/3;
