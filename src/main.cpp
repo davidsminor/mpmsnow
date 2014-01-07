@@ -56,7 +56,7 @@ ParticleData g_particles;
 int g_time(0);
 
 #define GRID_H 0.25
-#define TIME_STEP 0.001
+#define TIME_STEP 0.01
 #define INITIALDENSITY 400
 
 #define YOUNGSMODULUS 1.4e5
@@ -68,42 +68,105 @@ int g_time(0);
 
 #define DECLARE_WEIGHTARRAY( NAME ) float buf_##NAME[12]; float * NAME[] = { &buf_##NAME[1], &buf_##NAME[5], &buf_##NAME[9] };
 
+float matrixDoubleDot( const Matrix3d& a, const Matrix3d& b )
+{
+	return
+		a(0,0) * b(0,0) + a(0,1) * b(0,1) + a(0,2) * b(0,2) + 
+		a(1,0) * b(1,0) + a(1,1) * b(1,1) + a(1,2) * b(1,2) + 
+		a(2,0) * b(2,0) + a(2,1) * b(2,1) + a(2,2) * b(2,2);
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv)
 {
+	
+	// test code for force differential:
 	Vector3d w(1,1,1);
 	w.normalize();
 	Matrix3d Rorig = AngleAxisd( 0.25*M_PI, w ).toRotationMatrix();
 	Matrix3d Sorig = Matrix3d::Zero();
 	Sorig(0,0) = 1;
-	Sorig(1,1) = 1;
-	Sorig(2,2) = 1;
+	Sorig(1,1) = 2;
+	Sorig(2,2) = 3;
 
-	Matrix3d F = Rorig * Sorig;
+	Matrix3d F = Matrix3d::Random();//Rorig * Sorig;
 	Matrix3d R;
 	Matrix3d S;
 	Affine3d trans( F );	
 	trans.computeRotationScaling( &R, &S );
+	Matrix3d Finv;
+	Matrix3d FinvTrans;
+	double J;
+	bool invertible;
 	
-	Matrix3d dF = Matrix3d::Random() * 0.01;
-	Matrix3d FplusdF = F + dF;
-	Matrix3d RplusdR;
-	Matrix3d SplusdS;
-	Affine3d trans2( FplusdF );	
-	trans2.computeRotationScaling( &RplusdR, &SplusdS );
+	F.computeInverseAndDetWithCheck( Finv, J, invertible );
+	FinvTrans = Finv.transpose();
+	
+	Matrix3d dEdF = 2 * MU * ( F - R ) + LAMBDA * ( J - 1 ) * J * FinvTrans;
+	
+	Matrix3d dF = Matrix3d::Random() * 0.0001;
+	Matrix3d F_= F + dF;
+	Matrix3d R_;
+	Matrix3d S_;
+	Affine3d trans2( F_ );	
+	trans2.computeRotationScaling( &R_, &S_ );
+	Matrix3d Finv_;
+	Matrix3d FinvTrans_;
+	double J_;
+	
+	F_.computeInverseAndDetWithCheck( Finv_, J_, invertible );
+	FinvTrans_ = Finv_.transpose();
+	
+	Matrix3d dEdF_ = 2 * MU * ( F_ - R_ ) + LAMBDA * ( J_ - 1 ) * J_ * FinvTrans_;
 	
 	
-
-
-	Matrix3d G = ( S.trace() * Matrix3d::Identity() - S ) * R.transpose();
-	Matrix3d dR = G.inverse() * ( R.transpose() * dF - dF.transpose() * R );
+	double dJ = J * matrixDoubleDot( FinvTrans, dF );
 	
-	std::cerr << dR << std::endl << std::endl;
-	std::cerr << RplusdR - R << std::endl << std::endl;
-
-
+	
+	Matrix3d M = R.transpose() * dF - dF.transpose() * R;
+	
+	Matrix3d G;
+	G(0,0) = S(0,0) + S(1,1);
+	G(1,1) = S(0,0) + S(2,2);
+	G(2,2) = S(1,1) + S(2,2);
+	
+	G(0,1) = G(1,0) = S(1,2);
+	G(0,2) = G(2,0) = -S(0,2);
+	G(1,2) = G(2,1) = S(0,1);
+	
+	Vector3d m( M(0,1), M(0,2), M(1,2) );
+	
+	w = G.inverse() * m;
+	
+	Matrix3d RtdR;
+	RtdR(0,0) = RtdR(1,1) = RtdR(2,2) = 0;
+	
+	RtdR(0,1) = w[0];
+	RtdR(1,0) = -w[0];
+	
+	RtdR(0,2) = w[1];
+	RtdR(2,0) = -w[1];
+	
+	RtdR(1,2) = w[2];
+	RtdR(2,1) = -w[2];
+	
+	
+	Matrix3d dR = R * RtdR;
+	
+	Matrix3d dFinvTrans = - FinvTrans * dF.transpose() * FinvTrans;
+	
+	Matrix3d Ap = 2 * MU * ( dF - dR ) + LAMBDA * ( dJ * J * FinvTrans + ( J - 1 ) * ( dJ * FinvTrans + J * dFinvTrans ) );
+	
+	std::cerr << dEdF_ - dEdF << std::endl << std::endl;
+	std::cerr << Ap << std::endl << std::endl;
+	
+	
+	
+	
+	
 	// initial configuration:
 	Vector3f rotVector( 1, 9, 3 );
 	rotVector.normalize();
@@ -406,9 +469,33 @@ public:
 			float dJ = J * matrixDoubleDot( d.particleFinvTrans[p], dFp );
 			Matrix3f dFInvTrans = - d.particleFinvTrans[p] * dFp.transpose() * d.particleFinvTrans[p];
 			
-			// I found this method of working out dR here: http://run.usc.edu/substructuring/BarbicZhao-SIGGRAPH2011.pdf
-			Matrix3f G = ( d.particleS[p].trace() * Matrix3f::Identity() - d.particleS[p] ) * d.particleR[p].transpose();
-			Matrix3f dR = G.inverse() * ( d.particleR[p].transpose() * dFp - dFp.transpose() * d.particleR[p] );
+			// fiddy calculation for dR:
+			Matrix3f M = d.particleR[p].transpose() * dFp - dFp.transpose() * d.particleR[p];
+			
+			Matrix3f G;
+			G(0,0) = d.particleS[p](0,0) + d.particleS[p](1,1);
+			G(1,1) = d.particleS[p](0,0) + d.particleS[p](2,2);
+			G(2,2) = d.particleS[p](1,1) + d.particleS[p](2,2);
+			
+			G(0,1) = G(1,0) = d.particleS[p](1,2);
+			G(0,2) = G(2,0) = -d.particleS[p](0,2);
+			G(1,2) = G(2,1) = d.particleS[p](0,1);
+			
+			Vector3f components = G.inverse() * Vector3f( M(0,1), M(0,2), M(1,2) );
+			
+			Matrix3f RtdR;
+			RtdR(0,0) = RtdR(1,1) = RtdR(2,2) = 0;
+
+			RtdR(0,1) = components[0];
+			RtdR(1,0) = -components[0];
+
+			RtdR(0,2) = components[1];
+			RtdR(2,0) = -components[1];
+
+			RtdR(1,2) = components[2];
+			RtdR(2,1) = -components[2];
+			
+			Matrix3f dR = d.particleR[p] * RtdR;
 			
 			// start with differential of 2 * MU * ( F - R )...
 			Matrix3f Ap = 2 * MU * ( dFp - dR );
@@ -575,7 +662,6 @@ public:
 				forwardVelocities.segment<3>( 3 * i ) = velocity + TIME_STEP * force / m_gridMasses[i];
 			}
 		}
-		//m_gridVelocities = forwardVelocities;
 		
 		float tol_error = 1.e-7;
 		int iters = 30;
