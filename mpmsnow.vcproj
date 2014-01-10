@@ -52,7 +52,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;C:\ilmbase-1.0.1\Imath&quot;;&quot;$(CUDA_PATH)/include&quot;;./;../../common/inc;../../common/GLEW/include"
+				AdditionalIncludeDirectories="&quot;C:\ilmbase-1.0.1\Imath&quot;;&quot;$(CUDA_PATH)/include&quot;;./;./include;../../common/GLEW/include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -134,7 +134,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;C:\ilmbase-1.0.1\Imath&quot;;&quot;$(CUDA_PATH)/include&quot;;./;../../common/inc;../../common/GLEW/include"
+				AdditionalIncludeDirectories="&quot;C:\ilmbase-1.0.1\Imath&quot;;&quot;$(CUDA_PATH)/include&quot;;./;./include;../../common/GLEW/include"
 				PreprocessorDefinitions="WIN32;_CONSOLE"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
@@ -362,7 +362,23 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\src\Grid.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\main.cpp"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="include"
+			>
+			<File
+				RelativePath=".\include\Grid.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\ParticleData.h"
 				>
 			</File>
 		</Filter>
