@@ -48,6 +48,8 @@ int g_time(0);
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
 ////////////////////////////////////////////////////////////////////////////////
+
+
 int main(int argc, char** argv)
 {
 	
@@ -90,39 +92,9 @@ int main(int argc, char** argv)
 	
 	Matrix3f dEdF_ = 2 * MU * ( F_ - R_ ) + LAMBDA * ( J_ - 1 ) * J_ * FinvTrans_;
 	
+	float dJ = J * Grid::matrixDoubleDot( FinvTrans, dF );
 	
-	double dJ = J * Grid::matrixDoubleDot( FinvTrans, dF );
-	
-	
-	Matrix3f M = R.transpose() * dF - dF.transpose() * R;
-	
-	Matrix3f G;
-	G(0,0) = S(0,0) + S(1,1);
-	G(1,1) = S(0,0) + S(2,2);
-	G(2,2) = S(1,1) + S(2,2);
-	
-	G(0,1) = G(1,0) = S(1,2);
-	G(0,2) = G(2,0) = -S(0,2);
-	G(1,2) = G(2,1) = S(0,1);
-	
-	Vector3f m( M(0,1), M(0,2), M(1,2) );
-	
-	w = G.inverse() * m;
-	
-	Matrix3f RtdR;
-	RtdR(0,0) = RtdR(1,1) = RtdR(2,2) = 0;
-	
-	RtdR(0,1) = w[0];
-	RtdR(1,0) = -w[0];
-	
-	RtdR(0,2) = w[1];
-	RtdR(2,0) = -w[1];
-	
-	RtdR(1,2) = w[2];
-	RtdR(2,1) = -w[2];
-	
-	
-	Matrix3f dR = R * RtdR;
+	Matrix3f dR = Grid::computeRdifferential( dF, R, S );
 	
 	Matrix3f dFinvTrans = - FinvTrans * dF.transpose() * FinvTrans;
 	

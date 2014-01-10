@@ -30,6 +30,7 @@ public:
 	void updateParticleVelocities( ParticleData& d );
 	
 	static float matrixDoubleDot( const Eigen::Matrix3f& a, const Eigen::Matrix3f& b );
+	static Eigen::Matrix3f computeRdifferential( const Eigen::Matrix3f& dF, const Eigen::Matrix3f& R, const Eigen::Matrix3f& S );
 
 	void testForces( const ParticleData& d );
 

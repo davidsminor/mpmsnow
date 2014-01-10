@@ -191,6 +191,38 @@ float Grid::matrixDoubleDot( const Matrix3f& a, const Matrix3f& b )
 		a(2,0) * b(2,0) + a(2,1) * b(2,1) + a(2,2) * b(2,2);
 }
 
+Matrix3f Grid::computeRdifferential( const Matrix3f& dF, const Matrix3f& R, const Matrix3f& S )
+{
+	Matrix3f M = R.transpose() * dF - dF.transpose() * R;
+	Vector3f w( M(0,1), M(0,2), M(1,2) );
+	
+	Matrix3f G;
+	G(0,0) = S(0,0) + S(1,1);
+	G(1,1) = S(0,0) + S(2,2);
+	G(2,2) = S(1,1) + S(2,2);
+	
+	G(0,1) = G(1,0) = S(1,2);
+	G(0,2) = G(2,0) = -S(0,2);
+	G(1,2) = G(2,1) = S(0,1);
+	
+	w = G.inverse() * w;
+	
+	Matrix3f RtdR;
+	RtdR(0,0) = RtdR(1,1) = RtdR(2,2) = 0;
+	
+	RtdR(0,1) = w[0];
+	RtdR(1,0) = -w[0];
+	
+	RtdR(0,2) = w[1];
+	RtdR(2,0) = -w[1];
+	
+	RtdR(1,2) = w[2];
+	RtdR(2,1) = -w[2];
+	
+	return R * RtdR;
+}
+
+
 void Grid::applyImplicitUpdateMatrix( const ParticleData& d, const VectorXf& v, VectorXf& result )
 {
 	result = v;
@@ -240,33 +272,7 @@ void Grid::applyImplicitUpdateMatrix( const ParticleData& d, const VectorXf& v, 
 		float dJ = J * matrixDoubleDot( d.particleFinvTrans[p], dFp );
 		Matrix3f dFInvTrans = - d.particleFinvTrans[p] * dFp.transpose() * d.particleFinvTrans[p];
 		
-		// fiddy calculation for dR:
-		Matrix3f M = d.particleR[p].transpose() * dFp - dFp.transpose() * d.particleR[p];
-		
-		Matrix3f G;
-		G(0,0) = d.particleS[p](0,0) + d.particleS[p](1,1);
-		G(1,1) = d.particleS[p](0,0) + d.particleS[p](2,2);
-		G(2,2) = d.particleS[p](1,1) + d.particleS[p](2,2);
-		
-		G(0,1) = G(1,0) = d.particleS[p](1,2);
-		G(0,2) = G(2,0) = -d.particleS[p](0,2);
-		G(1,2) = G(2,1) = d.particleS[p](0,1);
-		
-		Vector3f components = G.inverse() * Vector3f( M(0,1), M(0,2), M(1,2) );
-		
-		Matrix3f RtdR;
-		RtdR(0,0) = RtdR(1,1) = RtdR(2,2) = 0;
-
-		RtdR(0,1) = components[0];
-		RtdR(1,0) = -components[0];
-
-		RtdR(0,2) = components[1];
-		RtdR(2,0) = -components[1];
-
-		RtdR(1,2) = components[2];
-		RtdR(2,1) = -components[2];
-		
-		Matrix3f dR = d.particleR[p] * RtdR;
+		Matrix3f dR = computeRdifferential( dFp, d.particleR[p], d.particleS[p] );
 		
 		// start with differential of 2 * MU * ( F - R )...
 		Matrix3f Ap = 2 * MU * ( dFp - dR );
