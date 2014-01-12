@@ -53,60 +53,6 @@ int g_time(0);
 int main(int argc, char** argv)
 {
 	
-	// test code for force differential:
-	Vector3f w(1,1,1);
-	w.normalize();
-	Matrix3f Rorig = AngleAxisf( 0.25*M_PI, w ).toRotationMatrix();
-	Matrix3f Sorig = Matrix3f::Zero();
-	Sorig(0,0) = 1;
-	Sorig(1,1) = 2;
-	Sorig(2,2) = 3;
-
-	Matrix3f F = Matrix3f::Random();//Rorig * Sorig;
-	Matrix3f R;
-	Matrix3f S;
-	Affine3f trans( F );	
-	trans.computeRotationScaling( &R, &S );
-	Matrix3f Finv;
-	Matrix3f FinvTrans;
-	float J;
-	bool invertible;
-	
-	F.computeInverseAndDetWithCheck( Finv, J, invertible );
-	FinvTrans = Finv.transpose();
-	
-	Matrix3f dEdF = 2 * MU * ( F - R ) + LAMBDA * ( J - 1 ) * J * FinvTrans;
-	
-	Matrix3f dF = Matrix3f::Random() * 0.0001;
-	Matrix3f F_= F + dF;
-	Matrix3f R_;
-	Matrix3f S_;
-	Affine3f trans2( F_ );	
-	trans2.computeRotationScaling( &R_, &S_ );
-	Matrix3f Finv_;
-	Matrix3f FinvTrans_;
-	float J_;
-	
-	F_.computeInverseAndDetWithCheck( Finv_, J_, invertible );
-	FinvTrans_ = Finv_.transpose();
-	
-	Matrix3f dEdF_ = 2 * MU * ( F_ - R_ ) + LAMBDA * ( J_ - 1 ) * J_ * FinvTrans_;
-	
-	float dJ = J * Grid::matrixDoubleDot( FinvTrans, dF );
-	
-	Matrix3f dR = Grid::computeRdifferential( dF, R, S );
-	
-	Matrix3f dFinvTrans = - FinvTrans * dF.transpose() * FinvTrans;
-	
-	Matrix3f Ap = 2 * MU * ( dF - dR ) + LAMBDA * ( dJ * J * FinvTrans + ( J - 1 ) * ( dJ * FinvTrans + J * dFinvTrans ) );
-	
-	std::cerr << dEdF_ - dEdF << std::endl << std::endl;
-	std::cerr << Ap << std::endl << std::endl;
-	
-	
-	
-	
-	
 	// initial configuration:
 	Vector3f rotVector( 1, 9, 3 );
 	rotVector.normalize();
@@ -221,11 +167,13 @@ void display()
 		}
 	}
 	
+	/*
 	if( g_time == 6 )
 	{
-		g.testForces( g_particles );
+		g.testForceDifferentials( g_particles );
 		exit(0);
 	}
+	*/
 	
 	
 	// update grid velocities using internal stresses...

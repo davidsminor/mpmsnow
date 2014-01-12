@@ -6,7 +6,7 @@
 #include <Eigen/Dense>
 
 #define GRID_H 0.25f
-#define TIME_STEP 0.01f
+#define TIME_STEP 0.5f
 #define INITIALDENSITY 400
 
 #define YOUNGSMODULUS 1.4e5f
@@ -33,6 +33,7 @@ public:
 	static Eigen::Matrix3f computeRdifferential( const Eigen::Matrix3f& dF, const Eigen::Matrix3f& R, const Eigen::Matrix3f& S );
 
 	void testForces( const ParticleData& d );
+	void testForceDifferentials( const ParticleData& d );
 
 private:
 
@@ -47,6 +48,7 @@ private:
 		float& tol_error );
 
 	void calculateForces( const ParticleData& d, Eigen::VectorXf& forces );
+	void calculateForceDifferentials( const ParticleData& d, const Eigen::VectorXf& dx, Eigen::VectorXf& df );
 
 	// testing
 	float calculateEnergy( const ParticleData& d );

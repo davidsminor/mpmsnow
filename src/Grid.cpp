@@ -4,6 +4,8 @@
 #include <windows.h>
 #endif
 
+#include <iostream>
+
 #include <GL/gl.h>
 
 #include <Eigen/Geometry>
@@ -223,83 +225,24 @@ Matrix3f Grid::computeRdifferential( const Matrix3f& dF, const Matrix3f& R, cons
 }
 
 
-void Grid::applyImplicitUpdateMatrix( const ParticleData& d, const VectorXf& v, VectorXf& result )
+void Grid::applyImplicitUpdateMatrix( const ParticleData& d, const VectorXf& vNPlusOne, VectorXf& result )
 {
-	result = v;
-
-	// little array with indexes going from -1 to store shape function derivative weights
-	// on each dimension:
-	DECLARE_WEIGHTARRAY( w );
-	DECLARE_WEIGHTARRAY( dw );
-	Vector3i particleCell;
+	// the equation we want to solve for the implicit update is this:
+	// v^(n+1) = v^n + TIME_STEP / m * ( F + dF(v^(n+1) * TIME_STEP) )
+	// v^(n+1) - TIME_STEP / m * dF(v^(n+1) * TIME_STEP) = v^n + TIME_STEP / m * F
 	
-	for( size_t p = 0; p < d.particleF.size(); ++p )
+	// This method computes the left hand side of the equation
+
+	// work out force differentials when you perturb the grid positions by v * TIME_STEP:
+	VectorXf df( vNPlusOne.size() );
+	calculateForceDifferentials( d, TIME_STEP * vNPlusOne, df );
+	
+	result = vNPlusOne;
+	for( int i=0; i < m_gridMasses.size(); ++i )
 	{
-		cellAndWeights( d.particleX[p], particleCell, w, dw );
-		
-		// work out deformation gradient differential for this particle when grid nodes are
-		// moved by their respective v * Dt
-		Matrix3f dFp = Matrix3f::Zero();
-		for( int i=-1; i < 3; ++i )
+		if( m_gridMasses[i] != 0 )
 		{
-			for( int j=-1; j < 3; ++j )
-			{
-				for( int k=-1; k < 3; ++k )
-				{
-					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
-					Vector3f weightGrad( dw[0][i] * w[1][j] * w[2][k], w[0][i] * dw[1][j] * w[2][k], w[0][i] * w[1][j] * dw[2][k] );
-					Vector3f dx = v.segment<3>( 3 * idx ) * TIME_STEP;
-					dFp += dx * weightGrad.transpose() * d.particleF[p];
-				}
-			}
-		}
-		
-		// work out energy derivatives with respect to the deformation gradient at this particle:
-		// Ap = d2Psi / dF dF : dF (see the tech report). We've got dF, so just plug that into the
-		// formulae...
-		
-		// if you look down in updateGridVelocities, you'll find this expression, which is used while
-		// computing the force on a grid node:
-		
-		// 2 * MU * ( d.particleF[p] - d.particleR[p] ) + LAMBDA * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
-		
-		// what we're doing here is just assuming dFp is small and working out the corresponding variation in
-		// that expression...
-		
-		float J = d.particleJ[p];
-
-		// work out a couple of basic differentials:
-		float dJ = J * matrixDoubleDot( d.particleFinvTrans[p], dFp );
-		Matrix3f dFInvTrans = - d.particleFinvTrans[p] * dFp.transpose() * d.particleFinvTrans[p];
-		
-		Matrix3f dR = computeRdifferential( dFp, d.particleR[p], d.particleS[p] );
-		
-		// start with differential of 2 * MU * ( F - R )...
-		Matrix3f Ap = 2 * MU * ( dFp - dR );
-		
-		// add on differential of LAMBDA * ( J - 1 ) * J * F^-t
-		// = LAMBDA * ( d( J - 1 ) * J F^-T + ( J - 1 ) * d( J F^-t ) )
-		// = LAMBDA * ( dJ * J F^-T + ( J - 1 ) * ( dJ F^-t + J * d( F^-t ) )
-		Ap += LAMBDA * ( dJ * J * d.particleFinvTrans[p] + ( J - 1 ) * ( dJ * d.particleFinvTrans[p] + J * dFInvTrans ) );
-		
-		Matrix3f forceMatrix = d.particleVolumes[p] * Ap * d.particleF[p].transpose();
-
-		for( int i=-1; i < 3; ++i )
-		{
-			for( int j=-1; j < 3; ++j )
-			{
-				for( int k=-1; k < 3; ++k )
-				{
-					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
-					Vector3f weightGrad( dw[0][i] * w[1][j] * w[2][k], w[0][i] * dw[1][j] * w[2][k], w[0][i] * w[1][j] * dw[2][k] );
-										
-					// work out force on this node due to this particle:
-					Vector3f df = forceMatrix * weightGrad;
-					
-					// add on difference in velocity due to this force:
-					result.segment<3>( 3 * idx ) += BETA * TIME_STEP * df;
-				}
-			}
+			result.segment<3>( 3 * i ) -= TIME_STEP / m_gridMasses[i] * df.segment<3>( 3 * i );
 		}
 	}
 }
@@ -390,6 +333,84 @@ bool Grid::bicgstab(
 	return true; 
 }
 
+void Grid::calculateForceDifferentials( const ParticleData& d, const VectorXf& dx, VectorXf& df )
+{
+	df.setZero();
+
+	// little array with indexes going from -1 to store shape function derivative weights
+	// on each dimension:
+	DECLARE_WEIGHTARRAY( w );
+	DECLARE_WEIGHTARRAY( dw );
+	Vector3i particleCell;
+	
+	for( size_t p = 0; p < d.particleF.size(); ++p )
+	{
+		cellAndWeights( d.particleX[p], particleCell, w, dw );
+		
+		// work out deformation gradient differential for this particle when grid nodes are
+		// moved by their respective v * Dt
+		Matrix3f dFp = Matrix3f::Zero();
+		for( int i=-1; i < 3; ++i )
+		{
+			for( int j=-1; j < 3; ++j )
+			{
+				for( int k=-1; k < 3; ++k )
+				{
+					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
+					Vector3f weightGrad( dw[0][i] * w[1][j] * w[2][k], w[0][i] * dw[1][j] * w[2][k], w[0][i] * w[1][j] * dw[2][k] );
+					Vector3f deltaX = dx.segment<3>( 3 * idx );
+					dFp += deltaX * weightGrad.transpose() * d.particleF[p];
+				}
+			}
+		}
+		
+		// work out energy derivatives with respect to the deformation gradient at this particle:
+		// Ap = d2Psi / dF dF : dF (see the tech report). We've got dF, so just plug that into the
+		// formulae...
+		
+		// if you look down in updateGridVelocities, you'll find this expression, which is used while
+		// computing the force on a grid node:
+		
+		// 2 * MU * ( d.particleF[p] - d.particleR[p] ) + LAMBDA * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
+		
+		// what we're doing here is just assuming dFp is small and working out the corresponding variation in
+		// that expression...
+		
+		float J = d.particleJ[p];
+
+		// work out a couple of basic differentials:
+		float dJ = J * matrixDoubleDot( d.particleFinvTrans[p], dFp );
+		Matrix3f dFInvTrans = - d.particleFinvTrans[p] * dFp.transpose() * d.particleFinvTrans[p];
+		
+		Matrix3f dR = computeRdifferential( dFp, d.particleR[p], d.particleS[p] );
+		
+		// start with differential of 2 * MU * ( F - R )...
+		Matrix3f Ap = 2 * MU * ( dFp - dR );
+		
+		// add on differential of LAMBDA * ( J - 1 ) * J * F^-t
+		// = LAMBDA * ( d( J - 1 ) * J F^-T + ( J - 1 ) * d( J F^-t ) )
+		// = LAMBDA * ( dJ * J F^-T + ( J - 1 ) * ( dJ F^-t + J * d( F^-t ) )
+		Ap += LAMBDA * ( dJ * J * d.particleFinvTrans[p] + ( J - 1 ) * ( dJ * d.particleFinvTrans[p] + J * dFInvTrans ) );
+		
+		Matrix3f forceMatrix = d.particleVolumes[p] * Ap * d.particleF[p].transpose();
+
+		for( int i=-1; i < 3; ++i )
+		{
+			for( int j=-1; j < 3; ++j )
+			{
+				for( int k=-1; k < 3; ++k )
+				{
+					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
+					Vector3f weightGrad( dw[0][i] * w[1][j] * w[2][k], w[0][i] * dw[1][j] * w[2][k], w[0][i] * w[1][j] * dw[2][k] );
+					
+					// add on difference in velocity due to this force:
+					df.segment<3>( 3 * idx ) -= forceMatrix * weightGrad;
+				}
+			}
+		}
+	}
+}
+
 void Grid::calculateForces( const ParticleData& d, VectorXf& forces )
 {
 	// little array with indexes going from -1 to store shape function derivative weights
@@ -422,12 +443,94 @@ void Grid::calculateForces( const ParticleData& d, VectorXf& forces )
 
 float Grid::calculateEnergy( const ParticleData& d )
 {
-	return 0;
+	float e = 0;
+	for( size_t p=0; p < d.particleF.size(); ++p )
+	{
+		Matrix3f rigidDeviation = d.particleF[p] - d.particleR[p];
+		float JminusOne = d.particleJ[p] - 1;
+		e += d.particleVolumes[p] * ( MU * matrixDoubleDot( rigidDeviation, rigidDeviation ) + 0.5f * LAMBDA * JminusOne * JminusOne );
+	}
+	return e;
 }
 
 void Grid::testForces( const ParticleData& d )
 {
+	// save the state so we don't screw the sim up:
+	VectorXf originalGridVelocities = m_gridVelocities;
 
+	// calculate da forces brah!
+	VectorXf forces( m_gridVelocities.size() );
+	calculateForces( d, forces );
+	
+	// calculate unperturbed energy:
+	float e0 = calculateEnergy( d );
+	
+	// now we're gonna calculate energy derivatives... the stupid way!
+	// we're gonna do this component by component, and we're gonna do it
+	// by zeroing out the grid velocities, setting the component we're gonna
+	// test to delta/TIME_STEP, advancing bits of the sim with that velocity field,
+	// calculating the energy in the final state (in which one of the grid nodes
+	// will have moved a distance delta along one of the axes), and using the result
+	// to calculate a finite difference derivative!
+	float delta = 0.01f;
+	for( int idx = 0; idx < m_gridMasses.size(); ++idx )
+	{
+		for( size_t dim = 0; dim < 3; ++dim )
+		{
+			ParticleData dTest = d;
+			m_gridVelocities.setZero();
+			
+			// perturb current grid point a distance delta along the current axis,
+			// and calculate the resulting deformation gradients:
+			m_gridVelocities( 3 * idx + dim ) = delta / TIME_STEP;
+			updateDeformationGradients( dTest );
+			
+			// calculate the resulting energy:
+			float e = calculateEnergy( dTest );
+			
+			// so force = -dE/dX = ( e0 - e ) / delta
+			float f = ( e0 - e ) / delta;
+			std::cerr << f << " == " << forces( 3 * idx + dim ) << "?  " << (3 * idx + dim) << " of " << forces.size() << std::endl;
+		}
+	}
+
+	m_gridVelocities = originalGridVelocities;
+
+}
+
+void Grid::testForceDifferentials( const ParticleData& d )
+{
+	// calculate da forces brah!
+	VectorXf forces( m_gridVelocities.size() );
+	calculateForces( d, forces );
+
+	// small random perturbation on the grid nodes:
+	VectorXf dx( m_gridVelocities.size() );
+	dx.setRandom();
+	dx = dx * 0.01f;
+	
+	// calculate force differentials resulting from this perturbation:
+	VectorXf forceDifferentials( m_gridVelocities.size() );
+	calculateForceDifferentials( d, dx, forceDifferentials );
+	
+	// save the state so we don't screw the sim up:
+	VectorXf originalGridVelocities = m_gridVelocities;
+	ParticleData dTest = d;
+	
+	m_gridVelocities = dx / TIME_STEP;
+	updateDeformationGradients( dTest );
+	VectorXf perturbedForces( m_gridVelocities.size() );
+	calculateForces( dTest, perturbedForces );
+	
+	VectorXf actualForceDifferentials = perturbedForces - forces;
+	
+	for( int i=0; i <forceDifferentials.size(); ++i )
+	{
+		Sleep(100);
+		std::cerr << forceDifferentials[i] << " == " << actualForceDifferentials[i] << "? " << i << " of " << forceDifferentials.size() << std::endl;
+	}
+	
+	m_gridVelocities = originalGridVelocities;
 }
 
 void Grid::updateGridVelocities( const ParticleData& d )
