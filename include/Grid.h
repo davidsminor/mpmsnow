@@ -2,12 +2,15 @@
 #define MPMSNOW_GRID_H
 
 #include "ParticleData.h"
+#include "CollisionObject.h"
 
 #include <Eigen/Dense>
 
-#define GRID_H 0.25f
-#define TIME_STEP 0.5f
+#define GRID_H 0.15f
+#define TIME_STEP 0.01f
 #define INITIALDENSITY 400
+#define GRAVITY -9.8f
+#define COULOMBFRICTION 0.5f
 
 #define YOUNGSMODULUS 1.4e5f
 #define POISSONRATIO 0.2f
@@ -25,23 +28,24 @@ public:
 
 	void draw();
 	void computeDensities( ParticleData& d );
-	void updateGridVelocities( const ParticleData& d );
+	void updateGridVelocities( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects );
 	void updateDeformationGradients( ParticleData& d );
 	void updateParticleVelocities( ParticleData& d );
 	
-	static float matrixDoubleDot( const Eigen::Matrix3f& a, const Eigen::Matrix3f& b );
-	static Eigen::Matrix3f computeRdifferential( const Eigen::Matrix3f& dF, const Eigen::Matrix3f& R, const Eigen::Matrix3f& S );
-
 	void testForces( const ParticleData& d );
 	void testForceDifferentials( const ParticleData& d );
 
 private:
 
-	void applyImplicitUpdateMatrix( const ParticleData& d, const Eigen::VectorXf& v, Eigen::VectorXf& result );
+	static float matrixDoubleDot( const Eigen::Matrix3f& a, const Eigen::Matrix3f& b );
+	static Eigen::Matrix3f computeRdifferential( const Eigen::Matrix3f& dF, const Eigen::Matrix3f& R, const Eigen::Matrix3f& S );
+
+	void applyImplicitUpdateMatrix( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const Eigen::VectorXf& v, Eigen::VectorXf& result );
 
 	// stabilised biconjugate gradient solver copy pasted out of Eigen
 	bool bicgstab(
 		const ParticleData& d,
+		const std::vector<CollisionObject*>& collisionObjects,
 		const Eigen::VectorXf& rhs,
 		Eigen::VectorXf& x,
 		int& iters,
@@ -82,6 +86,7 @@ private:
 	Eigen::VectorXf m_gridMasses;
 	Eigen::VectorXf m_gridVelocities;
 	Eigen::VectorXf m_prevGridVelocities;
+	std::vector<bool> m_nodeCollided;
 
 };
 

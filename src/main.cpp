@@ -11,6 +11,8 @@
 
 #include "Grid.h"
 
+#include "CollisionPlane.h"
+
 using namespace Eigen;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -18,8 +20,8 @@ using namespace Eigen;
 const unsigned int window_width = 512;
 const unsigned int window_height = 512;
 
-float g_theta(0);
-float g_phi(0);
+float g_theta(0.1);
+float g_phi(0.1);
 float g_r(5);
 
 // GL functionality
@@ -36,6 +38,11 @@ int mouse_buttons = 0;
 
 
 ParticleData g_particles;
+
+// collision objects:
+// ground plane at y = -1.5
+CollisionPlane g_groundPlane( Vector4f( 0, 1, 0, 0 ) );
+std::vector< CollisionObject* > g_collisionObjects;
 
 int g_time(0);
 
@@ -59,29 +66,37 @@ int main(int argc, char** argv)
 	float particleSpacing( 0.1 );
 	float particleVolume = particleSpacing * particleSpacing * particleSpacing;
 
+	srand( 10 );
 	for( int i=3; i <= 7; ++i )
 	{
 		for( int j=3; j <= 7; ++j )
 		{
 			for( int k=3; k <= 7; ++k )
 			{
-				Vector3f pos( 0.1 * float( i ) - 0.5, 0.1 * float( j ) - 0.5, 0.1 * float( k ) - 0.5 );
-				
-				g_particles.particleX.push_back( pos );
-				g_particles.particleV.push_back( rotVector.cross( pos ) + 2 * rotVector.dot( pos ) * rotVector );
-				g_particles.particleM.push_back( INITIALDENSITY * particleVolume );
+				for( int n=0; n < 3; ++n )
+				{
+					float xr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+					float yr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+					float zr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+					Vector3f pos( particleSpacing * float( i + xr - 0.5f ) - 0.5, 1.0f + particleSpacing * float( j + yr - 0.5f ) - 0.5, particleSpacing * float( k + zr - 0.5f ) - 0.5 );
+					
+					g_particles.particleX.push_back( pos );
+					g_particles.particleV.push_back( 0.2 * rotVector.cross( pos ) );
+					g_particles.particleM.push_back( INITIALDENSITY * particleVolume );
 
-				g_particles.particleF.push_back( Matrix3f::Identity() );
-				g_particles.particleR.push_back( Matrix3f::Identity() );
-				g_particles.particleS.push_back( Matrix3f::Identity() );
-				g_particles.particleFinvTrans.push_back( Matrix3f::Identity() );
-				g_particles.particleJ.push_back( 1.0f );
-
+					g_particles.particleF.push_back( Matrix3f::Identity() );
+					g_particles.particleR.push_back( Matrix3f::Identity() );
+					g_particles.particleS.push_back( Matrix3f::Identity() );
+					g_particles.particleFinvTrans.push_back( Matrix3f::Identity() );
+					g_particles.particleJ.push_back( 1.0f );
+				}
 			}
 		}
 	}
+	
+	// set up collision objects:
+	g_collisionObjects.push_back( &g_groundPlane );
 
-	srand( 10 );
 	initGL( &argc, argv );
 	
 	// start rendering mainloop
@@ -153,10 +168,15 @@ void display()
 
 	glEnd();
 	
+	// draw collision objects:
+	for( size_t i=0; i < g_collisionObjects.size(); ++i )
+	{
+		g_collisionObjects[i]->draw();
+	}
 
 	// instantiate grid and rasterize!
 	Grid g( g_particles );
-	g.draw();
+	//g.draw();
 	if( g_particles.particleVolumes.empty() )
 	{
 		g.computeDensities( g_particles );
@@ -177,7 +197,7 @@ void display()
 	
 	
 	// update grid velocities using internal stresses...
-	g.updateGridVelocities( g_particles );
+	g.updateGridVelocities( g_particles, g_collisionObjects );
 	
 	// transfer the grid velocities back onto the particles:
 	g.updateParticleVelocities( g_particles );

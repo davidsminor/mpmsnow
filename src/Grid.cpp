@@ -43,7 +43,8 @@ Grid::Grid( const ParticleData& d )
 
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
-		cellAndWeights( d.particleX[p], particleCell, w );
+		Vector3f x = d.particleX[p];
+		cellAndWeights( x, particleCell, w );
 		// splat the masses:
 		for( int i=-1; i < 3; ++i )
 		{
@@ -225,7 +226,11 @@ Matrix3f Grid::computeRdifferential( const Matrix3f& dF, const Matrix3f& R, cons
 }
 
 
-void Grid::applyImplicitUpdateMatrix( const ParticleData& d, const VectorXf& vNPlusOne, VectorXf& result )
+void Grid::applyImplicitUpdateMatrix(
+	const ParticleData& d,
+	const std::vector<CollisionObject*>& collisionObjects,
+	const VectorXf& vNPlusOne,
+	VectorXf& result )
 {
 	// the equation we want to solve for the implicit update is this:
 	// v^(n+1) = v^n + TIME_STEP / m * ( F + dF(v^(n+1) * TIME_STEP) )
@@ -238,11 +243,35 @@ void Grid::applyImplicitUpdateMatrix( const ParticleData& d, const VectorXf& vNP
 	calculateForceDifferentials( d, TIME_STEP * vNPlusOne, df );
 	
 	result = vNPlusOne;
-	for( int i=0; i < m_gridMasses.size(); ++i )
+	for( int i=0; i < m_nx; ++i )
 	{
-		if( m_gridMasses[i] != 0 )
+		for( int j=0; j < m_ny; ++j )
 		{
-			result.segment<3>( 3 * i ) -= TIME_STEP / m_gridMasses[i] * df.segment<3>( 3 * i );
+			for( int k=0; k < m_nz; ++k )
+			{
+				int idx = coordsToIndex( i, j, k );
+				if( m_gridMasses[idx] != 0 )
+				{
+					Vector3f resultV = result.segment<3>( 3 * idx ) - TIME_STEP / m_gridMasses[idx] * df.segment<3>( 3 * idx );
+					
+					// project out collided degrees of freedom:
+					/*
+					Vector3f x( GRID_H * i + m_xmin, GRID_H * j + m_ymin, GRID_H * k + m_zmin );
+					for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
+					{
+						if( m_nodeCollided[idx] )
+						{
+							Vector3f n;
+							collisionObjects[objIdx]->grad( x, n );
+							
+							float nDotV = n.dot( resultV );
+							resultV -= ( nDotV / n.dot(n) ) * n;
+						}
+					}
+					*/
+					result.segment<3>( 3 * idx ) = resultV;
+				}
+			}
 		}
 	}
 }
@@ -250,6 +279,7 @@ void Grid::applyImplicitUpdateMatrix( const ParticleData& d, const VectorXf& vNP
 // stabilised biconjugate gradient solver copy pasted out of Eigen
 bool Grid::bicgstab(
 	const ParticleData& d,
+	const std::vector<CollisionObject*>& collisionObjects,
 	const VectorXf& rhs,
 	VectorXf& x,
 	int& iters,
@@ -265,7 +295,7 @@ bool Grid::bicgstab(
 
 	long long n = rhs.size();
 	VectorType r;
-	applyImplicitUpdateMatrix( d, x, r );
+	applyImplicitUpdateMatrix( d, collisionObjects, x, r );
 	r = rhs - r;
 	VectorType r0 = r;
 
@@ -308,12 +338,12 @@ bool Grid::bicgstab(
 		Scalar beta = (rho/rho_old) * (alpha / w);
 		p = r + beta * (p - w * v);
 
-		applyImplicitUpdateMatrix( d, p, v );
+		applyImplicitUpdateMatrix( d, collisionObjects, p, v );
 
 		alpha = rho / r0.dot(v);
 		s = r - alpha * v;
 		
-		applyImplicitUpdateMatrix( d, s, t );
+		applyImplicitUpdateMatrix( d, collisionObjects, s, t );
 
 		RealScalar tmp = t.squaredNorm();
 		if(tmp>RealScalar(0))
@@ -418,8 +448,14 @@ void Grid::calculateForces( const ParticleData& d, VectorXf& forces )
 	DECLARE_WEIGHTARRAY( w );
 	DECLARE_WEIGHTARRAY( dw );
 	Vector3i particleCell;
-
-	forces.setZero();
+	
+	// start with gravity:
+	for( int i=0; i < m_gridMasses.size(); ++i )
+	{
+		forces.segment<3>(3 * i) = m_gridMasses[i] * Vector3f( 0, GRAVITY, 0 );
+	}
+	
+	// add on internal forces:
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
 		cellAndWeights( d.particleX[p], particleCell, w, dw );
@@ -533,10 +569,9 @@ void Grid::testForceDifferentials( const ParticleData& d )
 	m_gridVelocities = originalGridVelocities;
 }
 
-void Grid::updateGridVelocities( const ParticleData& d )
+void Grid::updateGridVelocities( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects )
 {
 	m_prevGridVelocities = m_gridVelocities;
-
 
 	// work out forces on grid points:
 	VectorXf forces( m_gridVelocities.size() );
@@ -544,17 +579,57 @@ void Grid::updateGridVelocities( const ParticleData& d )
 	
 	// work out forward velocity update - that's equation 10 in the paper:
 	VectorXf forwardVelocities( m_gridVelocities.size() );
-	for( int i=0; i < m_gridMasses.size(); ++i )
+	m_nodeCollided.resize( m_gridMasses.size() );
+	for( int i=0; i < m_nx; ++i )
 	{
-		if( m_gridMasses[i] == 0 )
+		for( int j=0; j < m_ny; ++j )
 		{
-			forwardVelocities.segment<3>( 3 * i ) = m_gridVelocities.segment<3>( 3 * i );
-		}
-		else
-		{
-			Vector3f force = forces.segment<3>( 3 * i );
-			Vector3f velocity = m_gridVelocities.segment<3>( 3 * i );
-			forwardVelocities.segment<3>( 3 * i ) = velocity + TIME_STEP * force / m_gridMasses[i];
+			for( int k=0; k < m_nz; ++k )
+			{
+				int idx = coordsToIndex( i, j, k );
+				m_nodeCollided[idx] = false;
+
+				if( m_gridMasses[idx] == 0 )
+				{
+					forwardVelocities.segment<3>( 3 * idx ) = m_gridVelocities.segment<3>( 3 * idx );
+				}
+				else
+				{
+					Vector3f force = forces.segment<3>( 3 * idx );
+					Vector3f velocity = m_gridVelocities.segment<3>( 3 * idx );
+					Vector3f forwardVelocity = velocity + TIME_STEP * force / m_gridMasses[idx];
+
+					// apply collisions:
+					Vector3f x( GRID_H * i + m_xmin, GRID_H * j + m_ymin, GRID_H * k + m_zmin );
+					for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
+					{
+						float phi = collisionObjects[objIdx]->phi( x );
+						if( phi <= 0 )
+						{
+							// intersecting the object
+							Vector3f n;
+							collisionObjects[objIdx]->grad( x, n );
+							n.normalize();
+							float nDotV = n.dot( forwardVelocity );
+							if( nDotV < 0 )
+							{
+								// trying to move into the object:
+								m_nodeCollided[idx] = true;
+
+								// velocity perpendicular to the object
+								Vector3f vPerp = nDotV * n;
+
+								// remaining component is velocity paralell to the object:
+								Vector3f vTangent = forwardVelocity - vPerp;
+
+								forwardVelocity = vTangent * ( 1 + COULOMBFRICTION * nDotV / vTangent.norm() );
+							}
+						}
+					}
+
+					forwardVelocities.segment<3>( 3 * idx ) = forwardVelocity;
+				}
+			}
 		}
 	}
 	
@@ -562,6 +637,7 @@ void Grid::updateGridVelocities( const ParticleData& d )
 	int iters = 30;
 	bicgstab(
 			d,
+			collisionObjects,
 			forwardVelocities,
 			m_gridVelocities,
 			iters,
@@ -665,8 +741,8 @@ void Grid::cellAndWeights( const Vector3f& particleX, Vector3i& particleCell, fl
 {
 	Vector3f positionInCell;
 	positionInCell[0] = ( particleX[0] - m_xmin ) / GRID_H;
-	positionInCell[1] = ( particleX[1] - m_xmin ) / GRID_H;
-	positionInCell[2] = ( particleX[2] - m_xmin ) / GRID_H;
+	positionInCell[1] = ( particleX[1] - m_ymin ) / GRID_H;
+	positionInCell[2] = ( particleX[2] - m_zmin ) / GRID_H;
 	
 	particleCell[0] = (int)floor( positionInCell[0] );
 	particleCell[1] = (int)floor( positionInCell[1] );
@@ -708,9 +784,10 @@ inline void Grid::minMax( float x, float& min, float& max )
 
 inline int Grid::fixDim( float& min, float& max )
 {
-	int n = int( ceil( ( max - min ) / GRID_H ) ) + 6;
-	float padding = 0.5f * ( n * GRID_H - ( max - min ) );
-	min -= padding;
+	float minPadded = min - 1.5f * GRID_H;
+	float maxPadded = max + 1.5f * GRID_H;
+	int n = int( ceil( ( maxPadded - minPadded ) / GRID_H ) ) + 1;
+	min = minPadded;
 	max = min + n * GRID_H;
 	return n;
 }
