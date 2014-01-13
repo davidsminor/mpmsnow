@@ -33,7 +33,7 @@ void CollisionPlane::draw() const
 	basisY.normalize();
 
 	float mincomponent(1.e10);
-	int minidx;
+	int minidx(0);
 	for( int i=0; i < 3; ++i )
 	{
 		if( fabs( basisY[i] ) < mincomponent )

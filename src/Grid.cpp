@@ -562,7 +562,9 @@ void Grid::testForceDifferentials( const ParticleData& d )
 	
 	for( int i=0; i <forceDifferentials.size(); ++i )
 	{
+		#ifdef WIN32
 		Sleep(100);
+		#endif
 		std::cerr << forceDifferentials[i] << " == " << actualForceDifferentials[i] << "? " << i << " of " << forceDifferentials.size() << std::endl;
 	}
 	

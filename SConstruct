@@ -10,7 +10,7 @@ name = "mpmsnow"
 version = "1.0.0"
 
 sources = glob.glob( "src/*.cpp" )
-includePaths = [ "." ]
+includePaths = [ "./include", "/software/tools/include/eigen/3.2.0/cent6.x86_64/include/Eigen" ]
 
 prog = IEBuild.Program( ARGUMENTS, name, sources, includePaths )
 prog.setCompiler()

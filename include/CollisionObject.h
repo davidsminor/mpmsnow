@@ -6,7 +6,9 @@
 class CollisionObject
 {
 public:
-
+	
+	virtual ~CollisionObject() {}
+	
 	// return implicit surface value:
 	virtual float phi( const Eigen::Vector3f& x ) const = 0;
 
