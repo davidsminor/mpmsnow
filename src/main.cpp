@@ -145,46 +145,33 @@ int main(int argc, char** argv)
 ////////////////////////////////////////////////////////////////////////////////
 bool initGL(int *argc, char **argv)
 {
-    glutInit(argc, argv);
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
-    glutInitWindowSize(window_width, window_height);
-    glutCreateWindow("Thnowing on our roatht!");
-    glutDisplayFunc(display);
-    glutKeyboardFunc(keyboard);
+	glutInit(argc, argv);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
+	glutInitWindowSize(window_width, window_height);
+	glutCreateWindow("Thnowing on our roatht!");
+	glutDisplayFunc(display);
+	glutKeyboardFunc(keyboard);
 	glutMouseFunc(mouse);
-    glutMotionFunc(motion);
-	
-    // default initialization
-    glClearColor(0.0, 0.0, 0.0, 1.0);
+	glutMotionFunc(motion);
+
+	// default initialization
+	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glEnable( GL_CULL_FACE );
 	glEnable( GL_DEPTH_TEST );
 
-    // viewport
-    glViewport(0, 0, window_width, window_height);
+	// viewport
+	glViewport(0, 0, window_width, window_height);
 
-	// lights:
-	
-	GLfloat light_ambient[] = { 0.0, 0.0, 0.0, 1.0 };
-	GLfloat light_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
-	GLfloat light_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-	GLfloat light_position[] = { 1.0, 1.0, 1.0, 0.0 };
-	
-	glEnable( GL_LIGHT0 );
-	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+	// projection
+	glMatrixMode(GL_PROJECTION);
 
-    // projection
-    glMatrixMode(GL_PROJECTION);
-
-    glLoadIdentity();
+	glLoadIdentity();
 	gluPerspective(	30,
- 					double( window_width ) / window_height,
- 					0.01,
- 					20);
+ 			double( window_width ) / window_height,
+ 			0.01,
+ 			20);
 	
-    return true;
+	return true;
 }
 
 
@@ -218,6 +205,21 @@ void display()
 
 	glEnd();
 	*/
+	
+
+	// lights:
+	
+	GLfloat light_ambient[] = { 0.0, 0.0, 0.0, 1.0 };
+	GLfloat light_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
+	GLfloat light_specular[] = { 1.0, 1.0, 1.0, 1.0 };
+	GLfloat light_position[] = { 1.0, 1.0, 1.0, 0.0 };
+	
+	glEnable( GL_LIGHT0 );
+	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+
 	
 	// draw collision objects:
 	for( size_t i=0; i < g_collisionObjects.size(); ++i )
