@@ -49,7 +49,30 @@ void CollisionPlane::draw() const
 	basisZ.normalize();
 	basisX = basisY.cross( basisZ );
 	
+	glEnable( GL_LIGHTING );
+	
+	GLfloat colorWhite[] = { 1.0, 1.0, 1.0, 1.0 };
+	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, colorWhite);
+	
+	glBegin( GL_QUADS );
+
+	glNormal3f( basisY[0], basisY[1], basisY[2] );
+
+	Vector3f x0 = origin + 5 * (   basisX + basisZ );
+	Vector3f x1 = origin + 5 * (   basisX - basisZ );
+	Vector3f x2 = origin + 5 * ( - basisX - basisZ );
+	Vector3f x3 = origin + 5 * ( - basisX + basisZ );
+	
+	glVertex3f( x0[0], x0[1], x0[2] );
+	glVertex3f( x1[0], x1[1], x1[2] );
+	glVertex3f( x2[0], x2[1], x2[2] );
+	glVertex3f( x3[0], x3[1], x3[2] );
+
+	glEnd();
+	
+	glDisable( GL_LIGHTING );
 	glBegin(GL_LINES);
+	glColor3f( 0,0,0 );
 	for( int x=0; x <= 10; ++x )
 	{
 		Vector3f start = origin  + ( x-5 ) * basisX - 5 * basisZ;

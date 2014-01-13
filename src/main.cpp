@@ -44,6 +44,10 @@ ParticleData g_particles;
 CollisionPlane g_groundPlane( Vector4f( 0, 1, 0, 0 ) );
 std::vector< CollisionObject* > g_collisionObjects;
 
+#define LAT_DIVISIONS 4
+#define LONG_DIVISIONS 6
+std::vector< Vector3f > g_spherePoints;
+
 int g_time(0);
 
 
@@ -67,13 +71,14 @@ int main(int argc, char** argv)
 	float particleVolume = particleSpacing * particleSpacing * particleSpacing;
 
 	srand( 10 );
+	const int particlesPerCell = 3;
 	for( int i=3; i <= 7; ++i )
 	{
 		for( int j=3; j <= 7; ++j )
 		{
 			for( int k=3; k <= 7; ++k )
 			{
-				for( int n=0; n < 3; ++n )
+				for( int n=0; n < particlesPerCell; ++n )
 				{
 					float xr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 					float yr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
@@ -81,8 +86,8 @@ int main(int argc, char** argv)
 					Vector3f pos( particleSpacing * float( i + xr - 0.5f ) - 0.5, 1.0f + particleSpacing * float( j + yr - 0.5f ) - 0.5, particleSpacing * float( k + zr - 0.5f ) - 0.5 );
 					
 					g_particles.particleX.push_back( pos );
-					g_particles.particleV.push_back( 0.2 * rotVector.cross( pos ) );
-					g_particles.particleM.push_back( INITIALDENSITY * particleVolume );
+					g_particles.particleV.push_back( 0.6 * rotVector.cross( pos ) );
+					g_particles.particleM.push_back( INITIALDENSITY * particleVolume / particlesPerCell );
 
 					g_particles.particleF.push_back( Matrix3f::Identity() );
 					g_particles.particleR.push_back( Matrix3f::Identity() );
@@ -96,7 +101,38 @@ int main(int argc, char** argv)
 	
 	// set up collision objects:
 	g_collisionObjects.push_back( &g_groundPlane );
+	
+	// make a little sphere to draw particles with:
+	for( int i=0; i<LONG_DIVISIONS; ++i )
+	{
+		float latAngle = 3.1415926f / LAT_DIVISIONS;
+		float longAngle0 = i * 2 * 3.1415926f / LONG_DIVISIONS;
+		float longAngle1 = ( i + 1 ) * 2 * 3.1415926f / LONG_DIVISIONS;
+		g_spherePoints.push_back( Vector3f( sin( latAngle ) * cos( longAngle0 ), cos( latAngle ), sin( latAngle ) * sin( longAngle0 ) ) );
+		g_spherePoints.push_back( Vector3f( 0,1,0 ) );
+		g_spherePoints.push_back( Vector3f( sin( latAngle ) * cos( longAngle1 ), cos( latAngle ), sin( latAngle ) * sin( longAngle1 ) ) );
+		
+		
+		latAngle = 3.1415926f - latAngle;
+		g_spherePoints.push_back( Vector3f( 0,-1,0 ) );
+		g_spherePoints.push_back( Vector3f( sin( latAngle ) * cos( longAngle0 ), cos( latAngle ), sin( latAngle ) * sin( longAngle0 ) ) );
+		g_spherePoints.push_back( Vector3f( sin( latAngle ) * cos( longAngle1 ), cos( latAngle ), sin( latAngle ) * sin( longAngle1 ) ) );
+		
+		for( int j=1; j < LAT_DIVISIONS-1; ++j )
+		{
+			float latAngle0 = j * 3.1415926f / LAT_DIVISIONS;
+			float latAngle1 = ( j + 1 ) * 3.1415926f / LAT_DIVISIONS;
 
+			g_spherePoints.push_back( Vector3f( sin( latAngle0 ) * cos( longAngle0 ), cos( latAngle0 ), sin( latAngle0 ) * sin( longAngle0 ) ) );
+			g_spherePoints.push_back( Vector3f( sin( latAngle0 ) * cos( longAngle1 ), cos( latAngle0 ), sin( latAngle0 ) * sin( longAngle1 ) ) );
+			g_spherePoints.push_back( Vector3f( sin( latAngle1 ) * cos( longAngle1 ), cos( latAngle1 ), sin( latAngle1 ) * sin( longAngle1 ) ) );
+		
+			g_spherePoints.push_back( Vector3f( sin( latAngle1 ) * cos( longAngle1 ), cos( latAngle1 ), sin( latAngle1 ) * sin( longAngle1 ) ) );
+			g_spherePoints.push_back( Vector3f( sin( latAngle1 ) * cos( longAngle0 ), cos( latAngle1 ), sin( latAngle1 ) * sin( longAngle0 ) ) );
+			g_spherePoints.push_back( Vector3f( sin( latAngle0 ) * cos( longAngle0 ), cos( latAngle0 ), sin( latAngle0 ) * sin( longAngle0 ) ) );
+		}
+	}
+	
 	initGL( &argc, argv );
 	
 	// start rendering mainloop
@@ -120,11 +156,24 @@ bool initGL(int *argc, char **argv)
 	
     // default initialization
     glClearColor(0.0, 0.0, 0.0, 1.0);
-    glDisable(GL_DEPTH_TEST);
 	glEnable( GL_CULL_FACE );
+	glEnable( GL_DEPTH_TEST );
 
     // viewport
     glViewport(0, 0, window_width, window_height);
+
+	// lights:
+	
+	GLfloat light_ambient[] = { 0.0, 0.0, 0.0, 1.0 };
+	GLfloat light_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
+	GLfloat light_specular[] = { 1.0, 1.0, 1.0, 1.0 };
+	GLfloat light_position[] = { 1.0, 1.0, 1.0, 0.0 };
+	
+	glEnable( GL_LIGHT0 );
+	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
 
     // projection
     glMatrixMode(GL_PROJECTION);
@@ -158,6 +207,7 @@ void display()
 	);
 
 	// display!
+	/*
 	glPointSize(2);
 	glBegin( GL_POINTS );
 	glColor3f( 1,1,1 );
@@ -167,6 +217,7 @@ void display()
 	}
 
 	glEnd();
+	*/
 	
 	// draw collision objects:
 	for( size_t i=0; i < g_collisionObjects.size(); ++i )
@@ -187,14 +238,26 @@ void display()
 		}
 	}
 	
-	/*
-	if( g_time == 6 )
-	{
-		g.testForceDifferentials( g_particles );
-		exit(0);
-	}
-	*/
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_NORMAL_ARRAY);
+	glEnable( GL_LIGHTING );
 	
+    glVertexPointer(3, GL_FLOAT, 0, (float*)&g_spherePoints[0]);
+    glNormalPointer(GL_FLOAT, 0, (float*)&g_spherePoints[0]);
+	
+	for( size_t p = 0; p < g_particles.particleX.size(); ++p )
+	{
+		float r = 2 * pow( g_particles.particleVolumes[p], 1.0f/3 ) / ( 4 * 3.1415926 / 3 );
+		glPushMatrix();
+		glTranslatef( g_particles.particleX[p][0],g_particles.particleX[p][1],g_particles.particleX[p][2] );
+		glScalef( r, r, r );
+		glDrawArrays(GL_TRIANGLES, 0, g_spherePoints.size());
+		glPopMatrix();
+	}
+	
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_NORMAL_ARRAY);
+	glDisable( GL_LIGHTING );
 	
 	// update grid velocities using internal stresses...
 	g.updateGridVelocities( g_particles, g_collisionObjects );
