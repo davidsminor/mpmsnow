@@ -53,6 +53,15 @@ private:
 		int& iters,
 		float& tol_error );
 
+	// conjugate gradient method from Eigen:
+	void conjugate_gradient(
+		const ParticleData& d,
+		const std::vector<CollisionObject*>& collisionObjects,
+		const Eigen::VectorXf& rhs,
+		Eigen::VectorXf& x,
+		int& iters,
+		float& tol_error );
+
 	void calculateForces( const ParticleData& d, Eigen::VectorXf& forces );
 	void calculateForceDifferentials( const ParticleData& d, const Eigen::VectorXf& dx, Eigen::VectorXf& df );
 

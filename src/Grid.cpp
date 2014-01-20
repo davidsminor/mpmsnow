@@ -370,6 +370,74 @@ bool Grid::bicgstab(
 	return true; 
 }
 
+void Grid::conjugate_gradient(
+	const ParticleData& d,
+	const std::vector<CollisionObject*>& collisionObjects,
+	const VectorXf& rhs,
+	VectorXf& x,
+	int& iters,
+	float& tol_error )
+{
+	using std::sqrt;
+	using std::abs;
+	typedef float RealScalar;
+	typedef float Scalar;
+
+	RealScalar tol = tol_error;
+	int maxIters = iters;
+
+	int n = rhs.size();
+
+	VectorXf residual;
+	applyImplicitUpdateMatrix( d, collisionObjects, x, residual );
+	residual = rhs - residual;
+
+	RealScalar rhsNorm2 = rhs.squaredNorm();
+	if(rhsNorm2 == 0) 
+	{
+		x.setZero();
+		iters = 0;
+		tol_error = 0;
+		return;
+	}
+	RealScalar threshold = tol*tol*rhsNorm2;
+	RealScalar residualNorm2 = residual.squaredNorm();
+	if (residualNorm2 < threshold)
+	{
+		iters = 0;
+		tol_error = sqrt(residualNorm2 / rhsNorm2);
+		return;
+	}
+
+	VectorXf p = residual;		//initial search direction
+	
+	VectorXf z(n), tmp(n);
+	RealScalar absNew = numext::real(residual.dot(p));  // the square of the absolute value of r scaled by invM
+	int i = 0;
+	while(i < maxIters)
+	{
+		applyImplicitUpdateMatrix( d, collisionObjects, p, tmp ); // the bottleneck of the algorithm
+		
+		Scalar alpha = absNew / p.dot(tmp);   // the amount we travel on dir
+		x += alpha * p;                       // update solution
+		residual -= alpha * tmp;              // update residue
+
+		residualNorm2 = residual.squaredNorm();
+		if(residualNorm2 < threshold)
+		  break;
+
+		z = residual;          // approximately solve for "A z = residual"
+
+		RealScalar absOld = absNew;
+		absNew = numext::real(residual.dot(z));     // update the absolute value of r
+		RealScalar beta = absNew / absOld;            // calculate the Gram-Schmidt value used to create the new search direction
+		p = z + beta * p;                             // update search direction
+		i++;
+	}
+	tol_error = sqrt(residualNorm2 / rhsNorm2);
+	iters = i;
+}
+
 void Grid::calculateForceDifferentials( const ParticleData& d, const VectorXf& dx, VectorXf& df )
 {
 	df.setZero();
@@ -550,6 +618,24 @@ unsigned Grid::matrixTexture( const ParticleData& d, const std::vector<Collision
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDisable( GL_TEXTURE_2D );
 	
+	std::cerr << "compute svd!!" << std::endl;
+	
+	JacobiSVD<MatrixXf> svd(M, Eigen::ComputeFullV);
+	std::cerr << "done!" << std::endl;
+	MatrixXf V = svd.matrixV();
+	
+	int numNulls = 0;
+	for( int i=0; i < svd.singularValues().size(); ++i )
+	{
+		std::cerr << svd.singularValues()[i] << std::endl;
+		if( svd.singularValues()[i] == 0 )
+		{
+			++numNulls;
+		}
+	}
+
+
+
 	return matrixTexture;
 }
 
@@ -706,8 +792,18 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 	}
 #endif
 
-	float tol_error = 1.e-7f;
+	float tol_error = 1.e-7;
 	int iters = 30;
+
+#ifdef SYMMETRISE
+	conjugate_gradient(
+		d,
+		collisionObjects,
+		forwardVelocities,
+		m_gridVelocities,
+		iters,
+		tol_error );
+#else
 	bicgstab(
 			d,
 			collisionObjects,
@@ -715,7 +811,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 			m_gridVelocities,
 			iters,
 			tol_error );
-	
+#endif
 	
 }
 
