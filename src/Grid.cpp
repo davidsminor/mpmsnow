@@ -13,6 +13,7 @@
 using namespace Eigen;
 
 #define DECLARE_WEIGHTARRAY( NAME ) float buf_##NAME[12]; float * NAME[] = { &buf_##NAME[1], &buf_##NAME[5], &buf_##NAME[9] };
+#define SYMMETRISE 1
 
 Grid::Grid( const ParticleData& d )
 {
@@ -232,12 +233,10 @@ void Grid::applyImplicitUpdateMatrix(
 	const VectorXf& vNPlusOne,
 	VectorXf& result )
 {
-	// the equation we want to solve for the implicit update is this:
-	// v^(n+1) = v^n + TIME_STEP / m * ( F + dF(v^(n+1) * TIME_STEP) )
-	// v^(n+1) - TIME_STEP / m * dF(v^(n+1) * TIME_STEP) = v^n + TIME_STEP / m * F
-	
-	// This method computes the left hand side of the equation
 
+	// This method computes the left hand side of the following equation:
+	// v^(n+1) - TIME_STEP / m * dF(v^(n+1) * TIME_STEP)
+	
 	// work out force differentials when you perturb the grid positions by v * TIME_STEP:
 	VectorXf df( vNPlusOne.size() );
 	calculateForceDifferentials( d, TIME_STEP * vNPlusOne, df );
@@ -274,6 +273,14 @@ void Grid::applyImplicitUpdateMatrix(
 			}
 		}
 	}
+
+#ifdef SYMMETRISE
+	for( int i=0; i < m_gridMasses.size(); ++i )
+	{
+		result.segment<3>( 3 * i ) *= m_gridMasses[i];
+	}
+#endif
+
 }
 
 // stabilised biconjugate gradient solver copy pasted out of Eigen
@@ -692,6 +699,13 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 		}
 	}
 	
+#ifdef SYMMETRISE
+	for( int i=0; i < m_gridMasses.size(); ++i )
+	{
+		forwardVelocities.segment<3>( 3 * i ) *= m_gridMasses[i];
+	}
+#endif
+
 	float tol_error = 1.e-7f;
 	int iters = 30;
 	bicgstab(
