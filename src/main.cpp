@@ -38,6 +38,9 @@ int mouse_buttons = 0;
 
 
 ParticleData g_particles;
+GLuint g_matrixTexture;
+
+//#define DISPLAYMATRIX 1
 
 // collision objects:
 // ground plane at y = -1.5
@@ -185,6 +188,49 @@ void display()
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+
+#ifdef DISPLAYMATRIX
+	
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	if( g_matrixTexture == 0 )
+	{
+		// instantiate grid and rasterize!
+		Grid g( g_particles );
+		if( g_particles.particleVolumes.empty() )
+		{
+			g.computeDensities( g_particles );
+			g_particles.particleVolumes.resize( g_particles.particleX.size() );
+			for( size_t i = 0; i < g_particles.particleDensities.size(); ++i )
+			{
+				g_particles.particleVolumes[i] = g_particles.particleM[i] / g_particles.particleDensities[i];
+			}
+		}
+		g_matrixTexture = g.matrixTexture( g_particles, g_collisionObjects );
+	}
+	
+	glEnable( GL_TEXTURE_2D );
+	glBindTexture( GL_TEXTURE_2D, g_matrixTexture );
+	
+	glBegin( GL_QUADS );
+	glTexCoord2f(1,1);
+	glVertex2f(1,-1);
+	glTexCoord2f(1,0);
+	glVertex2f(1,1);
+	glTexCoord2f(0,0);
+	glVertex2f(-1,1);
+	glTexCoord2f(0,1);
+	glVertex2f(-1,-1);
+	glEnd();
+	
+	glDisable( GL_TEXTURE_2D );
+
+    glutSwapBuffers();
+    glutPostRedisplay();
+	return;
+
+#endif DISPLAYMATRIX
 
 	gluLookAt(	g_r * cos( g_theta ) * sin( g_phi ),
 				g_r * sin( g_theta ),

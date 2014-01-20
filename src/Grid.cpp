@@ -489,6 +489,63 @@ float Grid::calculateEnergy( const ParticleData& d )
 	return e;
 }
 
+unsigned Grid::matrixTexture( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects )
+{
+	VectorXf x( m_gridVelocities.size() );
+	x.setZero();
+	
+	VectorXf b( m_gridVelocities.size() );
+	MatrixXf M( m_gridVelocities.size(), m_gridVelocities.size() );
+	
+	for( int i=0; i < x.size(); ++i )
+	{
+		std::cerr << i << " of " << x.size() << std::endl;
+		x[i] = 1;
+		applyImplicitUpdateMatrix(d, collisionObjects, x, b );
+		x[i] = 0;
+		M.block( 0, i, m_gridVelocities.size(), 1 ) = b;
+	}
+	
+	float maxM = M.maxCoeff();
+	float minM = M.minCoeff();
+	float norm = fabs( minM );
+	if( fabs( maxM ) > norm )
+	{
+		norm = fabs( maxM );
+	}
+
+	std::vector<unsigned char> sparsity;
+	int texW = int( ceil( (float)x.size() / 2 ) * 2 );
+	int texH = texW;
+
+	for(int j=0; j < texH; ++j)
+	{
+		for(int i=0; i < texW; ++i)
+		{
+			if( i >= x.size() || j >= x.size() )
+			{
+				sparsity.push_back( 0 );
+				continue;
+			}
+			
+			sparsity.push_back( (unsigned char)( fabs( M(i,j) ) * 255 / norm ) );
+		}
+	}
+
+	GLuint matrixTexture;
+	
+	glEnable( GL_TEXTURE_2D );
+	glGenTextures( 1, &matrixTexture );
+	glBindTexture(GL_TEXTURE_2D, matrixTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, texW, texH, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, &sparsity[0] );
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glDisable( GL_TEXTURE_2D );
+	
+	return matrixTexture;
+}
+
 void Grid::testForces( const ParticleData& d )
 {
 	// save the state so we don't screw the sim up:
