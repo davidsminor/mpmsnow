@@ -2,6 +2,14 @@
 #include <windows.h>
 #endif
 
+#ifdef HAVE_CORTEX
+#include "IECore/ImagePrimitive.h"
+#include "IECore/Writer.h"
+#include <boost/format.hpp>
+#endif
+
+
+
 #include <algorithm>
 #include <vector>
 #include <iostream>
@@ -20,9 +28,9 @@ using namespace Eigen;
 const unsigned int window_width = 512;
 const unsigned int window_height = 512;
 
-float g_theta(0.1);
-float g_phi(0.1);
-float g_r(5);
+float g_theta(0.2);
+float g_phi(-0.2);
+float g_r(6);
 
 // GL functionality
 bool initGL(int *argc, char** argv);
@@ -43,7 +51,7 @@ GLuint g_matrixTexture;
 //#define DISPLAYMATRIX 1
 
 // collision objects:
-// ground plane at y = -1.5
+// ground plane at y = 0
 CollisionPlane g_groundPlane( Vector4f( 0, 1, 0, 0 ) );
 std::vector< CollisionObject* > g_collisionObjects;
 
@@ -70,23 +78,23 @@ int main(int argc, char** argv)
 	// initial configuration:
 	Vector3f rotVector( 1, 9, 3 );
 	rotVector.normalize();
-	float particleSpacing( 0.1 );
+	float particleSpacing( 0.05 );
 	float particleVolume = particleSpacing * particleSpacing * particleSpacing;
 
 	srand( 10 );
 	const int particlesPerCell = 3;
-	for( int i=3; i <= 7; ++i )
+	for( int i=0; i <= 20; ++i )
 	{
-		for( int j=3; j <= 7; ++j )
+		for( int j=0; j <= 20; ++j )
 		{
-			for( int k=3; k <= 7; ++k )
+			for( int k=3; k <= 20; ++k )
 			{
 				for( int n=0; n < particlesPerCell; ++n )
 				{
 					float xr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 					float yr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 					float zr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					Vector3f pos( particleSpacing * float( i + xr - 0.5f ) - 0.5, 1.0f + particleSpacing * float( j + yr - 0.5f ) - 0.5, particleSpacing * float( k + zr - 0.5f ) - 0.5 );
+					Vector3f pos( particleSpacing * float( i + xr - 0.5f ) - 0.5, 1.5f + particleSpacing * float( j + yr - 0.5f ) - 0.5, particleSpacing * float( k + zr - 0.5f ) - 0.5 );
 					
 					g_particles.particleX.push_back( pos );
 					g_particles.particleV.push_back( 0.6 * rotVector.cross( pos ) );
@@ -230,7 +238,7 @@ void display()
     glutPostRedisplay();
 	return;
 
-#endif DISPLAYMATRIX
+#endif
 
 	gluLookAt(	g_r * cos( g_theta ) * sin( g_phi ),
 				g_r * sin( g_theta ),
@@ -312,7 +320,7 @@ void display()
 	
 	// transfer the grid velocities back onto the particles:
 	g.updateParticleVelocities( g_particles );
-
+	
 	// update particle deformation gradients:
 	g.updateDeformationGradients( g_particles );
 
@@ -322,8 +330,16 @@ void display()
 		g_particles.particleX[i] += g_particles.particleV[i] * TIME_STEP;
 	}
 	++g_time;
-    glutSwapBuffers();
-    glutPostRedisplay();
+
+	glutSwapBuffers();
+	
+#ifdef HAVE_CORTEX
+	Imath::Box2i screenWindow( Imath::V2i( 0, 0 ), Imath::V2i( window_width-1, window_height-1 ) );
+	IECore::ImagePrimitivePtr image = IECore::ImagePrimitive::createGreyscale( 0.5f, screenWindow, screenWindow );
+	glReadPixels(1, 1, window_width, window_height, GL_RED, GL_FLOAT, &image->variableData< IECore::FloatVectorData >( "Y" )->writable()[0]);
+	IECore::Writer::create( image, boost::str( boost::format( "./frame.%04d.tif" ) % g_time ) )->write();
+#endif
+	glutPostRedisplay();
 }
 
 
