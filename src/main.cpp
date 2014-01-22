@@ -94,17 +94,21 @@ int main(int argc, char** argv)
 					float xr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 					float yr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 					float zr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					Vector3f pos( particleSpacing * float( i + xr - 0.5f ) - 0.5, 1.5f + particleSpacing * float( j + yr - 0.5f ) - 0.5, particleSpacing * float( k + zr - 0.5f ) - 0.5 );
+					Vector3f pos( particleSpacing * float( i + xr - 0.5f ) - 0.5, 0.5f + particleSpacing * float( j + yr - 0.5f ) - 0.5, particleSpacing * float( k + zr - 0.5f ) - 0.5 );
 					
 					g_particles.particleX.push_back( pos );
 					g_particles.particleV.push_back( 0.6 * rotVector.cross( pos ) );
 					g_particles.particleM.push_back( INITIALDENSITY * particleVolume / particlesPerCell );
 
 					g_particles.particleF.push_back( Matrix3f::Identity() );
+					g_particles.particleFplastic.push_back( Matrix3f::Identity() );
 					g_particles.particleR.push_back( Matrix3f::Identity() );
 					g_particles.particleS.push_back( Matrix3f::Identity() );
 					g_particles.particleFinvTrans.push_back( Matrix3f::Identity() );
 					g_particles.particleJ.push_back( 1.0f );
+					
+					g_particles.particleMu.push_back( MU );
+					g_particles.particleLambda.push_back( LAMBDA );
 				}
 			}
 		}

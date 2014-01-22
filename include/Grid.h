@@ -12,6 +12,13 @@
 #define GRAVITY -9.8f
 #define COULOMBFRICTION 0.5f
 
+#define THETA_C 2.5e-2f
+#define THETA_S 7.5e-3f
+
+#define HARDENING 10
+
+//#define PLASTICITY 1
+
 #define YOUNGSMODULUS 1.4e5f
 #define POISSONRATIO 0.2f
 
