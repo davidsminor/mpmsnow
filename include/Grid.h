@@ -6,7 +6,7 @@
 
 #include <Eigen/Dense>
 
-#define GRID_H 0.5f
+#define GRID_H 0.1f
 #define TIME_STEP 0.01f
 #define INITIALDENSITY 400
 #define GRAVITY -9.8f
