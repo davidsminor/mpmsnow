@@ -58,16 +58,7 @@ private:
 
 	static float matrixDoubleDot( const Eigen::Matrix3f& a, const Eigen::Matrix3f& b );
 	static Eigen::Matrix3f computeRdifferential( const Eigen::Matrix3f& dF, const Eigen::Matrix3f& R, const Eigen::Matrix3f& S );
-
-	// conjugate gradient method from Eigen:
-	void conjugate_gradient(
-		const ParticleData& d,
-		const std::vector<CollisionObject*>& collisionObjects,
-		const Eigen::VectorXf& rhs,
-		Eigen::VectorXf& x,
-		int& iters,
-		float& tol_error );
-
+	
 	void calculateForces( const ParticleData& d, Eigen::VectorXf& forces ) const;
 	void calculateForceDifferentials( const ParticleData& d, const Eigen::VectorXf& dx, Eigen::VectorXf& df ) const;
 
@@ -84,7 +75,6 @@ private:
 	inline int coordsToIndex( int x, int y, int z ) const;
 
 	void cellAndWeights( const Eigen::Vector3f& particleX, Eigen::Vector3i& particleCell, float *w[], float** dw = 0 ) const;
-
 
 private:
 
