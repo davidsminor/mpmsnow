@@ -44,21 +44,12 @@ public:
 	void testForceDifferentials( const ParticleData& d );
 	unsigned matrixTexture( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects );
 
+	void applyImplicitUpdateMatrix( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const Eigen::VectorXf& v, Eigen::VectorXf& result );
+
 private:
 
 	static float matrixDoubleDot( const Eigen::Matrix3f& a, const Eigen::Matrix3f& b );
 	static Eigen::Matrix3f computeRdifferential( const Eigen::Matrix3f& dF, const Eigen::Matrix3f& R, const Eigen::Matrix3f& S );
-
-	void applyImplicitUpdateMatrix( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const Eigen::VectorXf& v, Eigen::VectorXf& result );
-
-	// stabilised biconjugate gradient solver copy pasted out of Eigen
-	bool bicgstab(
-		const ParticleData& d,
-		const std::vector<CollisionObject*>& collisionObjects,
-		const Eigen::VectorXf& rhs,
-		Eigen::VectorXf& x,
-		int& iters,
-		float& tol_error );
 
 	// conjugate gradient method from Eigen:
 	void conjugate_gradient(

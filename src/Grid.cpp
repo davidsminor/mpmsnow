@@ -14,7 +14,6 @@
 using namespace Eigen;
 
 #define DECLARE_WEIGHTARRAY( NAME ) float buf_##NAME[12]; float * NAME[] = { &buf_##NAME[1], &buf_##NAME[5], &buf_##NAME[9] };
-#define SYMMETRISE 1
 
 Grid::Grid( const ParticleData& d )
 {
@@ -275,100 +274,11 @@ void Grid::applyImplicitUpdateMatrix(
 		}
 	}
 
-#ifdef SYMMETRISE
 	for( int i=0; i < m_gridMasses.size(); ++i )
 	{
 		result.segment<3>( 3 * i ) *= m_gridMasses[i];
 	}
-#endif
 
-}
-
-// stabilised biconjugate gradient solver copy pasted out of Eigen
-bool Grid::bicgstab(
-	const ParticleData& d,
-	const std::vector<CollisionObject*>& collisionObjects,
-	const VectorXf& rhs,
-	VectorXf& x,
-	int& iters,
-	float& tol_error )
-{
-	using std::sqrt;
-	using std::abs;
-	typedef float RealScalar;
-	typedef float Scalar;
-	typedef Matrix<Scalar,Dynamic,1> VectorType;
-	RealScalar tol = tol_error;
-	int maxIters = iters;
-
-	long long n = rhs.size();
-	VectorType r;
-	applyImplicitUpdateMatrix( d, collisionObjects, x, r );
-	r = rhs - r;
-	VectorType r0 = r;
-
-	RealScalar r0_sqnorm = r0.squaredNorm();
-	RealScalar rhs_sqnorm = rhs.squaredNorm();
-	if(rhs_sqnorm == 0)
-	{
-		x.setZero();
-		return true;
-	}
-	Scalar rho    = 1;
-	Scalar alpha  = 1;
-	Scalar w      = 1;
-
-	VectorType v = VectorType::Zero(n), p = VectorType::Zero(n);
-	VectorType kt(n), ks(n);
-
-	VectorType s(n), t(n);
-
-	RealScalar tol2 = tol*tol;
-	int i = 0;
-	int restarts = 0;
-
-	while ( r.squaredNorm()/rhs_sqnorm > tol2 && i<maxIters )
-	{
-		Scalar rho_old = rho;
-
-		rho = r0.dot(r);
-		if (internal::isMuchSmallerThan(rho,r0_sqnorm))
-		{
-			// The new residual vector became too orthogonal to the arbitrarily choosen direction r0
-			// Let's restart with a new r0:
-			r0 = r;
-			rho = r0_sqnorm = r.squaredNorm();
-			if(restarts++ == 0)
-			{
-				i = 0;
-			}
-		}
-		Scalar beta = (rho/rho_old) * (alpha / w);
-		p = r + beta * (p - w * v);
-
-		applyImplicitUpdateMatrix( d, collisionObjects, p, v );
-
-		alpha = rho / r0.dot(v);
-		s = r - alpha * v;
-		
-		applyImplicitUpdateMatrix( d, collisionObjects, s, t );
-
-		RealScalar tmp = t.squaredNorm();
-		if(tmp>RealScalar(0))
-		{
-			w = t.dot(s) / tmp;
-		}
-		else
-		{
-			w = Scalar(0);
-		}
-		x += alpha * p + w * s;
-		r = s - w * t;
-		++i;
-	}
-	tol_error = sqrt(r.squaredNorm()/rhs_sqnorm);
-	iters = i;
-	return true; 
 }
 
 void Grid::conjugate_gradient(
@@ -387,7 +297,7 @@ void Grid::conjugate_gradient(
 	RealScalar tol = tol_error;
 	int maxIters = iters;
 
-	int n = rhs.size();
+	int n = (int)rhs.size();
 
 	VectorXf residual;
 	applyImplicitUpdateMatrix( d, collisionObjects, x, residual );
@@ -786,17 +696,14 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 		}
 	}
 	
-#ifdef SYMMETRISE
 	for( int i=0; i < m_gridMasses.size(); ++i )
 	{
 		forwardVelocities.segment<3>( 3 * i ) *= m_gridMasses[i];
 	}
-#endif
 
-	float tol_error = 1.e-7;
+	float tol_error = 1.e-7f;
 	int iters = 30;
 
-#ifdef SYMMETRISE
 	conjugate_gradient(
 		d,
 		collisionObjects,
@@ -804,15 +711,6 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 		m_gridVelocities,
 		iters,
 		tol_error );
-#else
-	bicgstab(
-			d,
-			collisionObjects,
-			forwardVelocities,
-			m_gridVelocities,
-			iters,
-			tol_error );
-#endif
 	
 }
 
