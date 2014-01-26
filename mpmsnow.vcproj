@@ -366,6 +366,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\ConjugateGradients.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\Grid.cpp"
 				>
 			</File>
@@ -378,11 +382,15 @@
 			Name="include"
 			>
 			<File
-				RelativePath=".\CollisionObject.h"
+				RelativePath=".\include\CollisionObject.h"
 				>
 			</File>
 			<File
-				RelativePath=".\CollisionPlane.h"
+				RelativePath=".\include\CollisionPlane.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\ConjugateGradients.h"
 				>
 			</File>
 			<File
@@ -391,6 +399,10 @@
 			</File>
 			<File
 				RelativePath=".\include\ParticleData.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\Solver.h"
 				>
 			</File>
 		</Filter>

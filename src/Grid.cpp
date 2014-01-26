@@ -93,7 +93,7 @@ Grid::Grid( const ParticleData& d )
 	}		
 }
 
-void Grid::draw()
+void Grid::draw() const
 {
 	glColor3f( 0,0.3f,0 );
 	glBegin( GL_LINES );
@@ -129,7 +129,7 @@ void Grid::draw()
 	glEnd();
 }
 
-void Grid::computeDensities( ParticleData& d )
+void Grid::computeDensities( ParticleData& d ) const
 {
 	d.particleDensities.resize( d.particleX.size(), 0 );
 	
@@ -231,7 +231,7 @@ void Grid::applyImplicitUpdateMatrix(
 	const ParticleData& d,
 	const std::vector<CollisionObject*>& collisionObjects,
 	const VectorXf& vNPlusOne,
-	VectorXf& result )
+	VectorXf& result ) const
 {
 
 	// This method computes the left hand side of the following equation:
@@ -349,7 +349,7 @@ void Grid::conjugate_gradient(
 	iters = i;
 }
 
-void Grid::calculateForceDifferentials( const ParticleData& d, const VectorXf& dx, VectorXf& df )
+void Grid::calculateForceDifferentials( const ParticleData& d, const VectorXf& dx, VectorXf& df ) const
 {
 	df.setZero();
 
@@ -427,7 +427,7 @@ void Grid::calculateForceDifferentials( const ParticleData& d, const VectorXf& d
 	}
 }
 
-void Grid::calculateForces( const ParticleData& d, VectorXf& forces )
+void Grid::calculateForces( const ParticleData& d, VectorXf& forces ) const
 {
 	// little array with indexes going from -1 to store shape function derivative weights
 	// on each dimension:
@@ -463,7 +463,7 @@ void Grid::calculateForces( const ParticleData& d, VectorXf& forces )
 	}
 }
 
-float Grid::calculateEnergy( const ParticleData& d )
+float Grid::calculateEnergy( const ParticleData& d ) const
 {
 	float e = 0;
 	for( size_t p=0; p < d.particleF.size(); ++p )
@@ -475,7 +475,7 @@ float Grid::calculateEnergy( const ParticleData& d )
 	return e;
 }
 
-unsigned Grid::matrixTexture( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects )
+unsigned Grid::matrixTexture( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const
 {
 	VectorXf x( m_gridVelocities.size() );
 	x.setZero();
@@ -632,7 +632,7 @@ void Grid::testForceDifferentials( const ParticleData& d )
 	m_gridVelocities = originalGridVelocities;
 }
 
-void Grid::updateGridVelocities( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects )
+void Grid::updateGridVelocities( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const Solver& implicitSolver )
 {
 	m_prevGridVelocities = m_gridVelocities;
 
@@ -704,13 +704,12 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 	float tol_error = 1.e-7f;
 	int iters = 30;
 
-	conjugate_gradient(
+	implicitSolver(
+		this,
 		d,
 		collisionObjects,
 		forwardVelocities,
-		m_gridVelocities,
-		iters,
-		tol_error );
+		m_gridVelocities );
 	
 }
 
@@ -840,12 +839,12 @@ inline float Grid::DN( float x )
 	}
 }
 
-inline int Grid::coordsToIndex( int x, int y, int z )
+inline int Grid::coordsToIndex( int x, int y, int z ) const
 {
 	return x + m_nx * ( y + z * m_ny );
 }
 
-void Grid::cellAndWeights( const Vector3f& particleX, Vector3i& particleCell, float *w[], float** dw )
+void Grid::cellAndWeights( const Vector3f& particleX, Vector3i& particleCell, float *w[], float** dw ) const
 {
 	Vector3f positionInCell;
 	positionInCell[0] = ( particleX[0] - m_xmin ) / GRID_H;

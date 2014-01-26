@@ -3,6 +3,7 @@
 
 #include "ParticleData.h"
 #include "CollisionObject.h"
+#include "Solver.h"
 
 #include <Eigen/Dense>
 
@@ -26,6 +27,8 @@
 #define LAMBDA ( YOUNGSMODULUS * POISSONRATIO / ( ( 1 + POISSONRATIO ) * ( 1 - 2 * POISSONRATIO ) ) )
 #define BETA 1
 
+class Solver;
+
 class Grid
 {
 
@@ -33,18 +36,23 @@ public:
 
 	Grid( const ParticleData& d );
 
-	void draw();
-	void computeDensities( ParticleData& d );
-	void updateGridVelocities( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects );
+	void draw() const;
+	void computeDensities( ParticleData& d ) const;
+
+	void updateGridVelocities(
+		const ParticleData& d,
+		const std::vector<CollisionObject*>& collisionObjects,
+		const Solver& implicitSolver );
+
 	void updateDeformationGradients( ParticleData& d );
 	void updateParticleVelocities( ParticleData& d );
 	
 	// testing:
 	void testForces( const ParticleData& d );
 	void testForceDifferentials( const ParticleData& d );
-	unsigned matrixTexture( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects );
+	unsigned matrixTexture( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const;
 
-	void applyImplicitUpdateMatrix( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const Eigen::VectorXf& v, Eigen::VectorXf& result );
+	void applyImplicitUpdateMatrix( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const Eigen::VectorXf& v, Eigen::VectorXf& result ) const;
 
 private:
 
@@ -60,23 +68,23 @@ private:
 		int& iters,
 		float& tol_error );
 
-	void calculateForces( const ParticleData& d, Eigen::VectorXf& forces );
-	void calculateForceDifferentials( const ParticleData& d, const Eigen::VectorXf& dx, Eigen::VectorXf& df );
+	void calculateForces( const ParticleData& d, Eigen::VectorXf& forces ) const;
+	void calculateForceDifferentials( const ParticleData& d, const Eigen::VectorXf& dx, Eigen::VectorXf& df ) const;
 
 	// testing
-	float calculateEnergy( const ParticleData& d );
+	float calculateEnergy( const ParticleData& d ) const;
 	
 	// shape functions and derivatives:
 	static inline float N( float x );
 	static inline float DN( float x );
 
-	inline int coordsToIndex( int x, int y, int z );
+	static inline void minMax( float x, float& min, float& max );
+	static inline int fixDim( float& min, float& max );
 
-	void cellAndWeights( const Eigen::Vector3f& particleX, Eigen::Vector3i& particleCell, float *w[], float** dw = 0 );
+	inline int coordsToIndex( int x, int y, int z ) const;
 
-	inline void minMax( float x, float& min, float& max );
+	void cellAndWeights( const Eigen::Vector3f& particleX, Eigen::Vector3i& particleCell, float *w[], float** dw = 0 ) const;
 
-	inline int fixDim( float& min, float& max );
 
 private:
 

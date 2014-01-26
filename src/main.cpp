@@ -20,6 +20,7 @@
 #include "Grid.h"
 
 #include "CollisionPlane.h"
+#include "ConjugateGradients.h"
 
 using namespace Eigen;
 
@@ -83,18 +84,18 @@ int main(int argc, char** argv)
 
 	srand( 10 );
 	const int particlesPerCell = 3;
-	for( int i=0; i <= 20; ++i )
+	for( int i=-3; i <= 3; ++i )
 	{
-		for( int j=0; j <= 20; ++j )
+		for( int j=-3; j <= 3; ++j )
 		{
-			for( int k=3; k <= 20; ++k )
+			for( int k=-3; k <= 3; ++k )
 			{
 				for( int n=0; n < particlesPerCell; ++n )
 				{
 					float xr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 					float yr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 					float zr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					Vector3f pos( particleSpacing * float( i + xr - 0.5f ) - 0.5, 0.5f + particleSpacing * float( j + yr - 0.5f ) - 0.5, particleSpacing * float( k + zr - 0.5f ) - 0.5 );
+					Vector3f pos( particleSpacing * float( i + xr ), 0.5f + particleSpacing * float( j + yr ), particleSpacing * float( k + zr ) );
 					
 					g_particles.particleX.push_back( pos );
 					g_particles.particleV.push_back( 0.6 * rotVector.cross( pos ) );
@@ -320,7 +321,7 @@ void display()
 	glDisable( GL_LIGHTING );
 	
 	// update grid velocities using internal stresses...
-	g.updateGridVelocities( g_particles, g_collisionObjects );
+	g.updateGridVelocities( g_particles, g_collisionObjects, ConjugateGradients( 30, 1.e-10 ) );
 	
 	// transfer the grid velocities back onto the particles:
 	g.updateParticleVelocities( g_particles );
