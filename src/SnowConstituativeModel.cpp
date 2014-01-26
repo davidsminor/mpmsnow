@@ -20,6 +20,63 @@ SnowConstituativeModel::SnowConstituativeModel(
 	m_lambda = ( youngsModulus * poissonRatio / ( ( 1 + poissonRatio ) * ( 1 - 2 * poissonRatio ) ) );
 }
 
+void SnowConstituativeModel::updateDeformation( ParticleData& d ) const
+{
+	for( size_t p=0; p < d.particleX.size(); ++p )
+	{
+		// find determinant and inverse transpose of deformation gradient:
+		bool invertible;
+		d.particleF[p].computeInverseAndDetWithCheck( d.particleFinvTrans[p], d.particleJ[p], invertible );
+		if( invertible )
+		{
+			d.particleFinvTrans[p].transposeInPlace();
+			
+	#ifdef PLASTICITY
+			JacobiSVD<Matrix3f> svd(d.particleF[p], ComputeFullU | ComputeFullV );
+			
+			Vector3f singularValues = svd.singularValues();
+			
+			// apply plastic yeild:
+			Matrix3f diagonalMat = Matrix3f::Zero();
+			Matrix3f diagonalMatInv = Matrix3f::Zero();
+			for( int i=0; i < 3; ++i )
+			{
+				// stretching:
+				if( singularValues[i] > 1 + m_tensileStrength )
+				{
+					singularValues[i] = 1 + m_tensileStrength;
+				}
+				
+				// compression:
+				if( singularValues[i] < 1 - m_compressiveStrength )
+				{
+					singularValues[i] = 1 - m_compressiveStrength;
+				}
+				diagonalMat(i,i) = singularValues[i];
+				diagonalMatInv(i,i) = 1.0f / singularValues[i];
+			}
+			
+			d.particleF[p] = svd.matrixU() * diagonalMat * svd.matrixV().transpose();
+			//d.particleR[p] = svd.matrixU() * svd.matrixV().transpose();
+			//d.particleS[p] = svd.matrixV() * diagonalMat * svd.matrixV().transpose();
+			
+			d.particleFplastic[p] = svd.matrixV() * diagonalMatInv * svd.matrixU().transpose() * d.particleFplastic[p];
+			
+			// apply hardening:
+			float hardeningFactor = exp( m_hardening * ( 1 - d.particleFplastic[p].determinant() ) );
+			
+			d.particleMu[p] = m_mu * hardeningFactor;
+			d.particleLambda[p] = m_lambda * hardeningFactor;
+
+	#endif
+
+			// find polar decomposition of deformation gradient:
+			Affine3f trans( d.particleF[p] );	
+			trans.computeRotationScaling( &d.particleR[p], &d.particleS[p] );
+		}
+	}
+}
+
 void SnowConstituativeModel::initParticles( ParticleData& d ) const
 {
 	for( size_t p = 0; p < d.particleX.size(); ++p )

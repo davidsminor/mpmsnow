@@ -190,46 +190,6 @@ void Grid::updateParticleVelocities( ParticleData& d )
 	}
 }
 
-float Grid::matrixDoubleDot( const Matrix3f& a, const Matrix3f& b )
-{
-	return
-		a(0,0) * b(0,0) + a(0,1) * b(0,1) + a(0,2) * b(0,2) + 
-		a(1,0) * b(1,0) + a(1,1) * b(1,1) + a(1,2) * b(1,2) + 
-		a(2,0) * b(2,0) + a(2,1) * b(2,1) + a(2,2) * b(2,2);
-}
-
-Matrix3f Grid::computeRdifferential( const Matrix3f& dF, const Matrix3f& R, const Matrix3f& S )
-{
-	Matrix3f M = R.transpose() * dF - dF.transpose() * R;
-	Vector3f w( M(0,1), M(0,2), M(1,2) );
-	
-	Matrix3f G;
-	G(0,0) = S(0,0) + S(1,1);
-	G(1,1) = S(0,0) + S(2,2);
-	G(2,2) = S(1,1) + S(2,2);
-	
-	G(0,1) = G(1,0) = S(1,2);
-	G(0,2) = G(2,0) = -S(0,2);
-	G(1,2) = G(2,1) = S(0,1);
-	
-	w = G.inverse() * w;
-	
-	Matrix3f RtdR;
-	RtdR(0,0) = RtdR(1,1) = RtdR(2,2) = 0;
-	
-	RtdR(0,1) = w[0];
-	RtdR(1,0) = -w[0];
-	
-	RtdR(0,2) = w[1];
-	RtdR(2,0) = -w[1];
-	
-	RtdR(1,2) = w[2];
-	RtdR(2,1) = -w[2];
-	
-	return R * RtdR;
-}
-
-
 void Grid::applyImplicitUpdateMatrix(
 	const ParticleData& d,
 	const std::vector<CollisionObject*>& collisionObjects,
@@ -341,7 +301,6 @@ void Grid::calculateForces( const ParticleData& d, VectorXf& forces ) const
 		
 		Matrix3f dEdF;
 		m_constituativeModel.dEnergyDensitydF( dEdF, d, p );
-		//	2 * d.particleMu[p] * ( d.particleF[p] - d.particleR[p] ) + d.particleLambda[p] * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
 		
 		for( int i=-1; i < 3; ++i )
 		{
@@ -363,11 +322,7 @@ float Grid::calculateEnergy( const ParticleData& d ) const
 	float e = 0;
 	for( size_t p=0; p < d.particleF.size(); ++p )
 	{
-		
 		e += d.particleVolumes[p] * m_constituativeModel.energyDensity( d, p );
-		//Matrix3f rigidDeviation = d.particleF[p] - d.particleR[p];
-		//float JminusOne = d.particleJ[p] - 1;
-		//e += d.particleVolumes[p] * ( d.particleMu[p] * matrixDoubleDot( rigidDeviation, rigidDeviation ) + 0.5f * d.particleLambda[p] * JminusOne * JminusOne );
 	}
 	return e;
 }
@@ -641,59 +596,9 @@ void Grid::updateDeformationGradients( ParticleData& d )
 		}
 		Matrix3f newParticleF = ( Matrix3f::Identity() + m_timeStep * delV ) * d.particleF[p];
 		d.particleF[p] = newParticleF;
-
-		// find determinant and inverse transpose of deformation gradient:
-		bool invertible;
-		d.particleF[p].computeInverseAndDetWithCheck( d.particleFinvTrans[p], d.particleJ[p], invertible );
-		if( invertible )
-		{
-			d.particleFinvTrans[p].transposeInPlace();
-			
-#ifdef PLASTICITY
-			JacobiSVD<Matrix3f> svd(d.particleF[p], ComputeFullU | ComputeFullV );
-			
-			Vector3f singularValues = svd.singularValues();
-			
-			// apply plastic yeild:
-			Matrix3f diagonalMat = Matrix3f::Zero();
-			Matrix3f diagonalMatInv = Matrix3f::Zero();
-			for( int i=0; i < 3; ++i )
-			{
-				// stretching:
-				if( singularValues[i] > 1 + THETA_S )
-				{
-					singularValues[i] = 1 + THETA_S;
-				}
-				
-				// compression:
-				if( singularValues[i] < 1 - THETA_C )
-				{
-					singularValues[i] = 1 - THETA_C;
-				}
-				diagonalMat(i,i) = singularValues[i];
-				diagonalMatInv(i,i) = 1.0f / singularValues[i];
-			}
-			
-			d.particleF[p] = svd.matrixU() * diagonalMat * svd.matrixV().transpose();
-			//d.particleR[p] = svd.matrixU() * svd.matrixV().transpose();
-			//d.particleS[p] = svd.matrixV() * diagonalMat * svd.matrixV().transpose();
-			
-			d.particleFplastic[p] = svd.matrixV() * diagonalMatInv * svd.matrixU().transpose() * d.particleFplastic[p];
-			
-			// apply hardening:
-			float hardeningFactor = exp( HARDENING * ( 1 - d.particleFplastic[p].determinant() ) );
-			
-			d.particleMu[p] = MU * hardeningFactor;
-			d.particleLambda[p] = LAMBDA * hardeningFactor;
-
-#endif
-
-			// find polar decomposition of deformation gradient:
-			Affine3f trans( d.particleF[p] );	
-			trans.computeRotationScaling( &d.particleR[p], &d.particleS[p] );
-
-		}
 	}
+
+	m_constituativeModel.updateDeformation( d );
 }
 
 

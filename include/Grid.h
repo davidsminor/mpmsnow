@@ -37,9 +37,6 @@ public:
 
 private:
 
-	static float matrixDoubleDot( const Eigen::Matrix3f& a, const Eigen::Matrix3f& b );
-	static Eigen::Matrix3f computeRdifferential( const Eigen::Matrix3f& dF, const Eigen::Matrix3f& R, const Eigen::Matrix3f& S );
-	
 	void calculateForces( const ParticleData& d, Eigen::VectorXf& forces ) const;
 	void calculateForceDifferentials( const ParticleData& d, const Eigen::VectorXf& dx, Eigen::VectorXf& df ) const;
 

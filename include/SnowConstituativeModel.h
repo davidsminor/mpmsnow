@@ -16,6 +16,9 @@ public:
 
 	virtual void initParticles( ParticleData& p ) const;
 
+	// update deformation at particle p:
+	virtual void updateDeformation( ParticleData& d ) const;
+
 	// energy density for particle p:
 	virtual float energyDensity( const ParticleData& d, size_t p ) const;
 	

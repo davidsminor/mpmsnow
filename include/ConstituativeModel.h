@@ -10,6 +10,9 @@ class ConstituativeModel
 public:
 	
 	virtual void initParticles( ParticleData& p ) const = 0;
+	
+	// update deformation at particle p:
+	virtual void updateDeformation( ParticleData& d ) const = 0;
 
 	// energy density for particle p:
 	virtual float energyDensity( const ParticleData& d, size_t p ) const = 0;
