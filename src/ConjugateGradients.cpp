@@ -72,7 +72,7 @@ void ConjugateGradients::operator()
 		RealScalar beta = absNew / absOld;            // calculate the Gram-Schmidt value used to create the new search direction
 		p = z + beta * p;                             // update search direction
 		
-		std::cerr << i << ":" << sqrt(residualNorm2 / rhsNorm2) << std::endl;
+		std::cerr << i << ":" << sqrt( residualNorm2 ) << "/" << sqrt( threshold ) << std::endl;
 
 		i++;
 	}

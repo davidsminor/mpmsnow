@@ -92,11 +92,11 @@ int main(int argc, char** argv)
 	// initial configuration:
 	Vector3f rotVector( 1, 9, 3 );
 	rotVector.normalize();
+	srand( 10 );
+
 	float particleSpacing( 0.05 );
 	float particleVolume = particleSpacing * particleSpacing * particleSpacing;
-
-	srand( 10 );
-	const int particlesPerCell = 3;
+	const int particlesPerCell = 1;
 	const float initialDensity = 400;
 	for( int i=-3; i <= 3; ++i )
 	{
@@ -315,7 +315,7 @@ void display()
 	const float timeStep = 0.01f;
 	Grid g(
 		g_particles,
-		0.1,	// grid spacing
+		0.2,	// grid spacing
 		timeStep,	// time step
 		g_snowModel
 	);
@@ -353,7 +353,7 @@ void display()
 	glDisable( GL_LIGHTING );
 	
 	// update grid velocities using internal stresses...
-	g.updateGridVelocities( g_particles, g_collisionObjects, ConjugateGradients( 30, 1.e-10 ) );
+	g.updateGridVelocities( g_particles, g_collisionObjects, ConjugateResiduals( 30, 1.e-10 ) );
 	
 	// transfer the grid velocities back onto the particles:
 	g.updateParticleVelocities( g_particles );

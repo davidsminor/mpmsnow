@@ -19,5 +19,66 @@ void ConjugateResiduals::operator()
 		Eigen::VectorXf& x
 ) const
 {
-	// not implemented
+	typedef float RealScalar;
+
+	RealScalar rhsNorm2 = rhs.squaredNorm();
+	if(rhsNorm2 == 0) 
+	{
+		x.setZero();
+		return;
+	}
+	
+	RealScalar tol = m_tolError;
+	int maxIters = m_iters;
+
+
+	// r0 = b - A x0
+	VectorXf r;
+	g->applyImplicitUpdateMatrix( d, collisionObjects, x, r );
+	r = rhs - r;
+	
+	RealScalar threshold = tol*tol*rhsNorm2;
+	RealScalar residualNorm2 = r.squaredNorm();
+	if (residualNorm2 < threshold)
+	{
+		return;
+	}
+
+	// p0 = r0
+	VectorXf p = r;
+	
+	VectorXf Ar;
+	g->applyImplicitUpdateMatrix( d, collisionObjects, r, Ar );
+
+	VectorXf Ap = Ar;
+
+	float rtAr = r.dot( Ar );
+	float ApdotAp = Ap.squaredNorm();
+
+	int i = 0;
+	while(i < maxIters)
+	{
+		float alpha = rtAr / ApdotAp;
+		x += alpha * p;
+		r -= alpha * Ap;
+		
+		residualNorm2 = r.squaredNorm();
+		if(residualNorm2 < threshold)
+		{
+			break;
+		}
+		
+		g->applyImplicitUpdateMatrix( d, collisionObjects, r, Ar );
+		float rtArNew = r.dot( Ar );
+		float beta = rtArNew/rtAr;
+		rtAr = rtArNew;
+
+		p = r + beta * p;
+		Ap = Ar + beta * Ap;
+		
+		std::cerr << i << ":" << sqrt( residualNorm2 ) << "/" << sqrt( threshold ) << std::endl;
+
+		++i;
+	}
+
 }
