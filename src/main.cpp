@@ -19,6 +19,8 @@
 
 #include "Grid.h"
 
+#include "SnowConstituativeModel.h"
+
 #include "CollisionPlane.h"
 #include "ConjugateGradients.h"
 #include "ConjugateResiduals.h"
@@ -48,6 +50,16 @@ int mouse_buttons = 0;
 
 
 ParticleData g_particles;
+
+SnowConstituativeModel g_snowModel(
+		1.4e5f, // young's modulus
+		0.2f, // poisson ratio
+		10, // hardening
+		2.5e-2f, // compressive strength
+		7.5e-3f	// tensile strength
+);
+
+
 GLuint g_matrixTexture;
 
 //#define DISPLAYMATRIX 1
@@ -85,6 +97,7 @@ int main(int argc, char** argv)
 
 	srand( 10 );
 	const int particlesPerCell = 3;
+	const float initialDensity = 400;
 	for( int i=-3; i <= 3; ++i )
 	{
 		for( int j=-3; j <= 3; ++j )
@@ -100,7 +113,7 @@ int main(int argc, char** argv)
 					
 					g_particles.particleX.push_back( pos );
 					g_particles.particleV.push_back( 0.6 * rotVector.cross( pos ) );
-					g_particles.particleM.push_back( INITIALDENSITY * particleVolume / particlesPerCell );
+					g_particles.particleM.push_back( initialDensity * particleVolume / particlesPerCell );
 
 					g_particles.particleF.push_back( Matrix3f::Identity() );
 					g_particles.particleFplastic.push_back( Matrix3f::Identity() );
@@ -109,12 +122,12 @@ int main(int argc, char** argv)
 					g_particles.particleFinvTrans.push_back( Matrix3f::Identity() );
 					g_particles.particleJ.push_back( 1.0f );
 					
-					g_particles.particleMu.push_back( MU );
-					g_particles.particleLambda.push_back( LAMBDA );
 				}
 			}
 		}
 	}
+
+	g_snowModel.initParticles( g_particles );
 	
 	// set up collision objects:
 	g_collisionObjects.push_back( &g_groundPlane );
@@ -286,9 +299,27 @@ void display()
 	{
 		g_collisionObjects[i]->draw();
 	}
+/*
+#define THETA_C 2.5e-2f
+#define THETA_S 7.5e-3f
+
+#define HARDENING 10
+
+//#define PLASTICITY 1
+
+#define YOUNGSMODULUS 1.4e5f
+#define POISSONRATIO 0.2f
+*/
 
 	// instantiate grid and rasterize!
-	Grid g( g_particles );
+	const float timeStep = 0.01f;
+	Grid g(
+		g_particles,
+		0.1,	// grid spacing
+		timeStep,	// time step
+		g_snowModel
+	);
+
 	//g.draw();
 	if( g_particles.particleVolumes.empty() )
 	{
@@ -333,7 +364,7 @@ void display()
 	// update positions...
 	for( size_t i = 0; i < g_particles.particleX.size(); ++i )
 	{
-		g_particles.particleX[i] += g_particles.particleV[i] * TIME_STEP;
+		g_particles.particleX[i] += g_particles.particleV[i] * timeStep;
 	}
 	++g_time;
 

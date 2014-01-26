@@ -13,9 +13,12 @@
 
 using namespace Eigen;
 
+#define GRAVITY -9.8f
+#define COULOMBFRICTION 0.5f
 #define DECLARE_WEIGHTARRAY( NAME ) float buf_##NAME[12]; float * NAME[] = { &buf_##NAME[1], &buf_##NAME[5], &buf_##NAME[9] };
 
-Grid::Grid( const ParticleData& d )
+Grid::Grid( const ParticleData& d, float gridH, float timeStep, const ConstituativeModel& model )
+	: m_gridH( gridH ), m_timeStep( timeStep ), m_constituativeModel( model )
 {
 	// work out the physical size of the grid:
 	m_xmin = m_ymin = m_zmin = 1.e10;
@@ -103,8 +106,8 @@ void Grid::draw() const
 	{
 		for( int j=0; j <= m_ny; ++j )
 		{
-			glVertex3f( m_xmin + i * GRID_H, m_ymin + j * GRID_H, m_zmin );
-			glVertex3f( m_xmin + i * GRID_H, m_ymin + j * GRID_H, m_zmax );
+			glVertex3f( m_xmin + i * m_gridH, m_ymin + j * m_gridH, m_zmin );
+			glVertex3f( m_xmin + i * m_gridH, m_ymin + j * m_gridH, m_zmax );
 		}
 	}
 	// zy
@@ -112,8 +115,8 @@ void Grid::draw() const
 	{
 		for( int j=0; j <= m_ny; ++j )
 		{
-			glVertex3f( m_xmin, m_ymin + j * GRID_H, m_zmin + i * GRID_H );
-			glVertex3f( m_xmax, m_ymin + j * GRID_H, m_zmin + i * GRID_H );
+			glVertex3f( m_xmin, m_ymin + j * m_gridH, m_zmin + i * m_gridH );
+			glVertex3f( m_xmax, m_ymin + j * m_gridH, m_zmin + i * m_gridH );
 		}
 	}
 
@@ -122,8 +125,8 @@ void Grid::draw() const
 	{
 		for( int j=0; j <= m_nz; ++j )
 		{
-			glVertex3f( m_xmin + i * GRID_H, m_ymin, m_zmin + j * GRID_H );
-			glVertex3f( m_xmin + i * GRID_H, m_ymax, m_zmin + j * GRID_H );
+			glVertex3f( m_xmin + i * m_gridH, m_ymin, m_zmin + j * m_gridH );
+			glVertex3f( m_xmin + i * m_gridH, m_ymax, m_zmin + j * m_gridH );
 		}
 	}
 	glEnd();
@@ -152,7 +155,7 @@ void Grid::computeDensities( ParticleData& d ) const
 					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
 					
 					// accumulate the particle's density:
-					d.particleDensities[p] += w[0][i] * w[1][j] * w[2][k] * m_gridMasses[ idx ] / ( GRID_H * GRID_H * GRID_H );
+					d.particleDensities[p] += w[0][i] * w[1][j] * w[2][k] * m_gridMasses[ idx ] / ( m_gridH * m_gridH * m_gridH );
 					
 				}
 			}
@@ -235,11 +238,11 @@ void Grid::applyImplicitUpdateMatrix(
 {
 
 	// This method computes the left hand side of the following equation:
-	// v^(n+1) - TIME_STEP / m * dF(v^(n+1) * TIME_STEP)
+	// v^(n+1) - m_timeStep / m * dF(v^(n+1) * m_timeStep)
 	
-	// work out force differentials when you perturb the grid positions by v * TIME_STEP:
+	// work out force differentials when you perturb the grid positions by v * m_timeStep:
 	VectorXf df( vNPlusOne.size() );
-	calculateForceDifferentials( d, TIME_STEP * vNPlusOne, df );
+	calculateForceDifferentials( d, m_timeStep * vNPlusOne, df );
 	
 	result = vNPlusOne;
 	for( int i=0; i < m_nx; ++i )
@@ -251,23 +254,7 @@ void Grid::applyImplicitUpdateMatrix(
 				int idx = coordsToIndex( i, j, k );
 				if( m_gridMasses[idx] != 0 )
 				{
-					Vector3f resultV = result.segment<3>( 3 * idx ) - TIME_STEP / m_gridMasses[idx] * df.segment<3>( 3 * idx );
-					
-					// project out collided degrees of freedom:
-					/*
-					Vector3f x( GRID_H * i + m_xmin, GRID_H * j + m_ymin, GRID_H * k + m_zmin );
-					for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
-					{
-						if( m_nodeCollided[idx] )
-						{
-							Vector3f n;
-							collisionObjects[objIdx]->grad( x, n );
-							
-							float nDotV = n.dot( resultV );
-							resultV -= ( nDotV / n.dot(n) ) * n;
-						}
-					}
-					*/
+					Vector3f resultV = result.segment<3>( 3 * idx ) - m_timeStep / m_gridMasses[idx] * df.segment<3>( 3 * idx );
 					result.segment<3>( 3 * idx ) = resultV;
 				}
 			}
@@ -311,36 +298,10 @@ void Grid::calculateForceDifferentials( const ParticleData& d, const VectorXf& d
 				}
 			}
 		}
-		
-		// work out energy derivatives with respect to the deformation gradient at this particle:
-		// Ap = d2Psi / dF dF : dF (see the tech report). We've got dF, so just plug that into the
-		// formulae...
-		
-		// if you look down in updateGridVelocities, you'll find this expression, which is used while
-		// computing the force on a grid node:
-		
-		// 2 * MU * ( d.particleF[p] - d.particleR[p] ) + LAMBDA * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
-		
-		// what we're doing here is just assuming dFp is small and working out the corresponding variation in
-		// that expression...
-		
-		float J = d.particleJ[p];
 
-		// work out a couple of basic differentials:
-		float dJ = J * matrixDoubleDot( d.particleFinvTrans[p], dFp );
-		Matrix3f dFInvTrans = - d.particleFinvTrans[p] * dFp.transpose() * d.particleFinvTrans[p];
-		
-		Matrix3f dR = computeRdifferential( dFp, d.particleR[p], d.particleS[p] );
-		
-		// start with differential of 2 * MU * ( F - R )...
-		Matrix3f Ap = 2 * d.particleMu[p] * ( dFp - dR );
-		
-		// add on differential of LAMBDA * ( J - 1 ) * J * F^-t
-		// = LAMBDA * ( d( J - 1 ) * J F^-T + ( J - 1 ) * d( J F^-t ) )
-		// = LAMBDA * ( dJ * J F^-T + ( J - 1 ) * ( dJ F^-t + J * d( F^-t ) )
-		Ap += d.particleLambda[p] * ( dJ * J * d.particleFinvTrans[p] + ( J - 1 ) * ( dJ * d.particleFinvTrans[p] + J * dFInvTrans ) );
-		
-		Matrix3f forceMatrix = d.particleVolumes[p] * Ap * d.particleF[p].transpose();
+		Matrix3f forceMatrix;
+		m_constituativeModel.forceDifferentialDensity( forceMatrix, dFp, d, p );
+		forceMatrix = d.particleVolumes[p] * forceMatrix * d.particleF[p].transpose();
 
 		for( int i=-1; i < 3; ++i )
 		{
@@ -378,7 +339,9 @@ void Grid::calculateForces( const ParticleData& d, VectorXf& forces ) const
 	{
 		cellAndWeights( d.particleX[p], particleCell, w, dw );
 		
-		Matrix3f dEdF = 2 * d.particleMu[p] * ( d.particleF[p] - d.particleR[p] ) + d.particleLambda[p] * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
+		Matrix3f dEdF;
+		m_constituativeModel.dEnergyDensitydF( dEdF, d, p );
+		//	2 * d.particleMu[p] * ( d.particleF[p] - d.particleR[p] ) + d.particleLambda[p] * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
 		
 		for( int i=-1; i < 3; ++i )
 		{
@@ -400,9 +363,11 @@ float Grid::calculateEnergy( const ParticleData& d ) const
 	float e = 0;
 	for( size_t p=0; p < d.particleF.size(); ++p )
 	{
-		Matrix3f rigidDeviation = d.particleF[p] - d.particleR[p];
-		float JminusOne = d.particleJ[p] - 1;
-		e += d.particleVolumes[p] * ( d.particleMu[p] * matrixDoubleDot( rigidDeviation, rigidDeviation ) + 0.5f * d.particleLambda[p] * JminusOne * JminusOne );
+		
+		e += d.particleVolumes[p] * m_constituativeModel.energyDensity( d, p );
+		//Matrix3f rigidDeviation = d.particleF[p] - d.particleR[p];
+		//float JminusOne = d.particleJ[p] - 1;
+		//e += d.particleVolumes[p] * ( d.particleMu[p] * matrixDoubleDot( rigidDeviation, rigidDeviation ) + 0.5f * d.particleLambda[p] * JminusOne * JminusOne );
 	}
 	return e;
 }
@@ -497,7 +462,7 @@ void Grid::testForces( const ParticleData& d )
 	// now we're gonna calculate energy derivatives... the stupid way!
 	// we're gonna do this component by component, and we're gonna do it
 	// by zeroing out the grid velocities, setting the component we're gonna
-	// test to delta/TIME_STEP, advancing bits of the sim with that velocity field,
+	// test to delta/m_timeStep, advancing bits of the sim with that velocity field,
 	// calculating the energy in the final state (in which one of the grid nodes
 	// will have moved a distance delta along one of the axes), and using the result
 	// to calculate a finite difference derivative!
@@ -511,7 +476,7 @@ void Grid::testForces( const ParticleData& d )
 			
 			// perturb current grid point a distance delta along the current axis,
 			// and calculate the resulting deformation gradients:
-			m_gridVelocities( 3 * idx + dim ) = delta / TIME_STEP;
+			m_gridVelocities( 3 * idx + dim ) = delta / m_timeStep;
 			updateDeformationGradients( dTest );
 			
 			// calculate the resulting energy:
@@ -546,7 +511,7 @@ void Grid::testForceDifferentials( const ParticleData& d )
 	VectorXf originalGridVelocities = m_gridVelocities;
 	ParticleData dTest = d;
 	
-	m_gridVelocities = dx / TIME_STEP;
+	m_gridVelocities = dx / m_timeStep;
 	updateDeformationGradients( dTest );
 	VectorXf perturbedForces( m_gridVelocities.size() );
 	calculateForces( dTest, perturbedForces );
@@ -592,10 +557,10 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 				{
 					Vector3f force = forces.segment<3>( 3 * idx );
 					Vector3f velocity = m_gridVelocities.segment<3>( 3 * idx );
-					Vector3f forwardVelocity = velocity + TIME_STEP * force / m_gridMasses[idx];
+					Vector3f forwardVelocity = velocity + m_timeStep * force / m_gridMasses[idx];
 
 					// apply collisions:
-					Vector3f x( GRID_H * i + m_xmin, GRID_H * j + m_ymin, GRID_H * k + m_zmin );
+					Vector3f x( m_gridH * i + m_xmin, m_gridH * j + m_ymin, m_gridH * k + m_zmin );
 					for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
 					{
 						float phi = collisionObjects[objIdx]->phi( x );
@@ -674,7 +639,7 @@ void Grid::updateDeformationGradients( ParticleData& d )
 				}
 			}
 		}
-		Matrix3f newParticleF = ( Matrix3f::Identity() + TIME_STEP * delV ) * d.particleF[p];
+		Matrix3f newParticleF = ( Matrix3f::Identity() + m_timeStep * delV ) * d.particleF[p];
 		d.particleF[p] = newParticleF;
 
 		// find determinant and inverse transpose of deformation gradient:
@@ -779,9 +744,9 @@ inline int Grid::coordsToIndex( int x, int y, int z ) const
 void Grid::cellAndWeights( const Vector3f& particleX, Vector3i& particleCell, float *w[], float** dw ) const
 {
 	Vector3f positionInCell;
-	positionInCell[0] = ( particleX[0] - m_xmin ) / GRID_H;
-	positionInCell[1] = ( particleX[1] - m_ymin ) / GRID_H;
-	positionInCell[2] = ( particleX[2] - m_zmin ) / GRID_H;
+	positionInCell[0] = ( particleX[0] - m_xmin ) / m_gridH;
+	positionInCell[1] = ( particleX[1] - m_ymin ) / m_gridH;
+	positionInCell[2] = ( particleX[2] - m_zmin ) / m_gridH;
 	
 	particleCell[0] = (int)floor( positionInCell[0] );
 	particleCell[1] = (int)floor( positionInCell[1] );
@@ -792,10 +757,10 @@ void Grid::cellAndWeights( const Vector3f& particleX, Vector3i& particleCell, fl
 	{
 		for( int i=0; i < 3; ++i )
 		{
-			dw[i][-1] = DN( positionInCell[i] + 1 ) / GRID_H;
-			dw[i][0] = DN( positionInCell[i] ) / GRID_H;
-			dw[i][1] = DN( positionInCell[i] - 1 ) / GRID_H;
-			dw[i][2] = DN( positionInCell[i] - 2 ) / GRID_H;
+			dw[i][-1] = DN( positionInCell[i] + 1 ) / m_gridH;
+			dw[i][0] = DN( positionInCell[i] ) / m_gridH;
+			dw[i][1] = DN( positionInCell[i] - 1 ) / m_gridH;
+			dw[i][2] = DN( positionInCell[i] - 2 ) / m_gridH;
 		}
 	}
 	
@@ -821,12 +786,12 @@ inline void Grid::minMax( float x, float& min, float& max )
 	}
 }
 
-inline int Grid::fixDim( float& min, float& max )
+inline int Grid::fixDim( float& min, float& max ) const
 {
-	float minPadded = min - 1.5f * GRID_H;
-	float maxPadded = max + 1.5f * GRID_H;
-	int n = int( ceil( ( maxPadded - minPadded ) / GRID_H ) ) + 1;
+	float minPadded = min - 1.5f * m_gridH;
+	float maxPadded = max + 1.5f * m_gridH;
+	int n = int( ceil( ( maxPadded - minPadded ) / m_gridH ) ) + 1;
 	min = minPadded;
-	max = min + n * GRID_H;
+	max = min + n * m_gridH;
 	return n;
 }

@@ -4,28 +4,9 @@
 #include "ParticleData.h"
 #include "CollisionObject.h"
 #include "Solver.h"
+#include "ConstituativeModel.h"
 
 #include <Eigen/Dense>
-
-#define GRID_H 0.1f
-#define TIME_STEP 0.01f
-#define INITIALDENSITY 400
-#define GRAVITY -9.8f
-#define COULOMBFRICTION 0.5f
-
-#define THETA_C 2.5e-2f
-#define THETA_S 7.5e-3f
-
-#define HARDENING 10
-
-//#define PLASTICITY 1
-
-#define YOUNGSMODULUS 1.4e5f
-#define POISSONRATIO 0.2f
-
-#define MU ( YOUNGSMODULUS / ( 2 * ( 1 + POISSONRATIO ) ) )
-#define LAMBDA ( YOUNGSMODULUS * POISSONRATIO / ( ( 1 + POISSONRATIO ) * ( 1 - 2 * POISSONRATIO ) ) )
-#define BETA 1
 
 class Solver;
 
@@ -34,7 +15,7 @@ class Grid
 
 public:
 
-	Grid( const ParticleData& d );
+	Grid( const ParticleData& d, float gridH, float timeStep, const ConstituativeModel& model );
 
 	void draw() const;
 	void computeDensities( ParticleData& d ) const;
@@ -70,13 +51,16 @@ private:
 	static inline float DN( float x );
 
 	static inline void minMax( float x, float& min, float& max );
-	static inline int fixDim( float& min, float& max );
+	inline int fixDim( float& min, float& max ) const;
 
 	inline int coordsToIndex( int x, int y, int z ) const;
 
 	void cellAndWeights( const Eigen::Vector3f& particleX, Eigen::Vector3i& particleCell, float *w[], float** dw = 0 ) const;
 
 private:
+	
+	float m_gridH;
+	float m_timeStep;
 
 	float m_xmin;
 	float m_ymin;
@@ -94,6 +78,8 @@ private:
 	Eigen::VectorXf m_gridVelocities;
 	Eigen::VectorXf m_prevGridVelocities;
 	std::vector<bool> m_nodeCollided;
+
+	const ConstituativeModel& m_constituativeModel;
 
 };
 

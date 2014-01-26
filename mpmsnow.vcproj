@@ -381,6 +381,10 @@
 				RelativePath=".\src\main.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\src\SnowConstituativeModel.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="include"
@@ -402,11 +406,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\ConstituativeModel.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\Grid.h"
 				>
 			</File>
 			<File
 				RelativePath=".\include\ParticleData.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\SnowConstituativeModel.h"
 				>
 			</File>
 			<File
