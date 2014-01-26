@@ -370,6 +370,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\ConjugateResiduals.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\Grid.cpp"
 				>
 			</File>
@@ -391,6 +395,10 @@
 			</File>
 			<File
 				RelativePath=".\include\ConjugateGradients.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\ConjugateResiduals.h"
 				>
 			</File>
 			<File

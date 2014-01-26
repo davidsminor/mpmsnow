@@ -21,6 +21,7 @@
 
 #include "CollisionPlane.h"
 #include "ConjugateGradients.h"
+#include "ConjugateResiduals.h"
 
 using namespace Eigen;
 
