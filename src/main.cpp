@@ -311,7 +311,7 @@ void display()
 		glPushMatrix();
 		glTranslatef( g_particles.particleX[p][0],g_particles.particleX[p][1],g_particles.particleX[p][2] );
 		glScalef( r, r, r );
-		glDrawArrays(GL_TRIANGLES, 0, g_spherePoints.size());
+		glDrawArrays(GL_TRIANGLES, 0, (int)g_spherePoints.size());
 		glPopMatrix();
 	}
 	
