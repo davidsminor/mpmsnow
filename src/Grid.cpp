@@ -96,6 +96,7 @@ Grid::Grid( const ParticleData& d, float gridH, float timeStep, const Constituat
 	}		
 }
 
+
 void Grid::draw() const
 {
 	glColor3f( 0,0.3f,0 );
@@ -212,20 +213,11 @@ void Grid::applyImplicitUpdateMatrix(
 			for( int k=0; k < m_nz; ++k )
 			{
 				int idx = coordsToIndex( i, j, k );
-				if( m_gridMasses[idx] != 0 )
-				{
-					Vector3f resultV = result.segment<3>( 3 * idx ) - m_timeStep / m_gridMasses[idx] * df.segment<3>( 3 * idx );
-					result.segment<3>( 3 * idx ) = resultV;
-				}
+				Vector3f resultV = m_gridMasses[ idx ] * result.segment<3>( 3 * idx ) - m_timeStep * df.segment<3>( 3 * idx );
+				result.segment<3>( 3 * idx ) = resultV;
 			}
 		}
 	}
-
-	for( int i=0; i < m_gridMasses.size(); ++i )
-	{
-		result.segment<3>( 3 * i ) *= m_gridMasses[i];
-	}
-
 }
 
 void Grid::calculateForceDifferentials( const ParticleData& d, const VectorXf& dx, VectorXf& df ) const
@@ -327,6 +319,8 @@ float Grid::calculateEnergy( const ParticleData& d ) const
 	return e;
 }
 
+//#define DIAGONALPRECONDITIONED 1
+
 unsigned Grid::matrixTexture( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const
 {
 	VectorXf x( m_gridVelocities.size() );
@@ -337,12 +331,36 @@ unsigned Grid::matrixTexture( const ParticleData& d, const std::vector<Collision
 	
 	for( int i=0; i < x.size(); ++i )
 	{
-		std::cerr << i << " of " << x.size() << std::endl;
+		std::cerr << i << " of " << x.size() << " mass = " << m_gridMasses[i/3] << std::endl;
+
 		x[i] = 1;
 		applyImplicitUpdateMatrix(d, collisionObjects, x, b );
 		x[i] = 0;
+
+#ifdef DIAGONALPRECONDITIONED
+
+		for( int j=0; j < x.size() / 3; ++j )
+		{
+			if( m_gridMasses[j] != 0 )
+			{
+				b.segment<3>( 3 * j ) /= sqrt( m_gridMasses[j] );
+			}
+		}
+		if( m_gridMasses[i / 3] != 0 )
+		{
+			M.block( 0, i, m_gridVelocities.size(), 1 ) = b / sqrt( m_gridMasses[i / 3] );
+		}
+		else
+		{
+			M.block( 0, i, m_gridVelocities.size(), 1 ) = b;
+		}
+#else
 		M.block( 0, i, m_gridVelocities.size(), 1 ) = b;
+#endif
 	}
+
+	MatrixXf shouldBeZero = M.transpose() - M;
+	std::cerr << shouldBeZero.maxCoeff() << " - " << shouldBeZero.minCoeff() << std::endl;
 	
 	float maxM = M.maxCoeff();
 	float minM = M.minCoeff();
@@ -493,7 +511,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 	calculateForces( d, forces );
 	
 	// work out forward velocity update - that's equation 10 in the paper:
-	VectorXf forwardVelocities( m_gridVelocities.size() );
+	VectorXf forwardMomenta( m_gridVelocities.size() );
 	m_nodeCollided.resize( m_gridMasses.size() );
 	for( int i=0; i < m_nx; ++i )
 	{
@@ -506,7 +524,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 
 				if( m_gridMasses[idx] == 0 )
 				{
-					forwardVelocities.segment<3>( 3 * idx ) = m_gridVelocities.segment<3>( 3 * idx );
+					forwardMomenta.segment<3>( 3 * idx ).setZero();
 				}
 				else
 				{
@@ -542,7 +560,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 						}
 					}
 
-					forwardVelocities.segment<3>( 3 * idx ) = forwardVelocity;
+					forwardMomenta.segment<3>( 3 * idx ) = forwardVelocity;
 				}
 			}
 		}
@@ -550,17 +568,14 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 	
 	for( int i=0; i < m_gridMasses.size(); ++i )
 	{
-		forwardVelocities.segment<3>( 3 * i ) *= m_gridMasses[i];
+		forwardMomenta.segment<3>( 3 * i ) *= m_gridMasses[i];
 	}
-
-	float tol_error = 1.e-7f;
-	int iters = 30;
-
+	
 	implicitSolver(
 		this,
 		d,
 		collisionObjects,
-		forwardVelocities,
+		forwardMomenta,
 		m_gridVelocities );
 	
 }
