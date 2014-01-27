@@ -224,7 +224,13 @@ void display()
 	if( g_matrixTexture == 0 )
 	{
 		// instantiate grid and rasterize!
-		Grid g( g_particles );
+		const float timeStep = 0.01f;
+		Grid g(
+			g_particles,
+			0.2,	// grid spacing
+			timeStep,	// time step
+			g_snowModel
+		);
 		if( g_particles.particleVolumes.empty() )
 		{
 			g.computeDensities( g_particles );
@@ -299,18 +305,7 @@ void display()
 	{
 		g_collisionObjects[i]->draw();
 	}
-/*
-#define THETA_C 2.5e-2f
-#define THETA_S 7.5e-3f
-
-#define HARDENING 10
-
-//#define PLASTICITY 1
-
-#define YOUNGSMODULUS 1.4e5f
-#define POISSONRATIO 0.2f
-*/
-
+	
 	// instantiate grid and rasterize!
 	const float timeStep = 0.01f;
 	Grid g(
@@ -353,7 +348,7 @@ void display()
 	glDisable( GL_LIGHTING );
 	
 	// update grid velocities using internal stresses...
-	g.updateGridVelocities( g_particles, g_collisionObjects, ConjugateResiduals( 30, 1.e-10 ) );
+	g.updateGridVelocities( g_particles, g_collisionObjects, ConjugateGradients( 30, 1.e-10 ) );
 	
 	// transfer the grid velocities back onto the particles:
 	g.updateParticleVelocities( g_particles );
