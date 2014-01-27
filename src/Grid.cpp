@@ -603,7 +603,9 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 	// So we want to solve 
 	// m * v^(n+1) - m_timeStep * dF(v^(n+1) * m_timeStep) = forwardMomenta
 	
-	
+	// these crazy "dividing by the square roots of the masses" shenanigans
+	// don't really correspond to anything physical - they're just meant to
+	// give the matrix better eigenvalues so the solver's happy with it...
 	for( int i=0; i < m_gridMasses.size(); ++i )
 	{
 		m_gridVelocities.segment<3>( 3 * i ) *= sqrt( m_gridMasses[i] );
@@ -620,6 +622,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 		forwardMomenta,
 		m_gridVelocities );
 	
+	// more funky remapping to make the solver happy:
 	for( int i=0; i < m_gridMasses.size(); ++i )
 	{
 		if( m_gridMasses[i] != 0 )
