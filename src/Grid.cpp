@@ -198,14 +198,15 @@ void Grid::applyImplicitUpdateMatrix(
 	VectorXf& result ) const
 {
 
-	// This method computes the left hand side of the following equation:
-	// v^(n+1) - m_timeStep / m * dF(v^(n+1) * m_timeStep)
+	// This method computes the forward momenta in this frame in terms of the velocities
+	// in the next frame:
+	// m * v^(n+1) - m_timeStep * dF(v^(n+1) * m_timeStep)
 	
 	// work out force differentials when you perturb the grid positions by v * m_timeStep:
 	VectorXf df( vNPlusOne.size() );
 	calculateForceDifferentials( d, m_timeStep * vNPlusOne, df );
 	
-	result = vNPlusOne;
+	result.resize( vNPlusOne.size() );
 	for( int i=0; i < m_nx; ++i )
 	{
 		for( int j=0; j < m_ny; ++j )
@@ -213,8 +214,7 @@ void Grid::applyImplicitUpdateMatrix(
 			for( int k=0; k < m_nz; ++k )
 			{
 				int idx = coordsToIndex( i, j, k );
-				Vector3f resultV = m_gridMasses[ idx ] * result.segment<3>( 3 * idx ) - m_timeStep * df.segment<3>( 3 * idx );
-				result.segment<3>( 3 * idx ) = resultV;
+				result.segment<3>( 3 * idx ) = m_gridMasses[ idx ] * vNPlusOne.segment<3>( 3 * idx ) - m_timeStep * df.segment<3>( 3 * idx );
 			}
 		}
 	}
@@ -570,6 +570,9 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 	{
 		forwardMomenta.segment<3>( 3 * i ) *= m_gridMasses[i];
 	}
+	
+	// So we want to solve 
+	// m * v^(n+1) - m_timeStep * dF(v^(n+1) * m_timeStep) = forwardMomenta
 	
 	implicitSolver(
 		this,
