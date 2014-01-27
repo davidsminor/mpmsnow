@@ -3,8 +3,8 @@
 #endif
 
 #ifdef HAVE_CORTEX
-#include "IECore/ImagePrimitive.h"
-#include "IECore/Writer.h"
+#include "IECore/SceneCache.h"
+#include "IECore/PointsPrimitive.h"
 #include <boost/format.hpp>
 #endif
 
@@ -77,6 +77,12 @@ int g_time(0);
 
 
 
+#ifdef HAVE_CORTEX
+
+IECore::SceneInterfacePtr g_sc;
+IECore::SceneInterfacePtr g_particleScene;
+
+#endif
 
 
 
@@ -88,7 +94,6 @@ int g_time(0);
 
 int main(int argc, char** argv)
 {
-	
 	// initial configuration:
 	Vector3f rotVector( 1, 9, 3 );
 	rotVector.normalize();
@@ -96,20 +101,20 @@ int main(int argc, char** argv)
 
 	float particleSpacing( 0.05 );
 	float particleVolume = particleSpacing * particleSpacing * particleSpacing;
-	const int particlesPerCell = 1;
+	const int particlesPerCell = 3;
 	const float initialDensity = 400;
-	for( int i=-3; i <= 3; ++i )
+	for( int i=-10; i <= 10; ++i )
 	{
-		for( int j=-3; j <= 3; ++j )
+		for( int j=-10; j <= 10; ++j )
 		{
-			for( int k=-3; k <= 3; ++k )
+			for( int k=-10; k <= 10; ++k )
 			{
 				for( int n=0; n < particlesPerCell; ++n )
 				{
 					float xr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 					float yr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 					float zr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					Vector3f pos( particleSpacing * float( i + xr ), 0.5f + particleSpacing * float( j + yr ), particleSpacing * float( k + zr ) );
+					Vector3f pos( particleSpacing * float( i + xr ), 1 + particleSpacing * float( j + yr ), particleSpacing * float( k + zr ) );
 					
 					g_particles.particleX.push_back( pos );
 					g_particles.particleV.push_back( 0.6 * rotVector.cross( pos ) );
@@ -126,7 +131,30 @@ int main(int argc, char** argv)
 			}
 		}
 	}
+	
+#ifdef HAVE_CORTEX
+	g_sc = new IECore::SceneCache( "./points.scc", IECore::IndexedIO::Write );
+	g_particleScene = g_sc->createChild("particles");
 
+	IECore::IntVectorDataPtr indsToInstanceInds = new IECore::IntVectorData;
+	indsToInstanceInds->writable().resize( g_particles.particleX.size(), 0 );
+	
+	g_particleScene->writeAttribute( "particlescene:indsToInstanceInds", indsToInstanceInds, 0 );
+	
+	IECore::StringVectorDataPtr linkFileNames = new IECore::StringVectorData;
+	IECore::StringVectorDataPtr linkRoots = new IECore::StringVectorData;
+	IECore::StringVectorDataPtr linkTags = new IECore::StringVectorData;
+	
+	linkFileNames->writable().push_back( "/data/jobs/FSQ/sequences/rnd/shots/cortex8/.jabuka/assets/daveytesty/ass/ass/modelGeothingy/versions/0001/sceneCache/sceneCache.scc" );
+	linkRoots->writable().push_back( "/" );
+	linkTags->writable().push_back( "" );
+	
+	g_particleScene->writeAttribute( "particlescene:linkFileNames", linkFileNames, 0 );
+	g_particleScene->writeAttribute( "particlescene:linkRoots", linkRoots, 0 );
+	g_particleScene->writeAttribute( "particlescene:linkTags", linkTags, 0 );
+	
+ #endif
+	
 	g_snowModel.initParticles( g_particles );
 	
 	// set up collision objects:
@@ -310,7 +338,7 @@ void display()
 	const float timeStep = 0.01f;
 	Grid g(
 		g_particles,
-		0.2,	// grid spacing
+		0.1,	// grid spacing
 		timeStep,	// time step
 		g_snowModel
 	);
@@ -366,10 +394,34 @@ void display()
 	glutSwapBuffers();
 	
 #ifdef HAVE_CORTEX
-	Imath::Box2i screenWindow( Imath::V2i( 0, 0 ), Imath::V2i( window_width-1, window_height-1 ) );
-	IECore::ImagePrimitivePtr image = IECore::ImagePrimitive::createGreyscale( 0.5f, screenWindow, screenWindow );
-	glReadPixels(1, 1, window_width, window_height, GL_RED, GL_FLOAT, &image->variableData< IECore::FloatVectorData >( "Y" )->writable()[0]);
-	IECore::Writer::create( image, boost::str( boost::format( "./frame.%04d.tif" ) % g_time ) )->write();
+	
+	IECore::V3fVectorDataPtr pData = new IECore::V3fVectorData;
+	IECore::IntVectorDataPtr idData = new IECore::IntVectorData;
+	IECore::FloatVectorDataPtr widthData = new IECore::FloatVectorData;
+	IECore::V3fVectorDataPtr basis1Data = new IECore::V3fVectorData;
+	IECore::V3fVectorDataPtr basis2Data = new IECore::V3fVectorData;
+	IECore::V3fVectorDataPtr basis3Data = new IECore::V3fVectorData;
+	
+	for( size_t p=0; p < g_particles.particleX.size(); ++p )
+	{
+		float particleWidth = 2 * pow( g_particles.particleVolumes[p], 1.0f/3 ) / ( 4 * 3.1415926 / 3 );
+		widthData->writable().push_back( particleWidth );
+		
+		basis1Data->writable().push_back( Imath::V3f( particleWidth, 0, 0 ) );
+		basis2Data->writable().push_back( Imath::V3f( 0, particleWidth, 0 ) );
+		basis3Data->writable().push_back( Imath::V3f( 0, 0, particleWidth ) );
+		
+		pData->writable().push_back( Imath::V3f( g_particles.particleX[p][0], g_particles.particleX[p][1], g_particles.particleX[p][2] ) );
+		idData->writable().push_back( p );
+	}
+	IECore::PointsPrimitivePtr pts = new IECore::PointsPrimitive( pData );
+	pts->variables["width"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, widthData );
+	pts->variables["id"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, idData );
+	pts->variables["basis1"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, basis1Data );
+	pts->variables["basis2"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, basis2Data );
+	pts->variables["basis3"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, basis3Data );
+	g_particleScene->writeObject( pts, (float)g_time / 24 );
+	
 #endif
 	glutPostRedisplay();
 }
