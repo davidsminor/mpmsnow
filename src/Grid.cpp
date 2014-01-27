@@ -64,6 +64,15 @@ Grid::Grid( const ParticleData& d, float gridH, float timeStep, const Constituat
 			}
 		}
 	}
+	
+	// grid masses can end up less than zero due to numerical issues in the shape functions, so clamp 'em:
+	for( int i=0; i < m_gridMasses.size(); ++i )
+	{
+		if( m_gridMasses[i] < 0 )
+		{
+			m_gridMasses[i] = 0;
+		}
+	}
 
 	// calculate velocities:
 	m_gridVelocities.resize( m_nx * m_ny * m_nz * 3 );
