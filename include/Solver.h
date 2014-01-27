@@ -12,7 +12,8 @@ class Grid;
 class Solver
 {
 public:
-
+	virtual ~Solver() {}
+	
 	virtual void operator()(
 		const Grid* g,
 		const ParticleData& d,

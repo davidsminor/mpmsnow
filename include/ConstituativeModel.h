@@ -8,6 +8,7 @@
 class ConstituativeModel
 {
 public:
+	virtual ~ConstituativeModel() {}
 	
 	virtual void initParticles( ParticleData& p ) const = 0;
 	
