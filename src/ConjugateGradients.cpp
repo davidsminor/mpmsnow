@@ -50,7 +50,7 @@ void ConjugateGradients::operator()
 
 	VectorXf p = residual;		//initial search direction
 	
-	VectorXf z(n), tmp(n);
+	VectorXf tmp(n);
 	RealScalar absNew = numext::real(residual.dot(p));  // the square of the absolute value of r scaled by invM
 	int i = 0;
 	while(i < maxIters)
@@ -65,12 +65,10 @@ void ConjugateGradients::operator()
 		if(residualNorm2 < threshold)
 		  break;
 
-		z = residual;          // approximately solve for "A z = residual"
-
 		RealScalar absOld = absNew;
-		absNew = numext::real(residual.dot(z));     // update the absolute value of r
+		absNew = numext::real(residual.squaredNorm());     // update the absolute value of r
 		RealScalar beta = absNew / absOld;            // calculate the Gram-Schmidt value used to create the new search direction
-		p = z + beta * p;                             // update search direction
+		p = residual + beta * p;                             // update search direction
 		
 		std::cerr << i << ":" << sqrt( residualNorm2 ) << "/" << sqrt( threshold ) << std::endl;
 
