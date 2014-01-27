@@ -418,6 +418,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\Preconditioner.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\SnowConstituativeModel.h"
 				>
 			</File>
