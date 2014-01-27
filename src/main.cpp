@@ -348,7 +348,7 @@ void display()
 	glDisable( GL_LIGHTING );
 	
 	// update grid velocities using internal stresses...
-	g.updateGridVelocities( g_particles, g_collisionObjects, ConjugateGradients( 30, 1.e-10 ) );
+	g.updateGridVelocities( g_particles, g_collisionObjects, ConjugateGradients( 30, 1.e-6 ) );
 	
 	// transfer the grid velocities back onto the particles:
 	g.updateParticleVelocities( g_particles );

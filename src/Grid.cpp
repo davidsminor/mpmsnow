@@ -204,9 +204,29 @@ void Grid::applyImplicitUpdateMatrix(
 	
 	// work out force differentials when you perturb the grid positions by v * m_timeStep:
 	VectorXf df( vNPlusOne.size() );
-	calculateForceDifferentials( d, m_timeStep * vNPlusOne, df );
+
+	// so: this method effectively applies a symmetric matrix which is quite diagonally
+	// dominant, with the diagonals largely controlled by the masses. Unfortunately, if
+	// the masses vary significantly form cell to cell (which they almost always do),
+	// this makes the eigenvalues SUCK, in that they range from something like 1.e-9 to 20.
+	// The conjugate gradient solver hates this, so instead we transform the problem so that
+	// those masses move off the main diagonal, but the matrix remains symmetric. This means
+	// we need to divide both the input and the output of this function by the square roots
+	// of the masses:
 	
-	result.resize( vNPlusOne.size() );
+	// divide input:
+	VectorXf vTransformed = vNPlusOne;
+	for( int i=0; i < m_gridMasses.size(); ++i )
+	{
+		if( m_gridMasses[i] != 0 )
+		{
+			vTransformed.segment<3>( 3 * i ) /= sqrt( m_gridMasses[i] );
+		}
+	}
+
+	calculateForceDifferentials( d, m_timeStep * vTransformed, df );
+	
+	result.resize( vTransformed.size() );
 	for( int i=0; i < m_nx; ++i )
 	{
 		for( int j=0; j < m_ny; ++j )
@@ -214,8 +234,17 @@ void Grid::applyImplicitUpdateMatrix(
 			for( int k=0; k < m_nz; ++k )
 			{
 				int idx = coordsToIndex( i, j, k );
-				result.segment<3>( 3 * idx ) = m_gridMasses[ idx ] * vNPlusOne.segment<3>( 3 * idx ) - m_timeStep * df.segment<3>( 3 * idx );
+				result.segment<3>( 3 * idx ) = m_gridMasses[ idx ] * vTransformed.segment<3>( 3 * idx ) - m_timeStep * df.segment<3>( 3 * idx );
 			}
+		}
+	}
+	
+	// divide output:
+	for( int i=0; i < m_gridMasses.size(); ++i )
+	{
+		if( m_gridMasses[i] != 0 )
+		{
+			result.segment<3>( 3 * i ) /= sqrt( m_gridMasses[i] );
 		}
 	}
 }
@@ -574,6 +603,16 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 	// So we want to solve 
 	// m * v^(n+1) - m_timeStep * dF(v^(n+1) * m_timeStep) = forwardMomenta
 	
+	
+	for( int i=0; i < m_gridMasses.size(); ++i )
+	{
+		m_gridVelocities.segment<3>( 3 * i ) *= sqrt( m_gridMasses[i] );
+		if( m_gridMasses[i] != 0 )
+		{
+			forwardMomenta.segment<3>( 3 * i ) /= sqrt( m_gridMasses[i] );
+		}
+	}
+
 	implicitSolver(
 		this,
 		d,
@@ -581,6 +620,13 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 		forwardMomenta,
 		m_gridVelocities );
 	
+	for( int i=0; i < m_gridMasses.size(); ++i )
+	{
+		if( m_gridMasses[i] != 0 )
+		{
+			m_gridVelocities.segment<3>( 3 * i ) /= sqrt( m_gridMasses[i] );
+		}
+	}
 }
 
 
