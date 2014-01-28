@@ -54,7 +54,7 @@ void CollisionPlane::draw() const
 	GLfloat colorWhite[] = { 1.0, 1.0, 1.0, 1.0 };
 	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, colorWhite);
 	
-	/*
+	
 	glBegin( GL_QUADS );
 
 	glNormal3f( basisY[0], basisY[1], basisY[2] );
@@ -70,7 +70,7 @@ void CollisionPlane::draw() const
 	glVertex3f( x3[0], x3[1], x3[2] );
 
 	glEnd();
-	*/
+	
 	
 	glDisable( GL_LIGHTING );
 	glBegin(GL_LINES);

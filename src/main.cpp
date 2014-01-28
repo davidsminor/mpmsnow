@@ -338,7 +338,7 @@ void display()
 	const float timeStep = 0.01f;
 	Grid g(
 		g_particles,
-		0.1,	// grid spacing
+		0.05,	// grid spacing
 		timeStep,	// time step
 		g_snowModel
 	);
@@ -358,8 +358,8 @@ void display()
 	glEnableClientState(GL_NORMAL_ARRAY);
 	glEnable( GL_LIGHTING );
 	
-    glVertexPointer(3, GL_FLOAT, 0, (float*)&g_spherePoints[0]);
-    glNormalPointer(GL_FLOAT, 0, (float*)&g_spherePoints[0]);
+	glVertexPointer(3, GL_FLOAT, 0, (float*)&g_spherePoints[0]);
+	glNormalPointer(GL_FLOAT, 0, (float*)&g_spherePoints[0]);
 	
 	for( size_t p = 0; p < g_particles.particleX.size(); ++p )
 	{
@@ -376,7 +376,7 @@ void display()
 	glDisable( GL_LIGHTING );
 	
 	// update grid velocities using internal stresses...
-	g.updateGridVelocities( g_particles, g_collisionObjects, ConjugateGradients( 30, 1.e-6 ) );
+	g.updateGridVelocities( g_particles, g_collisionObjects, ConjugateGradients( 60, 1.e-6 ) );
 	
 	// transfer the grid velocities back onto the particles:
 	g.updateParticleVelocities( g_particles );

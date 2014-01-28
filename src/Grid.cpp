@@ -243,7 +243,34 @@ void Grid::applyImplicitUpdateMatrix(
 			for( int k=0; k < m_nz; ++k )
 			{
 				int idx = coordsToIndex( i, j, k );
-				result.segment<3>( 3 * idx ) = m_gridMasses[ idx ] * vTransformed.segment<3>( 3 * idx ) - m_timeStep * df.segment<3>( 3 * idx );
+				Vector3f resultMomentum = m_gridMasses[ idx ] * vTransformed.segment<3>( 3 * idx ) - m_timeStep * df.segment<3>( 3 * idx );
+				
+				if( m_nodeCollided[idx] )
+				{
+					Vector3f x( m_gridH * i + m_xmin, m_gridH * j + m_ymin, m_gridH * k + m_zmin );
+					for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
+					{
+						// intersecting the object
+						Vector3f n;
+						collisionObjects[objIdx]->grad( x, n );
+						n.normalize();
+						float nDotP = n.dot( resultMomentum );
+						
+						// project out momentum perpendicular to the object
+						resultMomentum -= nDotP * n;
+						
+						float resDotN = fabs( resultMomentum.dot( n ) );
+						float transDotN = fabs( vTransformed.segment<3>( 3 * idx ).dot( n ) );
+						if( transDotN > 1.e-11 )
+						{
+							std::cerr << "transDotN:" << transDotN << std::endl;
+						}
+						
+						//std::cerr << resultMomentum.dot( n ) << "," << vTransformed.segment<3>( 3 * idx ).dot( n ) << std::endl;
+					}
+				}
+				
+				result.segment<3>( 3 * idx ) = resultMomentum;
 			}
 		}
 	}
