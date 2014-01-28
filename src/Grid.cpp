@@ -245,6 +245,7 @@ void Grid::applyImplicitUpdateMatrix(
 				int idx = coordsToIndex( i, j, k );
 				Vector3f resultMomentum = m_gridMasses[ idx ] * vTransformed.segment<3>( 3 * idx ) - m_timeStep * df.segment<3>( 3 * idx );
 				
+				// ok. So when you do this, is the matrix even symmetric any more? Maybe this should be in calculateForceDifferentials as well?
 				if( m_nodeCollided[idx] )
 				{
 					Vector3f x( m_gridH * i + m_xmin, m_gridH * j + m_ymin, m_gridH * k + m_zmin );
