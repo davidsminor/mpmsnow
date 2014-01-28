@@ -563,6 +563,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 				if( m_gridMasses[idx] == 0 )
 				{
 					forwardMomenta.segment<3>( 3 * idx ).setZero();
+					m_gridVelocities.segment<3>( 3 * idx ).setZero();
 				}
 				else
 				{
@@ -597,16 +598,12 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 							}
 						}
 					}
-
-					forwardMomenta.segment<3>( 3 * idx ) = forwardVelocity;
+					
+					m_gridVelocities.segment<3>( 3 * idx ) = forwardVelocity;
+					forwardMomenta.segment<3>( 3 * idx ) = forwardVelocity * m_gridMasses[idx];
 				}
 			}
 		}
-	}
-	
-	for( int i=0; i < m_gridMasses.size(); ++i )
-	{
-		forwardMomenta.segment<3>( 3 * i ) *= m_gridMasses[i];
 	}
 	
 	// So we want to solve 
