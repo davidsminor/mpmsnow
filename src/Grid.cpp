@@ -233,6 +233,37 @@ void Grid::applyImplicitUpdateMatrix(
 		}
 	}
 
+	for( int i=0; i < m_nx; ++i )
+	{
+		for( int j=0; j < m_ny; ++j )
+		{
+			for( int k=0; k < m_nz; ++k )
+			{
+				int idx = coordsToIndex( i, j, k );
+				Vector3f v = vTransformed.segment<3>( 3 * idx );
+				
+				if( m_nodeCollided[idx] && m_gridMasses[ idx ] != 0 )
+				{
+					Vector3f x( m_gridH * i + m_xmin, m_gridH * j + m_ymin, m_gridH * k + m_zmin );
+					for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
+					{
+						// intersecting the object
+						Vector3f n;
+						collisionObjects[objIdx]->grad( x, n );
+						n.normalize();
+						float nDotP = n.dot( v );
+						
+						// project out momentum perpendicular to the object
+						v -= nDotP * n;
+						
+					}
+				}
+				
+				vTransformed.segment<3>( 3 * idx ) = v;
+			}
+		}
+	}
+	
 	calculateForceDifferentials( d, m_timeStep * vTransformed, df );
 	
 	result.resize( vTransformed.size() );
@@ -260,14 +291,6 @@ void Grid::applyImplicitUpdateMatrix(
 						// project out momentum perpendicular to the object
 						resultMomentum -= nDotP * n;
 						
-						float resDotN = fabs( resultMomentum.dot( n ) );
-						float transDotN = fabs( vTransformed.segment<3>( 3 * idx ).dot( n ) );
-						if( transDotN > 1.e-11 )
-						{
-							std::cerr << "transDotN:" << transDotN << std::endl;
-						}
-						
-						//std::cerr << resultMomentum.dot( n ) << "," << vTransformed.segment<3>( 3 * idx ).dot( n ) << std::endl;
 					}
 				}
 				
