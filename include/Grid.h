@@ -31,7 +31,7 @@ public:
 	// testing:
 	void testForces( const ParticleData& d );
 	void testForceDifferentials( const ParticleData& d );
-	unsigned matrixTexture( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const;
+	void outputDiagnostics( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const;
 
 	void applyImplicitUpdateMatrix( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const Eigen::VectorXf& v, Eigen::VectorXf& result ) const;
 

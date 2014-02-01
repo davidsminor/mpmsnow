@@ -5,11 +5,19 @@
 #endif
 
 #include <iostream>
+#include <fstream>
 
 #include <GL/gl.h>
 
 #include <Eigen/Geometry>
 #include <Eigen/SVD>
+#include <Eigen/Eigenvalues>
+
+
+#ifdef HAVE_CORTEX
+#include "IECore/ImagePrimitive.h"
+#include "IECore/Writer.h"
+#endif
 
 using namespace Eigen;
 
@@ -408,105 +416,106 @@ float Grid::calculateEnergy( const ParticleData& d ) const
 	return e;
 }
 
-//#define DIAGONALPRECONDITIONED 1
 
-unsigned Grid::matrixTexture( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const
+void Grid::outputDiagnostics( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const
 {
+	std::ofstream f( "/tmp/diagnostics.dat", std::ofstream::out );
+	
+	
+	f << "grid masses: " << std::endl;
+	for( int i=0; i < m_gridMasses.size(); ++i )
+	{
+		f << m_gridMasses[i] << std::endl;
+	}
+	
+	f << "particle data: " << std::endl;
+	float maxv = 0;
+	for( size_t p = 0; p < d.particleX.size(); ++p )
+	{
+		f << "p: " << d.particleX[p].transpose() << " v: " << d.particleV[p].transpose() << " m: " << d.particleM[p] << " J: " << d.particleJ[p] << std::endl;
+		float v = d.particleV[p].norm();
+		if( v > maxv )
+		{
+			v = maxv;
+		}
+	}
+	
+	f << "max v " << maxv << std::endl;
+	
 	VectorXf x( m_gridVelocities.size() );
 	x.setZero();
 	
 	VectorXf b( m_gridVelocities.size() );
 	MatrixXf M( m_gridVelocities.size(), m_gridVelocities.size() );
 	
+	float maxDiagonal( -1000000000 );
+	float minDiagonal( 1000000000 );
+	
+	std::cerr << "evaluate matrix:" << std::endl;
+	
+	f << "diagonals:" << std::endl;
 	for( int i=0; i < x.size(); ++i )
 	{
-		std::cerr << i << " of " << x.size() << " mass = " << m_gridMasses[i/3] << std::endl;
+		std::cerr << i << " of " << x.size() << std::endl;
 
 		x[i] = 1;
-		applyImplicitUpdateMatrix(d, collisionObjects, x, b );
+		applyImplicitUpdateMatrix( d, collisionObjects, x, b );
 		x[i] = 0;
 
-#ifdef DIAGONALPRECONDITIONED
-
-		for( int j=0; j < x.size() / 3; ++j )
+		M.block( 0, i, x.size(), 1 ) = b;
+		f << M(i,i) << std::endl;
+		if( M(i,i) > maxDiagonal )
 		{
-			if( m_gridMasses[j] != 0 )
-			{
-				b.segment<3>( 3 * j ) /= sqrt( m_gridMasses[j] );
-			}
+			maxDiagonal = M(i,i);
 		}
-		if( m_gridMasses[i / 3] != 0 )
+		if( M(i,i) < minDiagonal )
 		{
-			M.block( 0, i, m_gridVelocities.size(), 1 ) = b / sqrt( m_gridMasses[i / 3] );
+			minDiagonal = M(i,i);
 		}
-		else
-		{
-			M.block( 0, i, m_gridVelocities.size(), 1 ) = b;
-		}
-#else
-		M.block( 0, i, m_gridVelocities.size(), 1 ) = b;
-#endif
 	}
+	
+	f << "diagonal check: " << minDiagonal << " - " << maxDiagonal << std::endl;
 
 	MatrixXf shouldBeZero = M.transpose() - M;
-	std::cerr << shouldBeZero.maxCoeff() << " - " << shouldBeZero.minCoeff() << std::endl;
+	f << "symmetry check: " << shouldBeZero.maxCoeff() << " - " << shouldBeZero.minCoeff() << std::endl;
+	 
+#ifdef HAVE_CORTEX
 	
-	float maxM = M.maxCoeff();
-	float minM = M.minCoeff();
-	float norm = fabs( minM );
-	if( fabs( maxM ) > norm )
+	Imath::Box2i dataWindow;
+	dataWindow.min = Imath::V2i( 1 );
+	dataWindow.max = Imath::V2i( x.size() );
+	Imath::Box2i displayWindow = dataWindow;
+	
+	IECore::ImagePrimitivePtr image = new IECore::ImagePrimitive( dataWindow, displayWindow );
+	IECore::FloatVectorDataPtr matrixData = new IECore::FloatVectorData;
+	matrixData->writable().resize( x.size() * x.size() );
+	
+	std::vector<float>::iterator pixel = matrixData->writable().begin();
+	for( int i=0; i < x.size(); ++i )
 	{
-		norm = fabs( maxM );
-	}
-
-	std::vector<unsigned char> sparsity;
-	int texW = int( ceil( (float)x.size() / 2 ) * 2 );
-	int texH = texW;
-
-	for(int j=0; j < texH; ++j)
-	{
-		for(int i=0; i < texW; ++i)
+		for( int j=0; j < x.size(); ++j )
 		{
-			if( i >= x.size() || j >= x.size() )
-			{
-				sparsity.push_back( 0 );
-				continue;
-			}
-			
-			sparsity.push_back( (unsigned char)( fabs( M(i,j) ) * 255 / norm ) );
+			*pixel++ = M(i,j);
 		}
 	}
+	image->variables["R"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, matrixData );
+	
+	IECore::Writer::create( image, "/tmp/matrix.exr" )->write();
+	
+#endif
 
-	GLuint matrixTexture;
+	/*
+	std::cerr << "compute eigenstuffs!!" << std::endl;
+
+	EigenSolver<MatrixXf> es(M, false);
 	
-	glEnable( GL_TEXTURE_2D );
-	glGenTextures( 1, &matrixTexture );
-	glBindTexture(GL_TEXTURE_2D, matrixTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, texW, texH, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, &sparsity[0] );
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glDisable( GL_TEXTURE_2D );
-	
-	std::cerr << "compute svd!!" << std::endl;
-	
-	JacobiSVD<MatrixXf> svd(M, Eigen::ComputeFullV);
 	std::cerr << "done!" << std::endl;
-	MatrixXf V = svd.matrixV();
-	
-	int numNulls = 0;
-	for( int i=0; i < svd.singularValues().size(); ++i )
+	f << "eigenvalues: " << std::endl;
+	for( int i=0; i < es.eigenvalues().size(); ++i )
 	{
-		std::cerr << svd.singularValues()[i] << std::endl;
-		if( svd.singularValues()[i] == 0 )
-		{
-			++numNulls;
-		}
+		f << es.eigenvalues()[i] << std::endl;
 	}
-
-
-
-	return matrixTexture;
+	*/
 }
 
 void Grid::testForces( const ParticleData& d )
