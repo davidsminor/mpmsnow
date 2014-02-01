@@ -1,5 +1,7 @@
 #include "SnowConstituativeModel.h"
 
+#include <iostream>
+
 using namespace Eigen;
 
 SnowConstituativeModel::SnowConstituativeModel(
@@ -24,55 +26,54 @@ void SnowConstituativeModel::updateDeformation( ParticleData& d ) const
 {
 	for( size_t p=0; p < d.particleX.size(); ++p )
 	{
-		// find determinant and inverse transpose of deformation gradient:
-		bool invertible;
-		d.particleF[p].computeInverseAndDetWithCheck( d.particleFinvTrans[p], d.particleJ[p], invertible );
-		if( invertible )
+
+		JacobiSVD<Matrix3f> svd(d.particleF[p], ComputeFullU | ComputeFullV );
+
+		Vector3f singularValues = svd.singularValues();
+
+		// apply plastic yeild:
+		Matrix3f diagonalMat = Matrix3f::Zero();
+		Matrix3f diagonalMatInv = Matrix3f::Zero();
+		for( int i=0; i < 3; ++i )
 		{
-			d.particleFinvTrans[p].transposeInPlace();
-			
-	#ifdef PLASTICITY
-			JacobiSVD<Matrix3f> svd(d.particleF[p], ComputeFullU | ComputeFullV );
-			
-			Vector3f singularValues = svd.singularValues();
-			
-			// apply plastic yeild:
-			Matrix3f diagonalMat = Matrix3f::Zero();
-			Matrix3f diagonalMatInv = Matrix3f::Zero();
-			for( int i=0; i < 3; ++i )
+			// stretching:
+			if( singularValues[i] > 1 + m_tensileStrength )
 			{
-				// stretching:
-				if( singularValues[i] > 1 + m_tensileStrength )
-				{
-					singularValues[i] = 1 + m_tensileStrength;
-				}
-				
-				// compression:
-				if( singularValues[i] < 1 - m_compressiveStrength )
-				{
-					singularValues[i] = 1 - m_compressiveStrength;
-				}
-				diagonalMat(i,i) = singularValues[i];
-				diagonalMatInv(i,i) = 1.0f / singularValues[i];
+				singularValues[i] = 1 + m_tensileStrength;
 			}
-			
-			d.particleF[p] = svd.matrixU() * diagonalMat * svd.matrixV().transpose();
-			//d.particleR[p] = svd.matrixU() * svd.matrixV().transpose();
-			//d.particleS[p] = svd.matrixV() * diagonalMat * svd.matrixV().transpose();
-			
-			d.particleFplastic[p] = svd.matrixV() * diagonalMatInv * svd.matrixU().transpose() * d.particleFplastic[p];
-			
-			// apply hardening:
-			float hardeningFactor = exp( m_hardening * ( 1 - d.particleFplastic[p].determinant() ) );
-			
-			d.particleMu[p] = m_mu * hardeningFactor;
-			d.particleLambda[p] = m_lambda * hardeningFactor;
 
-	#endif
+			// compression:
+			if( singularValues[i] < 1 - m_compressiveStrength )
+			{
+				singularValues[i] = 1 - m_compressiveStrength;
+			}
+			diagonalMat(i,i) = singularValues[i];
+			diagonalMatInv(i,i) = 1.0f / singularValues[i];
+		}
+		
+		Matrix3f FNplusOne = d.particleF[p] * d.particleFplastic[p];
+		
+		d.particleFplastic[p] = svd.matrixV() * diagonalMatInv * svd.matrixU().transpose() * FNplusOne;
+		d.particleF[p] = svd.matrixU() * diagonalMat * svd.matrixV().transpose();
+		d.particleFinvTrans[p] = svd.matrixU() * diagonalMatInv * svd.matrixV().transpose();
+		d.particleR[p] = svd.matrixU() * svd.matrixV().transpose();
+		d.particleS[p] = svd.matrixV() * diagonalMat * svd.matrixV().transpose();
+		d.particleJ[p] = diagonalMat(0,0) * diagonalMat(1,1) * diagonalMat(2,2);
+		
+		
+		// apply hardening:
+		float hardeningFactor = exp( m_hardening * ( 1 - d.particleFplastic[p].determinant() ) );
+		if( hardeningFactor > 1 )
+		{
+			hardeningFactor = 1;
+		}
 
-			// find polar decomposition of deformation gradient:
-			Affine3f trans( d.particleF[p] );	
-			trans.computeRotationScaling( &d.particleR[p], &d.particleS[p] );
+		d.particleMu[p] = m_mu * hardeningFactor;
+		d.particleLambda[p] = m_lambda * hardeningFactor;
+		
+		if( d.particleJ[p] <= 0 )
+		{
+			std::cerr << "warning: inverted deformation gradient!" << std::endl;
 		}
 	}
 }
