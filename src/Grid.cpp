@@ -650,12 +650,13 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 						}
 					}
 					
-					m_gridVelocities.segment<3>( 3 * idx ) = forwardVelocity;
 					forwardMomenta.segment<3>( 3 * idx ) = forwardVelocity * m_gridMasses[idx];
 				}
 			}
 		}
 	}
+	
+	m_gridVelocities.setZero();
 	
 	// So we want to solve 
 	// m * v^(n+1) - m_timeStep * dF(v^(n+1) * m_timeStep) = forwardMomenta
