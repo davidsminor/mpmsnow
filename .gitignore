@@ -9,3 +9,5 @@
 *.dep
 *.idb
 *.manifest
+*.lib
+*.dll
