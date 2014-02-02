@@ -8,6 +8,9 @@
 
 #include <Eigen/Dense>
 
+namespace MpmSnow
+{
+
 class Solver;
 
 class Grid
@@ -79,6 +82,8 @@ private:
 	const ConstituativeModel& m_constituativeModel;
 
 };
+
+} // namespace MpmSnow
 
 
 #endif // MPMSNOW_GRID_H

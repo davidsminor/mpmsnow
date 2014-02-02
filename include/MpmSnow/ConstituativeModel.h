@@ -5,6 +5,9 @@
 
 #include <Eigen/Dense>
 
+namespace MpmSnow
+{
+
 class ConstituativeModel
 {
 public:
@@ -25,5 +28,7 @@ public:
 	virtual void forceDifferentialDensity( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const = 0;
 
 };
+
+} // namespace MpmSnow
 
 #endif

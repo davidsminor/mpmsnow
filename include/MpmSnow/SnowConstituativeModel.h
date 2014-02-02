@@ -3,6 +3,9 @@
 
 #include "ConstituativeModel.h"
 
+namespace MpmSnow
+{
+
 class SnowConstituativeModel : public ConstituativeModel
 {
 public:
@@ -43,5 +46,7 @@ private:
 	float m_lambda;
 
 };
+
+} //namespace MpmSnow
 
 #endif

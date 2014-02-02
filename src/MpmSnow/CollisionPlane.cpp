@@ -6,6 +6,7 @@
 #include "MpmSnow/CollisionPlane.h"
 
 using namespace Eigen;
+using namespace MpmSnow;
 
 CollisionPlane::CollisionPlane( const Eigen::Vector4f& c ) : m_coeffs( c )
 {

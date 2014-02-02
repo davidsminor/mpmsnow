@@ -6,6 +6,8 @@
 #include "CollisionObject.h"
 
 #include <Eigen/Dense>
+namespace MpmSnow
+{
 
 class Grid;
 
@@ -22,5 +24,7 @@ public:
 		Eigen::VectorXf& x ) const = 0;
 	
 };
+
+} //namespace MpmSnow
 
 #endif

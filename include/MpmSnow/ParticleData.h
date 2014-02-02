@@ -4,6 +4,9 @@
 #include <vector>
 #include <Eigen/Dense>
 
+namespace MpmSnow
+{
+
 struct ParticleData
 {
 	std::vector< Eigen::Vector3f > particleX;
@@ -24,5 +27,7 @@ struct ParticleData
 	std::vector< float > particleVolumes;
 	std::vector< float > particleDensities;
 };
+
+} // namespace MpmSnow
 
 #endif //MPMSNOW_PARTICLEDATA_H

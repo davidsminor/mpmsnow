@@ -3,6 +3,9 @@
 
 #include "Solver.h"
 
+namespace MpmSnow
+{
+
 class ConjugateGradients : public Solver
 {
 public:
@@ -22,5 +25,7 @@ private:
 	float m_tolError;
 
 };
+
+} // namespace MpmSnow
 
 #endif

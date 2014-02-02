@@ -3,6 +3,9 @@
 
 #include "CollisionObject.h"
 
+namespace MpmSnow
+{
+
 class CollisionPlane : public CollisionObject
 {
 
@@ -25,5 +28,7 @@ private:
 	Eigen::Vector4f m_coeffs;
 
 };
+
+} // namespace MpmSnow
 
 #endif // MPMSNOW_COLLISIONOBJECT_H

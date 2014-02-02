@@ -3,6 +3,7 @@
 #include <iostream>
 
 using namespace Eigen;
+using namespace MpmSnow;
 
 ConjugateGradients::ConjugateGradients( int iters, float tol_error ) :
 	m_iters( iters ),

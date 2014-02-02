@@ -20,6 +20,7 @@
 #endif
 
 using namespace Eigen;
+using namespace MpmSnow;
 
 #define GRAVITY -9.8f
 #define COULOMBFRICTION 0.5f

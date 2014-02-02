@@ -15,6 +15,8 @@
 #include "MpmSnow/ConjugateGradients.h"
 #include "MpmSnow/ConjugateResiduals.h"
 
+using namespace MpmSnow;
+
 int main(int argc, char** argv)
 {
 	return 0;

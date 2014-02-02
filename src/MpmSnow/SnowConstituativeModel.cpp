@@ -3,6 +3,7 @@
 #include <iostream>
 
 using namespace Eigen;
+using namespace MpmSnow;
 
 SnowConstituativeModel::SnowConstituativeModel(
 	float youngsModulus,

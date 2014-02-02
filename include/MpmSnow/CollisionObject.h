@@ -3,6 +3,9 @@
 
 #include <Eigen/Dense>
 
+namespace MpmSnow
+{
+
 class CollisionObject
 {
 public:
@@ -20,5 +23,7 @@ public:
 	
 	virtual void draw() const = 0;
 };
+
+} // namespace MpmSnow
 
 #endif // MPMSNOW_COLLISIONOBJECT_H

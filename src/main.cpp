@@ -26,6 +26,7 @@
 #include "MpmSnow/ConjugateResiduals.h"
 
 using namespace Eigen;
+using namespace MpmSnow;
 
 ////////////////////////////////////////////////////////////////////////////////
 // constants
