@@ -1,4 +1,4 @@
-#include "ConjugateGradients.h"
+#include "MpmSnow/ConjugateGradients.h"
 
 #include <iostream>
 

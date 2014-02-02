@@ -1,4 +1,4 @@
-#include "Grid.h"
+#include "MpmSnow/Grid.h"
 
 #ifdef WIN32
 #include <windows.h>

@@ -3,7 +3,7 @@
 #endif
 #include <GL/gl.h>
 
-#include "CollisionPlane.h"
+#include "MpmSnow/CollisionPlane.h"
 
 using namespace Eigen;
 
@@ -77,15 +77,15 @@ void CollisionPlane::draw() const
 	glColor3f( 1,1,1 );
 	for( int x=0; x <= 10; ++x )
 	{
-		Vector3f start = origin  + ( x-5 ) * basisX - 5 * basisZ;
-		Vector3f end = origin  + ( x-5 ) * basisX + 5 * basisZ;
+		Vector3f start = origin  + ( x-5.f ) * basisX - 5.f * basisZ;
+		Vector3f end = origin  + ( x-5.f ) * basisX + 5.f * basisZ;
 		glVertex3f( start[0], start[1], start[2] );
 		glVertex3f( end[0], end[1], end[2] );
 	}
 	for( int x=0; x <= 10; ++x )
 	{
-		Vector3f start = origin  + ( x-5 ) * basisZ - 5 * basisX;
-		Vector3f end = origin  + ( x-5 ) * basisZ + 5 * basisX;
+		Vector3f start = origin  + ( x-5.f ) * basisZ - 5.f * basisX;
+		Vector3f end = origin  + ( x-5.f ) * basisZ + 5.f * basisX;
 		glVertex3f( start[0], start[1], start[2] );
 		glVertex3f( end[0], end[1], end[2] );
 	}

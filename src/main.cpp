@@ -17,13 +17,13 @@
 #include <GL/gl.h>
 #include <GL/glut.h>
 
-#include "Grid.h"
+#include "MpmSnow/Grid.h"
 
-#include "SnowConstituativeModel.h"
+#include "MpmSnow/SnowConstituativeModel.h"
 
-#include "CollisionPlane.h"
-#include "ConjugateGradients.h"
-#include "ConjugateResiduals.h"
+#include "MpmSnow/CollisionPlane.h"
+#include "MpmSnow/ConjugateGradients.h"
+#include "MpmSnow/ConjugateResiduals.h"
 
 using namespace Eigen;
 

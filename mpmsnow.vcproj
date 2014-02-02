@@ -362,29 +362,33 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\src\CollisionPlane.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\ConjugateGradients.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\ConjugateResiduals.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\Grid.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\src\main.cpp"
 				>
 			</File>
-			<File
-				RelativePath=".\src\SnowConstituativeModel.cpp"
+			<Filter
+				Name="MpmSnow"
 				>
-			</File>
+				<File
+					RelativePath=".\src\MpmSnow\CollisionPlane.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\MpmSnow\ConjugateGradients.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\MpmSnow\ConjugateResiduals.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\MpmSnow\Grid.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\MpmSnow\SnowConstituativeModel.cpp"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="include"

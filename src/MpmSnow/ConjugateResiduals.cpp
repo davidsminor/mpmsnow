@@ -1,4 +1,4 @@
-#include "ConjugateResiduals.h"
+#include "MpmSnow/ConjugateResiduals.h"
 
 #include <iostream>
 
