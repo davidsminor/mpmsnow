@@ -1,0 +1,11 @@
+*.exe
+*.obj
+*.o
+*.pdb
+*.htm
+*.ncb
+*.suo
+*.user
+*.dep
+*.idb
+*.manifest
