@@ -1,12 +1,12 @@
 #ifndef MPMSIM_CONJUGATERESIDUALS_H
 #define MPMSIM_CONJUGATERESIDUALS_H
 
-#include "Solver.h"
+#include "LinearSolver.h"
 
 namespace MpmSim
 {
 
-class ConjugateResiduals : public Solver
+class ConjugateResiduals : public LinearSolver
 {
 public:
 	

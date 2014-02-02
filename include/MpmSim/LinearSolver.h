@@ -1,7 +1,6 @@
-#ifndef MPMSIM_SOLVER_H
-#define MPMSIM_SOLVER_H
+#ifndef MPMSIM_LINEARSOLVER_H
+#define MPMSIM_LINEARSOLVER_H
 
-#include "Grid.h"
 #include "ParticleData.h"
 #include "CollisionObject.h"
 
@@ -11,10 +10,10 @@ namespace MpmSim
 
 class Grid;
 
-class Solver
+class LinearSolver
 {
 public:
-	virtual ~Solver() {}
+	virtual ~LinearSolver() {}
 	
 	virtual void operator()(
 		const Grid* g,

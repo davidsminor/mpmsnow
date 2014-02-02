@@ -601,7 +601,7 @@ void Grid::testForceDifferentials( const ParticleData& d )
 	m_gridVelocities = originalGridVelocities;
 }
 
-void Grid::updateGridVelocities( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const Solver& implicitSolver )
+void Grid::updateGridVelocities( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const LinearSolver& implicitSolver )
 {
 	m_prevGridVelocities = m_gridVelocities;
 

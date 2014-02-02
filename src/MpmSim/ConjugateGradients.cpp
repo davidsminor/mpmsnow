@@ -1,4 +1,5 @@
 #include "MpmSim/ConjugateGradients.h"
+#include "MpmSim/Grid.h"
 
 #include <iostream>
 

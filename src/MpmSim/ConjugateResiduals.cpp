@@ -1,4 +1,5 @@
 #include "MpmSim/ConjugateResiduals.h"
+#include "MpmSim/Grid.h"
 
 #include <iostream>
 

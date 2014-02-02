@@ -379,6 +379,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\MpmSim\LinearSolver.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\MpmSim\ParticleData.h"
 				>
 			</File>
@@ -388,10 +392,6 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\SnowConstituativeModel.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\MpmSim\Solver.h"
 				>
 			</File>
 		</Filter>

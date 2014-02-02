@@ -3,15 +3,13 @@
 
 #include "ParticleData.h"
 #include "CollisionObject.h"
-#include "Solver.h"
+#include "LinearSolver.h"
 #include "ConstituativeModel.h"
 
 #include <Eigen/Dense>
 
 namespace MpmSim
 {
-
-class Solver;
 
 class Grid
 {
@@ -26,7 +24,7 @@ public:
 	void updateGridVelocities(
 		const ParticleData& d,
 		const std::vector<CollisionObject*>& collisionObjects,
-		const Solver& implicitSolver );
+		const LinearSolver& implicitSolver );
 
 	void updateDeformationGradients( ParticleData& d );
 	void updateParticleVelocities( ParticleData& d );

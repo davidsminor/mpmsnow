@@ -1,12 +1,12 @@
 #ifndef MPMSIM_CONJUGATEGRADIENTS_H
 #define MPMSIM_CONJUGATEGRADIENTS_H
 
-#include "Solver.h"
+#include "LinearSolver.h"
 
 namespace MpmSim
 {
 
-class ConjugateGradients : public Solver
+class ConjugateGradients : public LinearSolver
 {
 public:
 	
