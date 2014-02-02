@@ -1,9 +1,9 @@
-#ifndef MPMSNOW_PRECONDITIONER_H
-#define MPMSNOW_PRECONDITIONER_H
+#ifndef MPMSIM_PRECONDITIONER_H
+#define MPMSIM_PRECONDITIONER_H
 
 #include <Eigen/Dense>
 
-namespace MpmSnow
+namespace MpmSim
 {
 
 class Preconditioner
@@ -15,6 +15,6 @@ public:
 
 };
 
-} // namespace MpmSnow
+} // namespace MpmSim
 
-#endif // MPMSNOW_PRECONDITIONER_H
+#endif // MPMSIM_PRECONDITIONER_H

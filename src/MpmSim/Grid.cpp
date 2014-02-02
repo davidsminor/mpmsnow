@@ -1,4 +1,4 @@
-#include "MpmSnow/Grid.h"
+#include "MpmSim/Grid.h"
 
 #ifdef WIN32
 #include <windows.h>
@@ -20,7 +20,7 @@
 #endif
 
 using namespace Eigen;
-using namespace MpmSnow;
+using namespace MpmSim;
 
 #define GRAVITY -9.8f
 #define COULOMBFRICTION 0.5f

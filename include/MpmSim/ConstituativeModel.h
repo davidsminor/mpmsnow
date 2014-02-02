@@ -1,11 +1,11 @@
-#ifndef MPMSNOW_CONSTITUATIVEMODEL_H
-#define MPMSNOW_CONSTITUATIVEMODEL_H
+#ifndef MPMSIM_CONSTITUATIVEMODEL_H
+#define MPMSIM_CONSTITUATIVEMODEL_H
 
 #include "ParticleData.h"
 
 #include <Eigen/Dense>
 
-namespace MpmSnow
+namespace MpmSim
 {
 
 class ConstituativeModel
@@ -29,6 +29,6 @@ public:
 
 };
 
-} // namespace MpmSnow
+} // namespace MpmSim
 
 #endif

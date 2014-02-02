@@ -1,5 +1,5 @@
-#ifndef MPMSNOW_GRID_H
-#define MPMSNOW_GRID_H
+#ifndef MPMSIM_GRID_H
+#define MPMSIM_GRID_H
 
 #include "ParticleData.h"
 #include "CollisionObject.h"
@@ -8,7 +8,7 @@
 
 #include <Eigen/Dense>
 
-namespace MpmSnow
+namespace MpmSim
 {
 
 class Solver;
@@ -83,7 +83,7 @@ private:
 
 };
 
-} // namespace MpmSnow
+} // namespace MpmSim
 
 
-#endif // MPMSNOW_GRID_H
+#endif // MPMSIM_GRID_H

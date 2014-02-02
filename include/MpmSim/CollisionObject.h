@@ -1,9 +1,9 @@
-#ifndef MPMSNOW_COLLISIONOBJECT_H
-#define MPMSNOW_COLLISIONOBJECT_H
+#ifndef MPMSIM_COLLISIONOBJECT_H
+#define MPMSIM_COLLISIONOBJECT_H
 
 #include <Eigen/Dense>
 
-namespace MpmSnow
+namespace MpmSim
 {
 
 class CollisionObject
@@ -24,6 +24,6 @@ public:
 	virtual void draw() const = 0;
 };
 
-} // namespace MpmSnow
+} // namespace MpmSim
 
-#endif // MPMSNOW_COLLISIONOBJECT_H
+#endif // MPMSIM_COLLISIONOBJECT_H

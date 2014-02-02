@@ -73,9 +73,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="./mpmsnow.exe"
+				AdditionalDependencies="mpmsim.lib"
+				OutputFile="$(OutDir)\$(ProjectName).exe"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="$(CUDA_PATH)/lib/$(PlatformName);../../common/lib;../../common/GLEW/lib"
+				AdditionalLibraryDirectories="&quot;$(CUDA_PATH)/lib/$(PlatformName)&quot;;../../common/lib;../../common/GLEW/lib;&quot;./$(ConfigurationName)&quot;"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(OutDir)/simpleGL.pdb"
 				SubSystem="1"
@@ -153,9 +154,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="../../bin/win32/$(ConfigurationName)/simpleGL.exe"
+				OutputFile="$(OutDir)\$(ProjectName).exe"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="$(CUDA_PATH)/lib/$(PlatformName);../../common/lib;../../common/GLEW/lib"
+				AdditionalLibraryDirectories="&quot;$(CUDA_PATH)/lib/$(PlatformName)&quot;;../../common/lib;../../common/GLEW/lib;&quot;./$(ConfigurationName)&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				OptimizeReferences="2"

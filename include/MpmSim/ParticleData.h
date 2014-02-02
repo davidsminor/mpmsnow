@@ -1,10 +1,10 @@
-#ifndef MPMSNOW_PARTICLEDATA_H
-#define MPMSNOW_PARTICLEDATA_H
+#ifndef MPMSIM_PARTICLEDATA_H
+#define MPMSIM_PARTICLEDATA_H
 
 #include <vector>
 #include <Eigen/Dense>
 
-namespace MpmSnow
+namespace MpmSim
 {
 
 struct ParticleData
@@ -28,6 +28,6 @@ struct ParticleData
 	std::vector< float > particleDensities;
 };
 
-} // namespace MpmSnow
+} // namespace MpmSim
 
-#endif //MPMSNOW_PARTICLEDATA_H
+#endif //MPMSIM_PARTICLEDATA_H

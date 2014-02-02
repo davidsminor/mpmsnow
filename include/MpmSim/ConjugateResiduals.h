@@ -1,16 +1,16 @@
-#ifndef MPMSNOW_CONJUGATEGRADIENTS_H
-#define MPMSNOW_CONJUGATEGRADIENTS_H
+#ifndef MPMSIM_CONJUGATERESIDUALS_H
+#define MPMSIM_CONJUGATERESIDUALS_H
 
 #include "Solver.h"
 
-namespace MpmSnow
+namespace MpmSim
 {
 
-class ConjugateGradients : public Solver
+class ConjugateResiduals : public Solver
 {
 public:
 	
-	ConjugateGradients( int iters, float tol_error );
+	ConjugateResiduals( int iters, float tol_error );
 
 	virtual void operator()(
 		const Grid* g,
@@ -26,6 +26,6 @@ private:
 
 };
 
-} // namespace MpmSnow
+} // namespace MpmSim
 
 #endif

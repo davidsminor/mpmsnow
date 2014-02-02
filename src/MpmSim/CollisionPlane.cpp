@@ -3,10 +3,10 @@
 #endif
 #include <GL/gl.h>
 
-#include "MpmSnow/CollisionPlane.h"
+#include "MpmSim/CollisionPlane.h"
 
 using namespace Eigen;
-using namespace MpmSnow;
+using namespace MpmSim;
 
 CollisionPlane::CollisionPlane( const Eigen::Vector4f& c ) : m_coeffs( c )
 {

@@ -1,9 +1,9 @@
-#include "MpmSnow/ConjugateResiduals.h"
+#include "MpmSim/ConjugateResiduals.h"
 
 #include <iostream>
 
 using namespace Eigen;
-using namespace MpmSnow;
+using namespace MpmSim;
 
 ConjugateResiduals::ConjugateResiduals( int iters, float tol_error ) :
 	m_iters( iters ),

@@ -1,9 +1,9 @@
-#ifndef MPMSNOW_SNOWCONSTITUATIVEMODEL_H
-#define MPMSNOW_SNOWCONSTITUATIVEMODEL_H
+#ifndef MPMSIM_SNOWCONSTITUATIVEMODEL_H
+#define MPMSIM_SNOWCONSTITUATIVEMODEL_H
 
 #include "ConstituativeModel.h"
 
-namespace MpmSnow
+namespace MpmSim
 {
 
 class SnowConstituativeModel : public ConstituativeModel
@@ -47,6 +47,6 @@ private:
 
 };
 
-} //namespace MpmSnow
+} //namespace MpmSim
 
 #endif

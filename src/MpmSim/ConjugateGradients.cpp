@@ -1,9 +1,9 @@
-#include "MpmSnow/ConjugateGradients.h"
+#include "MpmSim/ConjugateGradients.h"
 
 #include <iostream>
 
 using namespace Eigen;
-using namespace MpmSnow;
+using namespace MpmSim;
 
 ConjugateGradients::ConjugateGradients( int iters, float tol_error ) :
 	m_iters( iters ),

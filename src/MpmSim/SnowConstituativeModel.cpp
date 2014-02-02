@@ -1,9 +1,9 @@
-#include "MpmSnow/SnowConstituativeModel.h"
+#include "MpmSim/SnowConstituativeModel.h"
 
 #include <iostream>
 
 using namespace Eigen;
-using namespace MpmSnow;
+using namespace MpmSim;
 
 SnowConstituativeModel::SnowConstituativeModel(
 	float youngsModulus,

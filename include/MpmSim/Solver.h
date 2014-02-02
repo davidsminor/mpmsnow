@@ -1,12 +1,12 @@
-#ifndef MPMSNOW_SOLVER_H
-#define MPMSNOW_SOLVER_H
+#ifndef MPMSIM_SOLVER_H
+#define MPMSIM_SOLVER_H
 
 #include "Grid.h"
 #include "ParticleData.h"
 #include "CollisionObject.h"
 
 #include <Eigen/Dense>
-namespace MpmSnow
+namespace MpmSim
 {
 
 class Grid;
@@ -25,6 +25,6 @@ public:
 	
 };
 
-} //namespace MpmSnow
+} //namespace MpmSim
 
 #endif

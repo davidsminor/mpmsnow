@@ -1,9 +1,9 @@
-#ifndef MPMSNOW_COLLISIONPLANE_H
-#define MPMSNOW_COLLISIONPLANE_H
+#ifndef MPMSIM_COLLISIONPLANE_H
+#define MPMSIM_COLLISIONPLANE_H
 
 #include "CollisionObject.h"
 
-namespace MpmSnow
+namespace MpmSim
 {
 
 class CollisionPlane : public CollisionObject
@@ -29,6 +29,6 @@ private:
 
 };
 
-} // namespace MpmSnow
+} // namespace MpmSim
 
-#endif // MPMSNOW_COLLISIONOBJECT_H
+#endif // MPMSIM_COLLISIONOBJECT_H

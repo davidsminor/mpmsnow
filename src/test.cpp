@@ -9,13 +9,13 @@
 #include <GL/gl.h>
 #include <GL/glut.h>
 
-#include "MpmSnow/Grid.h"
-#include "MpmSnow/SnowConstituativeModel.h"
-#include "MpmSnow/CollisionPlane.h"
-#include "MpmSnow/ConjugateGradients.h"
-#include "MpmSnow/ConjugateResiduals.h"
+#include "MpmSim/Grid.h"
+#include "MpmSim/SnowConstituativeModel.h"
+#include "MpmSim/CollisionPlane.h"
+#include "MpmSim/ConjugateGradients.h"
+#include "MpmSim/ConjugateResiduals.h"
 
-using namespace MpmSnow;
+using namespace MpmSim;
 
 int main(int argc, char** argv)
 {

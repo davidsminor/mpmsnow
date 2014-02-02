@@ -17,16 +17,16 @@
 #include <GL/gl.h>
 #include <GL/glut.h>
 
-#include "MpmSnow/Grid.h"
+#include "MpmSim/Grid.h"
 
-#include "MpmSnow/SnowConstituativeModel.h"
+#include "MpmSim/SnowConstituativeModel.h"
 
-#include "MpmSnow/CollisionPlane.h"
-#include "MpmSnow/ConjugateGradients.h"
-#include "MpmSnow/ConjugateResiduals.h"
+#include "MpmSim/CollisionPlane.h"
+#include "MpmSim/ConjugateGradients.h"
+#include "MpmSim/ConjugateResiduals.h"
 
 using namespace Eigen;
-using namespace MpmSnow;
+using namespace MpmSim;
 
 ////////////////////////////////////////////////////////////////////////////////
 // constants
