@@ -2,8 +2,8 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="simTest"
-	ProjectGUID="{4AB397A0-5938-47D3-9FBB-B15A8D2AAF7C}"
+	Name="mpmsnow"
+	ProjectGUID="{BB3AEE03-BA31-4940-9DCB-3FDA13B9FCC5}"
 	RootNamespace="simpleGL"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="131072"
@@ -26,7 +26,7 @@
 			Name="Debug|Win32"
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
+			ConfigurationType="4"
 			CharacterSet="2"
 			>
 			<Tool
@@ -72,23 +72,10 @@
 				Name="VCPreLinkEventTool"
 			/>
 			<Tool
-				Name="VCLinkerTool"
-				AdditionalDependencies="mpmsnow.lib"
-				OutputFile="./mpmsnow.exe"
-				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;$(CUDA_PATH)/lib/$(PlatformName)&quot;;../../common/lib;../../common/GLEW/lib;./Debug"
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/simpleGL.pdb"
-				SubSystem="1"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				TargetMachine="1"
+				Name="VCLibrarianTool"
 			/>
 			<Tool
 				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -100,9 +87,6 @@
 				Name="VCFxCopTool"
 			/>
 			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
 				Name="VCPostBuildEventTool"
 				CommandLine="IF EXIST cg_variables.h move cg_variables.h $(ConfigurationName)\"
 			/>
@@ -111,7 +95,7 @@
 			Name="Release|Win32"
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
+			ConfigurationType="4"
 			CharacterSet="2"
 			>
 			<Tool
@@ -153,24 +137,10 @@
 				Name="VCPreLinkEventTool"
 			/>
 			<Tool
-				Name="VCLinkerTool"
-				AdditionalDependencies="mpmsnow.lib"
-				OutputFile="../../bin/win32/$(ConfigurationName)/simpleGL.exe"
-				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;$(CUDA_PATH)/lib/$(PlatformName)&quot;;../../common/lib;../../common/GLEW/lib;./Release"
-				GenerateDebugInformation="true"
-				SubSystem="1"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="1"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				TargetMachine="1"
+				Name="VCLibrarianTool"
 			/>
 			<Tool
 				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -180,9 +150,6 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -364,7 +331,67 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\src\main.cpp"
+				RelativePath=".\src\MpmSnow\CollisionPlane.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\MpmSnow\ConjugateGradients.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\MpmSnow\ConjugateResiduals.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\MpmSnow\Grid.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\MpmSnow\SnowConstituativeModel.cpp"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="include"
+			>
+			<File
+				RelativePath=".\include\MpmSnow\CollisionObject.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSnow\CollisionPlane.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSnow\ConjugateGradients.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSnow\ConjugateResiduals.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSnow\ConstituativeModel.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSnow\Grid.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSnow\ParticleData.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSnow\Preconditioner.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSnow\SnowConstituativeModel.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSnow\Solver.h"
 				>
 			</File>
 		</Filter>

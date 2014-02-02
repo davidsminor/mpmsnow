@@ -2,8 +2,8 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="simTest"
-	ProjectGUID="{4AB397A0-5938-47D3-9FBB-B15A8D2AAF7C}"
+	Name="unitTests"
+	ProjectGUID="{15D1996C-A5F3-46E3-93FD-11255B14D5A8}"
 	RootNamespace="simpleGL"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="131072"
@@ -73,10 +73,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="mpmsnow.lib"
 				OutputFile="./mpmsnow.exe"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;$(CUDA_PATH)/lib/$(PlatformName)&quot;;../../common/lib;../../common/GLEW/lib;./Debug"
+				AdditionalLibraryDirectories="$(CUDA_PATH)/lib/$(PlatformName);../../common/lib;../../common/GLEW/lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(OutDir)/simpleGL.pdb"
 				SubSystem="1"
@@ -154,10 +153,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="mpmsnow.lib"
 				OutputFile="../../bin/win32/$(ConfigurationName)/simpleGL.exe"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;$(CUDA_PATH)/lib/$(PlatformName)&quot;;../../common/lib;../../common/GLEW/lib;./Release"
+				AdditionalLibraryDirectories="$(CUDA_PATH)/lib/$(PlatformName);../../common/lib;../../common/GLEW/lib"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				OptimizeReferences="2"
@@ -364,7 +362,7 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\src\main.cpp"
+				RelativePath=".\src\test.cpp"
 				>
 			</File>
 		</Filter>
