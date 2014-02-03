@@ -351,6 +351,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\MpmSim\ImplicitUpdateMatrix.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\MpmSim\ShapeFunction.cpp"
 				>
 			</File>
@@ -391,6 +395,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\MpmSim\ImplicitUpdateMatrix.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\MpmSim\LinearSolver.h"
 				>
 			</File>
@@ -400,6 +408,10 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\Preconditioner.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSim\ProceduralMatrix.h"
 				>
 			</File>
 			<File

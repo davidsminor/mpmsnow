@@ -14,9 +14,7 @@ ConjugateGradients::ConjugateGradients( int iters, float tol_error ) :
 
 void ConjugateGradients::operator()
 (
-		const Grid* g,
-		const ParticleData& d,
-		const std::vector<CollisionObject*>& collisionObjects,
+		const ProceduralMatrix& mat,
 		const Eigen::VectorXf& rhs,
 		Eigen::VectorXf& x
 ) const
@@ -32,7 +30,7 @@ void ConjugateGradients::operator()
 	int n = (int)rhs.size();
 
 	VectorXf residual;
-	g->applyImplicitUpdateMatrix( d, collisionObjects, x, residual );
+	mat.multVector( x, residual );
 	residual = rhs - residual;
 
 	RealScalar rhsNorm2 = rhs.squaredNorm();
@@ -57,7 +55,7 @@ void ConjugateGradients::operator()
 	int i = 0;
 	while(i < maxIters)
 	{
-		g->applyImplicitUpdateMatrix( d, collisionObjects, p, tmp ); // the bottleneck of the algorithm
+		mat.multVector( p, tmp ); // the bottleneck of the algorithm
 		
 		Scalar alpha = absNew / p.dot(tmp);   // the amount we travel on dir
 		x += alpha * p;                       // update solution

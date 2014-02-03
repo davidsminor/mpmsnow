@@ -1,4 +1,5 @@
 #include "MpmSim/Grid.h"
+#include "MpmSim/ImplicitUpdateMatrix.h"
 
 #ifdef WIN32
 #include <windows.h>
@@ -187,115 +188,6 @@ void Grid::origin( Eigen::Vector3f& o ) const
 	o[2] = m_zmin;
 }
 
-void Grid::applyImplicitUpdateMatrix(
-	const ParticleData& d,
-	const std::vector<CollisionObject*>& collisionObjects,
-	const VectorXf& vNPlusOne,
-	VectorXf& result ) const
-{
-
-	// This method computes the forward momenta in this frame in terms of the velocities
-	// in the next frame:
-	// m * v^(n+1) - m_timeStep * dF(v^(n+1) * m_timeStep)
-	
-	// work out force differentials when you perturb the grid positions by v * m_timeStep:
-	VectorXf df( vNPlusOne.size() );
-
-	// so: this method effectively applies a symmetric matrix which is quite diagonally
-	// dominant, with the diagonals largely controlled by the masses. Unfortunately, if
-	// the masses vary significantly form cell to cell (which they almost always do),
-	// this makes the eigenvalues SUCK, in that they range from something like 1.e-9 to 20.
-	// The conjugate gradient solver hates this, so instead we transform the problem so that
-	// those masses move off the main diagonal, but the matrix remains symmetric. This means
-	// we need to divide both the input and the output of this function by the square roots
-	// of the masses:
-	
-	// divide input:
-	VectorXf vTransformed = vNPlusOne;
-	for( int i=0; i < m_gridMasses.size(); ++i )
-	{
-		if( m_gridMasses[i] != 0 )
-		{
-			vTransformed.segment<3>( 3 * i ) /= sqrt( m_gridMasses[i] );
-		}
-	}
-
-	for( int i=0; i < m_nx; ++i )
-	{
-		for( int j=0; j < m_ny; ++j )
-		{
-			for( int k=0; k < m_nz; ++k )
-			{
-				int idx = coordsToIndex( Vector3i( i, j, k ) );
-				Vector3f v = vTransformed.segment<3>( 3 * idx );
-				
-				if( m_nodeCollided[idx] && m_gridMasses[ idx ] != 0 )
-				{
-					Vector3f x( m_gridH * i + m_xmin, m_gridH * j + m_ymin, m_gridH * k + m_zmin );
-					for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
-					{
-						// intersecting the object
-						Vector3f n;
-						collisionObjects[objIdx]->grad( x, n );
-						n.normalize();
-						float nDotP = n.dot( v );
-						
-						// project out momentum perpendicular to the object
-						v -= nDotP * n;
-						
-					}
-				}
-				
-				vTransformed.segment<3>( 3 * idx ) = v;
-			}
-		}
-	}
-	
-	calculateForceDifferentials( d, m_timeStep * vTransformed, df );
-	
-	result.resize( vTransformed.size() );
-	for( int i=0; i < m_nx; ++i )
-	{
-		for( int j=0; j < m_ny; ++j )
-		{
-			for( int k=0; k < m_nz; ++k )
-			{
-				int idx = coordsToIndex( Vector3i( i, j, k ) );
-				Vector3f resultMomentum = m_gridMasses[ idx ] * vTransformed.segment<3>( 3 * idx ) - m_timeStep * df.segment<3>( 3 * idx );
-				
-				// ok. So when you do this, is the matrix even symmetric any more? Maybe this should be in calculateForceDifferentials as well?
-				if( m_nodeCollided[idx] )
-				{
-					Vector3f x( m_gridH * i + m_xmin, m_gridH * j + m_ymin, m_gridH * k + m_zmin );
-					for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
-					{
-						// intersecting the object
-						Vector3f n;
-						collisionObjects[objIdx]->grad( x, n );
-						n.normalize();
-						float nDotP = n.dot( resultMomentum );
-						
-						// project out momentum perpendicular to the object
-						resultMomentum -= nDotP * n;
-						
-					}
-				}
-				
-				result.segment<3>( 3 * idx ) = resultMomentum;
-			}
-		}
-	}
-	
-	// divide output:
-	for( int i=0; i < m_gridMasses.size(); ++i )
-	{
-		if( m_gridMasses[i] != 0 )
-		{
-			result.segment<3>( 3 * i ) /= sqrt( m_gridMasses[i] );
-		}
-	}
-}
-
 void Grid::calculateForceDifferentials( const ParticleData& d, const VectorXf& dx, VectorXf& df ) const
 {
 	df.setZero();
@@ -415,12 +307,13 @@ void Grid::outputDiagnostics( const ParticleData& d, const std::vector<Collision
 	std::cerr << "evaluate matrix:" << std::endl;
 	
 	f << "diagonals:" << std::endl;
+	ImplicitUpdateMatrix mat( d, *this, collisionObjects );
 	for( int i=0; i < x.size(); ++i )
 	{
 		std::cerr << i << " of " << x.size() << std::endl;
 
 		x[i] = 1;
-		applyImplicitUpdateMatrix( d, collisionObjects, x, b );
+		mat.multVector( x, b );
 		x[i] = 0;
 
 		M.block( 0, i, x.size(), 1 ) = b;
@@ -644,9 +537,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 	}
 
 	implicitSolver(
-		this,
-		d,
-		collisionObjects,
+		ImplicitUpdateMatrix( d, *this, collisionObjects ),
 		forwardMomenta,
 		m_gridVelocities );
 	

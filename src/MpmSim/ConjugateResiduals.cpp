@@ -14,9 +14,7 @@ ConjugateResiduals::ConjugateResiduals( int iters, float tol_error ) :
 
 void ConjugateResiduals::operator()
 (
-		const Grid* g,
-		const ParticleData& d,
-		const std::vector<CollisionObject*>& collisionObjects,
+		const ProceduralMatrix& mat,
 		const Eigen::VectorXf& rhs,
 		Eigen::VectorXf& x
 ) const
@@ -36,7 +34,7 @@ void ConjugateResiduals::operator()
 
 	// r0 = b - A x0
 	VectorXf r;
-	g->applyImplicitUpdateMatrix( d, collisionObjects, x, r );
+	mat.multVector( x, r );
 	r = rhs - r;
 	
 	RealScalar threshold = tol*tol*rhsNorm2;
@@ -50,7 +48,7 @@ void ConjugateResiduals::operator()
 	VectorXf p = r;
 	
 	VectorXf Ar;
-	g->applyImplicitUpdateMatrix( d, collisionObjects, r, Ar );
+	mat.multVector( r, Ar );
 
 	VectorXf Ap = Ar;
 
@@ -70,7 +68,7 @@ void ConjugateResiduals::operator()
 			break;
 		}
 		
-		g->applyImplicitUpdateMatrix( d, collisionObjects, r, Ar );
+		mat.multVector( r, Ar );
 		float rtArNew = r.dot( Ar );
 		float beta = rtArNew/rtAr;
 		rtAr = rtArNew;

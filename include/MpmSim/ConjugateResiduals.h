@@ -13,9 +13,7 @@ public:
 	ConjugateResiduals( int iters, float tol_error );
 
 	virtual void operator()(
-		const Grid* g,
-		const ParticleData& d,
-		const std::vector<CollisionObject*>& collisionObjects,
+		const ProceduralMatrix& mat,
 		const Eigen::VectorXf& rhs,
 		Eigen::VectorXf& x ) const;
 

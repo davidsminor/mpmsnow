@@ -34,14 +34,14 @@ public:
 	void testForces( const ParticleData& d );
 	void testForceDifferentials( const ParticleData& d );
 	void outputDiagnostics( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const;
-
-	void applyImplicitUpdateMatrix( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const Eigen::VectorXf& v, Eigen::VectorXf& result ) const;
-
+	
 	float gridH() const;
 
 	void origin( Eigen::Vector3f& o ) const;
 
 private:
+	
+	friend class ImplicitUpdateMatrix;
 
 	void calculateForces( const ParticleData& d, Eigen::VectorXf& forces ) const;
 	void calculateForceDifferentials( const ParticleData& d, const Eigen::VectorXf& dx, Eigen::VectorXf& df ) const;
@@ -54,8 +54,6 @@ private:
 
 	inline int coordsToIndex( const Eigen::Vector3i& pos ) const;
 
-private:
-	
 	float m_gridH;
 	float m_timeStep;
 	

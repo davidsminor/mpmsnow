@@ -1,6 +1,7 @@
 #ifndef MPMSIM_LINEARSOLVER_H
 #define MPMSIM_LINEARSOLVER_H
 
+#include "ProceduralMatrix.h"
 #include "ParticleData.h"
 #include "CollisionObject.h"
 
@@ -16,9 +17,7 @@ public:
 	virtual ~LinearSolver() {}
 	
 	virtual void operator()(
-		const Grid* g,
-		const ParticleData& d,
-		const std::vector<CollisionObject*>& collisionObjects,
+		const ProceduralMatrix& mat,
 		const Eigen::VectorXf& rhs,
 		Eigen::VectorXf& x ) const = 0;
 	
