@@ -76,3 +76,4 @@ void ConjugateGradients::operator()
 	}
 	//tol_error = sqrt(residualNorm2 / rhsNorm2);
 }
+
