@@ -9,7 +9,7 @@ import IEEnv
 name = "mpmsnow"
 version = "1.0.0"
 
-sources = glob.glob( "src/*.cpp" ) + glob.glob( "src/*/*.cpp" )
+sources = [ "src/main.cpp" ] + glob.glob( "src/MpmSim/*.cpp" )
 includePaths = [ "./include", "/software/tools/include/eigen/3.2.0/cent6.x86_64/include/Eigen" ]
 
 prog = IEBuild.Program( ARGUMENTS, name, sources, includePaths )
