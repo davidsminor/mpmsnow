@@ -366,6 +366,22 @@
 				RelativePath=".\src\test.cpp"
 				>
 			</File>
+			<Filter
+				Name="tests"
+				>
+				<File
+					RelativePath=".\src\tests\TestShapeFunction.cpp"
+					>
+				</File>
+			</Filter>
+		</Filter>
+		<Filter
+			Name="include"
+			>
+			<File
+				RelativePath=".\include\tests\TestShapeFunction.h"
+				>
+			</File>
 		</Filter>
 	</Files>
 	<Globals>

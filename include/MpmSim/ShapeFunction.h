@@ -20,9 +20,9 @@ public:
 		
 		void initialize( const Eigen::Vector3f& p, bool computeDerivatives = false );
 		bool next();
-		const Eigen::Vector3i& gridPos() const;
-		void weightGrad( Eigen::Vector3f& g ) const;
-		float weight() const;
+		void gridPos( Eigen::Vector3i& pos ) const;
+		void dw( Eigen::Vector3f& g ) const;
+		float w() const;
 
 	private:
 
