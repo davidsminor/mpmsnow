@@ -1,6 +1,7 @@
 #ifndef MPMSIM_GRID_H
 #define MPMSIM_GRID_H
 
+#include "ShapeFunction.h"
 #include "ParticleData.h"
 #include "CollisionObject.h"
 #include "LinearSolver.h"
@@ -16,7 +17,7 @@ class Grid
 
 public:
 
-	Grid( const ParticleData& d, float gridH, float timeStep, const ConstituativeModel& model );
+	Grid( const ParticleData& d, float gridH, float timeStep, const ShapeFunction& m_shapeFunction, const ConstituativeModel& model );
 
 	void draw() const;
 	void computeDensities( ParticleData& d ) const;
@@ -36,6 +37,10 @@ public:
 
 	void applyImplicitUpdateMatrix( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const Eigen::VectorXf& v, Eigen::VectorXf& result ) const;
 
+	float gridH() const;
+
+	void origin( Eigen::Vector3f& o ) const;
+
 private:
 
 	void calculateForces( const ParticleData& d, Eigen::VectorXf& forces ) const;
@@ -44,21 +49,17 @@ private:
 	// testing
 	float calculateEnergy( const ParticleData& d ) const;
 	
-	// shape functions and derivatives:
-	static inline float N( float x );
-	static inline float DN( float x );
-
 	static inline void minMax( float x, float& min, float& max );
 	inline int fixDim( float& min, float& max ) const;
 
-	inline int coordsToIndex( int x, int y, int z ) const;
-
-	void cellAndWeights( const Eigen::Vector3f& particleX, Eigen::Vector3i& particleCell, float *w[], float** dw = 0 ) const;
+	inline int coordsToIndex( const Eigen::Vector3i& pos ) const;
 
 private:
 	
 	float m_gridH;
 	float m_timeStep;
+	
+	Eigen::Vector3f m_gridOrigin;
 
 	float m_xmin;
 	float m_ymin;
@@ -77,6 +78,7 @@ private:
 	Eigen::VectorXf m_prevGridVelocities;
 	std::vector<bool> m_nodeCollided;
 
+	const ShapeFunction& m_shapeFunction;
 	const ConstituativeModel& m_constituativeModel;
 
 };

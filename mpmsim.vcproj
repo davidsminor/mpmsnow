@@ -343,7 +343,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\MpmSim\CubicBsplineShapeFunction.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\MpmSim\Grid.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\MpmSim\ShapeFunction.cpp"
 				>
 			</File>
 			<File
@@ -375,6 +383,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\MpmSim\CubicBsplineShapeFunction.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\MpmSim\Grid.h"
 				>
 			</File>
@@ -388,6 +400,10 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\Preconditioner.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSim\ShapeFunction.h"
 				>
 			</File>
 			<File

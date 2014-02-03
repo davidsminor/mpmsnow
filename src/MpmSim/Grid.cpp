@@ -24,10 +24,9 @@ using namespace MpmSim;
 
 #define GRAVITY -9.8f
 #define COULOMBFRICTION 0.5f
-#define DECLARE_WEIGHTARRAY( NAME ) float buf_##NAME[12]; float * NAME[] = { &buf_##NAME[1], &buf_##NAME[5], &buf_##NAME[9] };
 
-Grid::Grid( const ParticleData& d, float gridH, float timeStep, const ConstituativeModel& model )
-	: m_gridH( gridH ), m_timeStep( timeStep ), m_constituativeModel( model )
+Grid::Grid( const ParticleData& d, float gridH, float timeStep, const ShapeFunction& shapeFunction, const ConstituativeModel& model )
+	: m_gridH( gridH ), m_timeStep( timeStep ), m_shapeFunction( shapeFunction ), m_constituativeModel( model )
 {
 	// work out the physical size of the grid:
 	m_xmin = m_ymin = m_zmin = 1.e10;
@@ -44,34 +43,27 @@ Grid::Grid( const ParticleData& d, float gridH, float timeStep, const Constituat
 	m_nx = fixDim( m_xmin, m_xmax );
 	m_ny = fixDim( m_ymin, m_ymax );
 	m_nz = fixDim( m_zmin, m_zmax );
-			
-	// little array with indexes going from -1 to store shape function weights
-	// on each dimension:
-	DECLARE_WEIGHTARRAY( w );
-	Vector3i particleCell;
+	
+	m_gridOrigin[0] = m_xmin;
+	m_gridOrigin[1] = m_ymin;
+	m_gridOrigin[2] = m_zmin;
 	
 	// calculate masses:
 	m_gridMasses.resize( m_nx * m_ny * m_nz );
 	m_gridMasses.setZero();
+	
+	ShapeFunction::PointToGridIterator shIt( m_shapeFunction, m_gridH, m_gridOrigin );
+	Vector3i particleCell;
 
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
-		Vector3f x = d.particleX[p];
-		cellAndWeights( x, particleCell, w );
-		// splat the masses:
-		for( int i=-1; i < 3; ++i )
+		shIt.initialize( d.particleX[p] );
+		do
 		{
-			for( int j=-1; j < 3; ++j )
-			{
-				for( int k=-1; k < 3; ++k )
-				{
-					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
-					float weight = w[0][i] * w[1][j] * w[2][k];
-					m_gridMasses[ idx ] +=
-						d.particleM[p] * weight;
-				}
-			}
-		}
+			shIt.gridPos( particleCell );
+			int idx = coordsToIndex( particleCell );
+			m_gridMasses[ idx ] += d.particleM[p] * shIt.w();
+		} while( shIt.next() );
 	}
 	
 	// grid masses can end up less than zero due to numerical issues in the shape functions, so clamp 'em:
@@ -89,28 +81,19 @@ Grid::Grid( const ParticleData& d, float gridH, float timeStep, const Constituat
 
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
-		cellAndWeights( d.particleX[p], particleCell, w );
+		shIt.initialize( d.particleX[p] );
 		
 		// splat the velocities:
-		for( int i=-1; i < 3; ++i )
+		do
 		{
-			for( int j=-1; j < 3; ++j )
+			shIt.gridPos( particleCell );
+			int idx = coordsToIndex( particleCell );
+			float gridCellMass = m_gridMasses[idx];
+			if( gridCellMass > 0 )
 			{
-				for( int k=-1; k < 3; ++k )
-				{
-					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
-					if( m_gridMasses[idx] > 0 )
-					{
-						float particleMass = d.particleM[p];
-						float gridCellMass = m_gridMasses[idx];
-						float overallWeight = w[0][i] * w[1][j] * w[2][k] *
-							( particleMass / gridCellMass );
-
-						m_gridVelocities.segment<3>( 3 * idx ) += overallWeight * d.particleV[p];
-					}
-				}
+				m_gridVelocities.segment<3>( 3 * idx ) += shIt.w() * ( d.particleM[p] / gridCellMass ) * d.particleV[p];
 			}
-		}
+		} while( shIt.next() );
 	}		
 }
 
@@ -155,58 +138,53 @@ void Grid::computeDensities( ParticleData& d ) const
 {
 	d.particleDensities.resize( d.particleX.size(), 0 );
 	
-	// little array with indexes going from -1 to store shape function weights
-	// on each dimension:
-	DECLARE_WEIGHTARRAY( w );
+	ShapeFunction::PointToGridIterator shIt( m_shapeFunction, m_gridH, m_gridOrigin );
 	Vector3i particleCell;
-
+	
+	float cellVolume = m_gridH * m_gridH * m_gridH;
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
-		cellAndWeights( d.particleX[p], particleCell, w );
-		
-		// transfer densities back onto the particles:
-		for( int i=-1; i < 3; ++i )
+		shIt.initialize( d.particleX[p] );
+		do
 		{
-			for( int j=-1; j < 3; ++j )
-			{
-				for( int k=-1; k < 3; ++k )
-				{
-					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
+			shIt.gridPos( particleCell );
+			int idx = coordsToIndex( particleCell );
+			
+			// accumulate the particle's density:
+			d.particleDensities[p] += shIt.w() * m_gridMasses[ idx ] / cellVolume;
 					
-					// accumulate the particle's density:
-					d.particleDensities[p] += w[0][i] * w[1][j] * w[2][k] * m_gridMasses[ idx ] / ( m_gridH * m_gridH * m_gridH );
-					
-				}
-			}
-		}
+		} while( shIt.next() );
 	}
 }
 
 void Grid::updateParticleVelocities( ParticleData& d )
 {
-	// little array with indexes going from -1 to store shape function weights
-	// on each dimension:
-	DECLARE_WEIGHTARRAY( w );
+	ShapeFunction::PointToGridIterator shIt( m_shapeFunction, m_gridH, m_gridOrigin );
 	Vector3i particleCell;
 
 	// this is, like, totally doing things FLIP style. The paper recommends a combination of FLIP and PIC...
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
-		cellAndWeights( d.particleX[p], particleCell, w );
-
-		for( int i=-1; i < 3; ++i )
+		shIt.initialize( d.particleX[p] );
+		do
 		{
-			for( int j=-1; j < 3; ++j )
-			{
-				for( int k=-1; k < 3; ++k )
-				{
-					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
-					d.particleV[p] += w[0][i] * w[1][j] * w[2][k] *
-						( m_gridVelocities.segment<3>( 3 * idx ) - m_prevGridVelocities.segment<3>( 3 * idx ) );
-				}
-			}
-		}
+			shIt.gridPos( particleCell );
+			int idx = coordsToIndex( particleCell );
+			d.particleV[p] += shIt.w() * ( m_gridVelocities.segment<3>( 3 * idx ) - m_prevGridVelocities.segment<3>( 3 * idx ) );
+		} while( shIt.next() );
 	}
+}
+
+float Grid::gridH() const
+{
+	return m_gridH;
+}
+
+void Grid::origin( Eigen::Vector3f& o ) const
+{
+	o[0] = m_xmin;
+	o[1] = m_ymin;
+	o[2] = m_zmin;
 }
 
 void Grid::applyImplicitUpdateMatrix(
@@ -248,7 +226,7 @@ void Grid::applyImplicitUpdateMatrix(
 		{
 			for( int k=0; k < m_nz; ++k )
 			{
-				int idx = coordsToIndex( i, j, k );
+				int idx = coordsToIndex( Vector3i( i, j, k ) );
 				Vector3f v = vTransformed.segment<3>( 3 * idx );
 				
 				if( m_nodeCollided[idx] && m_gridMasses[ idx ] != 0 )
@@ -282,7 +260,7 @@ void Grid::applyImplicitUpdateMatrix(
 		{
 			for( int k=0; k < m_nz; ++k )
 			{
-				int idx = coordsToIndex( i, j, k );
+				int idx = coordsToIndex( Vector3i( i, j, k ) );
 				Vector3f resultMomentum = m_gridMasses[ idx ] * vTransformed.segment<3>( 3 * idx ) - m_timeStep * df.segment<3>( 3 * idx );
 				
 				// ok. So when you do this, is the matrix even symmetric any more? Maybe this should be in calculateForceDifferentials as well?
@@ -321,63 +299,51 @@ void Grid::applyImplicitUpdateMatrix(
 void Grid::calculateForceDifferentials( const ParticleData& d, const VectorXf& dx, VectorXf& df ) const
 {
 	df.setZero();
-
-	// little array with indexes going from -1 to store shape function derivative weights
-	// on each dimension:
-	DECLARE_WEIGHTARRAY( w );
-	DECLARE_WEIGHTARRAY( dw );
-	Vector3i particleCell;
 	
+	ShapeFunction::PointToGridIterator shIt( m_shapeFunction, m_gridH, m_gridOrigin );
+	Vector3i particleCell;
+	Vector3f weightGrad;
+
 	for( size_t p = 0; p < d.particleF.size(); ++p )
 	{
-		cellAndWeights( d.particleX[p], particleCell, w, dw );
-		
 		// work out deformation gradient differential for this particle when grid nodes are
 		// moved by their respective v * Dt
 		Matrix3f dFp = Matrix3f::Zero();
-		for( int i=-1; i < 3; ++i )
+		shIt.initialize( d.particleX[p], true );
+		do
 		{
-			for( int j=-1; j < 3; ++j )
-			{
-				for( int k=-1; k < 3; ++k )
-				{
-					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
-					Vector3f weightGrad( dw[0][i] * w[1][j] * w[2][k], w[0][i] * dw[1][j] * w[2][k], w[0][i] * w[1][j] * dw[2][k] );
-					Vector3f deltaX = dx.segment<3>( 3 * idx );
-					dFp += deltaX * weightGrad.transpose() * d.particleF[p];
-				}
-			}
-		}
-
+			shIt.gridPos( particleCell );
+			shIt.dw( weightGrad );
+			int idx = coordsToIndex( particleCell );
+			dFp += dx.segment<3>( 3 * idx ) * weightGrad.transpose() * d.particleF[p];
+		} while( shIt.next() );
+		
 		Matrix3f forceMatrix;
 		m_constituativeModel.forceDifferentialDensity( forceMatrix, dFp, d, p );
 		forceMatrix = d.particleVolumes[p] * forceMatrix * d.particleF[p].transpose();
-
-		for( int i=-1; i < 3; ++i )
+		
+		shIt.initialize( d.particleX[p], true );
+		do
 		{
-			for( int j=-1; j < 3; ++j )
-			{
-				for( int k=-1; k < 3; ++k )
-				{
-					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
-					Vector3f weightGrad( dw[0][i] * w[1][j] * w[2][k], w[0][i] * dw[1][j] * w[2][k], w[0][i] * w[1][j] * dw[2][k] );
+			shIt.gridPos( particleCell );
+			shIt.dw( weightGrad );
+			int idx = coordsToIndex( particleCell );
+			
+			// add on difference in velocity due to this force:
+			df.segment<3>( 3 * idx ) -= forceMatrix * weightGrad;
 					
-					// add on difference in velocity due to this force:
-					df.segment<3>( 3 * idx ) -= forceMatrix * weightGrad;
-				}
-			}
-		}
+		} while( shIt.next() );
+
 	}
 }
 
 void Grid::calculateForces( const ParticleData& d, VectorXf& forces ) const
 {
-	// little array with indexes going from -1 to store shape function derivative weights
-	// on each dimension:
-	DECLARE_WEIGHTARRAY( w );
-	DECLARE_WEIGHTARRAY( dw );
+
+	ShapeFunction::PointToGridIterator shIt( m_shapeFunction, m_gridH, m_gridOrigin );
 	Vector3i particleCell;
-	
+	Vector3f weightGrad;
+
 	// start with gravity:
 	for( int i=0; i < m_gridMasses.size(); ++i )
 	{
@@ -387,23 +353,17 @@ void Grid::calculateForces( const ParticleData& d, VectorXf& forces ) const
 	// add on internal forces:
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
-		cellAndWeights( d.particleX[p], particleCell, w, dw );
-		
 		Matrix3f dEdF;
 		m_constituativeModel.dEnergyDensitydF( dEdF, d, p );
 		
-		for( int i=-1; i < 3; ++i )
+		shIt.initialize( d.particleX[p], true );
+		do
 		{
-			for( int j=-1; j < 3; ++j )
-			{
-				for( int k=-1; k < 3; ++k )
-				{
-					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
-					Vector3f weightGrad( dw[0][i] * w[1][j] * w[2][k], w[0][i] * dw[1][j] * w[2][k], w[0][i] * w[1][j] * dw[2][k] );
-					forces.segment<3>( 3 * idx ) -= d.particleVolumes[p] * dEdF * d.particleF[p].transpose() * weightGrad;
-				}
-			}
-		}
+			shIt.gridPos( particleCell );
+			shIt.dw( weightGrad );
+			int idx = coordsToIndex( particleCell );
+			forces.segment<3>( 3 * idx ) -= d.particleVolumes[p] * dEdF * d.particleF[p].transpose() * weightGrad;
+		} while( shIt.next() );
 	}
 }
 
@@ -618,7 +578,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 		{
 			for( int k=0; k < m_nz; ++k )
 			{
-				int idx = coordsToIndex( i, j, k );
+				int idx = coordsToIndex( Vector3i( i, j, k ) );
 				m_nodeCollided[idx] = false;
 
 				if( m_gridMasses[idx] == 0 )
@@ -703,32 +663,24 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 
 void Grid::updateDeformationGradients( ParticleData& d )
 {
-	// little array with indexes going from -1 to store shape function derivative weights
-	// on each dimension:
-	DECLARE_WEIGHTARRAY( w );
-	DECLARE_WEIGHTARRAY( dw );
+
+	ShapeFunction::PointToGridIterator shIt( m_shapeFunction, m_gridH, m_gridOrigin );
+	Vector3f weightGrad;
 	Vector3i particleCell;
-	
+	Matrix3f delV;
+
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
-		cellAndWeights( d.particleX[p], particleCell, w, dw );
-		
-		Vector3f v = Vector3f::Zero();
-		Matrix3f delV = Matrix3f::Zero();
-		for( int i=-1; i < 3; ++i )
+		delV.setZero();
+		shIt.initialize( d.particleX[p], true );
+		do
 		{
-			for( int j=-1; j < 3; ++j )
-			{
-				for( int k=-1; k < 3; ++k )
-				{
-					int idx = coordsToIndex( particleCell[0] + i, particleCell[1] + j, particleCell[2] + k );
-					Vector3f weightGrad( dw[0][i] * w[1][j] * w[2][k], w[0][i] * dw[1][j] * w[2][k], w[0][i] * w[1][j] * dw[2][k] );
-					Vector3f vSample = m_gridVelocities.segment<3>( 3 * idx );
-					delV += vSample * weightGrad.transpose();
-					v += vSample * w[0][i] * w[1][j] * w[2][k];
-				}
-			}
-		}
+			shIt.gridPos( particleCell );
+			shIt.dw( weightGrad );
+			int idx = coordsToIndex( particleCell );
+			delV += m_gridVelocities.segment<3>( 3 * idx ) * weightGrad.transpose();
+		} while( shIt.next() );
+		
 		Matrix3f newParticleF = ( Matrix3f::Identity() + m_timeStep * delV ) * d.particleF[p];
 		d.particleF[p] = newParticleF;
 	}
@@ -736,83 +688,11 @@ void Grid::updateDeformationGradients( ParticleData& d )
 	m_constituativeModel.updateDeformation( d );
 }
 
-
-inline float Grid::N( float x )
+inline int Grid::coordsToIndex( const Eigen::Vector3i& p ) const
 {
-	float ax = fabs(x);
-	if( ax < 1 )
-	{
-		return 0.5f * ax * ax * ax - ax * ax + 2.0f/3;
-	}
-	else if( ax < 2 )
-	{
-		return -ax * ax * ax / 6 + ax * ax - 2 * ax + 4.0f/3;
-	}
-	else
-	{
-		return 0;
-	}
+	return p[0] + m_nx * ( p[1] + m_ny * p[2] );
 }
 
-inline float Grid::DN( float x )
-{
-	if( x < 0 )
-	{
-		return -DN( -x );
-	}
-	
-	if( x < 1 )
-	{
-		return x * ( 1.5f * x - 2 );
-	}
-	else if( x < 2 )
-	{
-		x -= 2;
-		return -0.5f * x * x;
-	}
-	else
-	{
-		return 0;
-	}
-}
-
-inline int Grid::coordsToIndex( int x, int y, int z ) const
-{
-	return x + m_nx * ( y + z * m_ny );
-}
-
-void Grid::cellAndWeights( const Vector3f& particleX, Vector3i& particleCell, float *w[], float** dw ) const
-{
-	Vector3f positionInCell;
-	positionInCell[0] = ( particleX[0] - m_xmin ) / m_gridH;
-	positionInCell[1] = ( particleX[1] - m_ymin ) / m_gridH;
-	positionInCell[2] = ( particleX[2] - m_zmin ) / m_gridH;
-	
-	particleCell[0] = (int)floor( positionInCell[0] );
-	particleCell[1] = (int)floor( positionInCell[1] );
-	particleCell[2] = (int)floor( positionInCell[2] );
-	
-	positionInCell -= particleCell.cast<float>();
-	if( dw )
-	{
-		for( int i=0; i < 3; ++i )
-		{
-			dw[i][-1] = DN( positionInCell[i] + 1 ) / m_gridH;
-			dw[i][0] = DN( positionInCell[i] ) / m_gridH;
-			dw[i][1] = DN( positionInCell[i] - 1 ) / m_gridH;
-			dw[i][2] = DN( positionInCell[i] - 2 ) / m_gridH;
-		}
-	}
-	
-	for( int i=0; i < 3; ++i )
-	{
-		w[i][-1] = N( positionInCell[i] + 1 );
-		w[i][0] = N( positionInCell[i] );
-		w[i][1] = N( positionInCell[i] - 1 );
-		w[i][2] = N( positionInCell[i] - 2 );
-	}
-	
-}
 
 inline void Grid::minMax( float x, float& min, float& max )
 {

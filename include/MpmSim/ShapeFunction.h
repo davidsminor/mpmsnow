@@ -36,6 +36,7 @@ public:
 		std::vector<float> m_dw[3];
 		Eigen::Vector3i m_pos;
 		Eigen::Vector3i m_base;
+		bool m_gradients;
 		
 	};
 	

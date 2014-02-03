@@ -19,6 +19,8 @@
 
 #include "MpmSim/Grid.h"
 
+#include "MpmSim/CubicBsplineShapeFunction.h"
+
 #include "MpmSim/SnowConstituativeModel.h"
 
 #include "MpmSim/CollisionPlane.h"
@@ -52,6 +54,7 @@ int mouse_buttons = 0;
 
 ParticleData g_particles;
 
+CubicBsplineShapeFunction g_cubicBsplineShapeFunction;
 SnowConstituativeModel g_snowModel(
 		1.4e5f, // young's modulus
 		0.2f, // poisson ratio
@@ -290,6 +293,7 @@ void display()
 		g_particles,
 		0.05,	// grid spacing
 		timeStep,	// time step
+		g_cubicBsplineShapeFunction,
 		g_snowModel
 	);
 
@@ -326,7 +330,7 @@ void display()
 	glDisable( GL_LIGHTING );
 	
 	// update grid velocities using internal stresses...
-	g.updateGridVelocities( g_particles, g_collisionObjects, ConjugateGradients( 60, 1.e-6 ) );
+	g.updateGridVelocities( g_particles, g_collisionObjects, ConjugateGradients( 60, 1.e-4 ) );
 	
 	// transfer the grid velocities back onto the particles:
 	g.updateParticleVelocities( g_particles );
