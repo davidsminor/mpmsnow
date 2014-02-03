@@ -370,6 +370,10 @@
 				Name="tests"
 				>
 				<File
+					RelativePath=".\include\tests\TestConjugateResiduals.cpp"
+					>
+				</File>
+				<File
 					RelativePath=".\src\tests\TestShapeFunction.cpp"
 					>
 				</File>
@@ -378,6 +382,10 @@
 		<Filter
 			Name="include"
 			>
+			<File
+				RelativePath=".\include\tests\TestConjugateResiduals.h"
+				>
+			</File>
 			<File
 				RelativePath=".\include\tests\TestShapeFunction.h"
 				>

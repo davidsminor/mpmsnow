@@ -14,70 +14,64 @@ ConjugateResiduals::ConjugateResiduals( int iters, float tol_error ) :
 
 void ConjugateResiduals::operator()
 (
-		const ProceduralMatrix& mat,
-		const Eigen::VectorXf& rhs,
+		const ProceduralMatrix& A,
+		const Eigen::VectorXf& b,
 		Eigen::VectorXf& x
 ) const
 {
-	typedef float RealScalar;
+	// NB: there are papers with an extra bit that supposedly makes
+	// this more numerically stable
+	// (eg http://webmail.cs.yale.edu/publications/techreports/tr107.pdf).
+	// Do we need this?
+	x.setZero();
 
-	RealScalar rhsNorm2 = rhs.squaredNorm();
-	if(rhsNorm2 == 0) 
-	{
-		x.setZero();
-		return;
-	}
-	
-	RealScalar tol = m_tolError;
-	int maxIters = m_iters;
-
-
-	// r0 = b - A x0
-	VectorXf r;
-	mat.multVector( x, r );
-	r = rhs - r;
-	
-	RealScalar threshold = tol*tol*rhsNorm2;
-	RealScalar residualNorm2 = r.squaredNorm();
-	if (residualNorm2 < threshold)
+	float bNorm2 = b.squaredNorm();
+	if(bNorm2 == 0) 
 	{
 		return;
 	}
-
-	// p0 = r0
+	float threshold = m_tolError*m_tolError*bNorm2;
+	
+	const int N = (int)b.size();
+	
+	VectorXf r = b;
+	
 	VectorXf p = r;
 	
-	VectorXf Ar;
-	mat.multVector( r, Ar );
+	VectorXf Ap( N );
+	A.multVector( p, Ap );
 
-	VectorXf Ap = Ar;
+	VectorXf Ar( N );
+	A.multVector( r, Ar );
 
-	float rtAr = r.dot( Ar );
-	float ApdotAp = Ap.squaredNorm();
+	float rAr = r.dot( Ar );
 
 	int i = 0;
-	while(i < maxIters)
+	while( i < m_iters )
 	{
-		float alpha = rtAr / ApdotAp;
+		// minimize along search direction:
+		float alpha = rAr / Ap.dot( Ap );
 		x += alpha * p;
-		r -= alpha * Ap;
 		
-		residualNorm2 = r.squaredNorm();
-		if(residualNorm2 < threshold)
+		// update residual:
+		r -= alpha * Ap;
+
+		float rNorm2 = r.squaredNorm();
+		std::cerr << i << ": " << sqrt( rNorm2 ) << " / " << sqrt( threshold ) << std::endl;
+		if( rNorm2 < threshold )
 		{
-			break;
+			return;
 		}
 		
-		mat.multVector( r, Ar );
-		float rtArNew = r.dot( Ar );
-		float beta = rtArNew/rtAr;
-		rtAr = rtArNew;
-
-		p = r + beta * p;
-		Ap = Ar + beta * Ap;
+		// find a new search direction that's A^2 orto to the previous ones:
+		A.multVector( r, Ar );
+		float rArOld = rAr;
 		
-		std::cerr << i << ":" << sqrt( residualNorm2 ) << "/" << sqrt( threshold ) << std::endl;
-
+		rAr = r.dot( Ar );
+		float beta = rAr / rArOld;
+		
+		Ap = Ar + beta * Ap;
+		p = r + beta * p;
 		++i;
 	}
 
