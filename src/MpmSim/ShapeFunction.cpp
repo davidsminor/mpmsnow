@@ -4,6 +4,10 @@
 using namespace Eigen;
 using namespace MpmSim;
 
+ShapeFunction::~ShapeFunction()
+{
+}
+
 ShapeFunction::PointToGridIterator::PointToGridIterator( const ShapeFunction& shapeFunction, float gridH, const Eigen::Vector3f& gridOrigin ) :
 	m_shapeFunction( shapeFunction ),
 	m_gridH( gridH ),

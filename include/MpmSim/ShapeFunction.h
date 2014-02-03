@@ -40,6 +40,8 @@ public:
 		
 	};
 	
+	virtual ~ShapeFunction();
+	
 	// support radius of shape function in cells:
 	virtual int supportRadius() const = 0;
 

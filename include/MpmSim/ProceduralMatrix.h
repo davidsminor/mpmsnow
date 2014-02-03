@@ -9,7 +9,9 @@ class ProceduralMatrix
 {
 
 public:
-
+	
+	virtual ~ProceduralMatrix() {}
+	
 	virtual void multVector( const Eigen::VectorXf& x, Eigen::VectorXf& result ) const = 0;
 
 };
