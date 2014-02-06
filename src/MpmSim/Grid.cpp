@@ -26,8 +26,8 @@ using namespace MpmSim;
 #define GRAVITY -9.8f
 #define COULOMBFRICTION 0.5f
 
-Grid::Grid( const ParticleData& d, float gridH, float timeStep, const ShapeFunction& shapeFunction, const ConstituativeModel& model )
-	: m_gridH( gridH ), m_timeStep( timeStep ), m_shapeFunction( shapeFunction ), m_constituativeModel( model )
+Grid::Grid( const ParticleData& d, float gridH, float timeStep, const ShapeFunction& shapeFunction, const ConstitutiveModel& model )
+	: m_gridH( gridH ), m_timeStep( timeStep ), m_shapeFunction( shapeFunction ), m_ConstitutiveModel( model )
 {
 	// work out the physical size of the grid:
 	m_xmin = m_ymin = m_zmin = 1.e10;
@@ -211,7 +211,7 @@ void Grid::calculateForceDifferentials( const ParticleData& d, const VectorXf& d
 		} while( shIt.next() );
 		
 		Matrix3f forceMatrix;
-		m_constituativeModel.forceDifferentialDensity( forceMatrix, dFp, d, p );
+		m_ConstitutiveModel.forceDifferentialDensity( forceMatrix, dFp, d, p );
 		forceMatrix = d.particleVolumes[p] * forceMatrix * d.particleF[p].transpose();
 		
 		shIt.initialize( d.particleX[p], true );
@@ -246,7 +246,7 @@ void Grid::calculateForces( const ParticleData& d, VectorXf& forces ) const
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
 		Matrix3f dEdF;
-		m_constituativeModel.dEnergyDensitydF( dEdF, d, p );
+		m_ConstitutiveModel.dEnergyDensitydF( dEdF, d, p );
 		
 		shIt.initialize( d.particleX[p], true );
 		do
@@ -264,7 +264,7 @@ float Grid::calculateEnergy( const ParticleData& d ) const
 	float e = 0;
 	for( size_t p=0; p < d.particleF.size(); ++p )
 	{
-		e += d.particleVolumes[p] * m_constituativeModel.energyDensity( d, p );
+		e += d.particleVolumes[p] * m_ConstitutiveModel.energyDensity( d, p );
 	}
 	return e;
 }
@@ -576,7 +576,7 @@ void Grid::updateDeformationGradients( ParticleData& d )
 		d.particleF[p] = newParticleF;
 	}
 
-	m_constituativeModel.updateDeformation( d );
+	m_ConstitutiveModel.updateDeformation( d );
 }
 
 inline int Grid::coordsToIndex( const Eigen::Vector3i& p ) const

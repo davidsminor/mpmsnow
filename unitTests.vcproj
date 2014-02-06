@@ -377,6 +377,10 @@
 					RelativePath=".\src\tests\TestShapeFunction.cpp"
 					>
 				</File>
+				<File
+					RelativePath=".\src\tests\TestSnowConstitutiveModel.cpp"
+					>
+				</File>
 			</Filter>
 		</Filter>
 		<Filter
@@ -388,6 +392,10 @@
 			</File>
 			<File
 				RelativePath=".\include\tests\TestShapeFunction.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\tests\TestSnowConstitutiveModel.h"
 				>
 			</File>
 		</Filter>

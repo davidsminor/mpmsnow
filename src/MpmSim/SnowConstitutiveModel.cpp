@@ -1,11 +1,11 @@
-#include "MpmSim/SnowConstituativeModel.h"
+#include "MpmSim/SnowConstitutiveModel.h"
 
 #include <iostream>
 
 using namespace Eigen;
 using namespace MpmSim;
 
-SnowConstituativeModel::SnowConstituativeModel(
+SnowConstitutiveModel::SnowConstitutiveModel(
 	float youngsModulus,
 	float poissonRatio,
 	float hardening,
@@ -23,7 +23,7 @@ SnowConstituativeModel::SnowConstituativeModel(
 	m_lambda = ( youngsModulus * poissonRatio / ( ( 1 + poissonRatio ) * ( 1 - 2 * poissonRatio ) ) );
 }
 
-void SnowConstituativeModel::updateDeformation( ParticleData& d ) const
+void SnowConstitutiveModel::updateDeformation( ParticleData& d ) const
 {
 	for( size_t p=0; p < d.particleX.size(); ++p )
 	{
@@ -79,7 +79,7 @@ void SnowConstituativeModel::updateDeformation( ParticleData& d ) const
 	}
 }
 
-void SnowConstituativeModel::initParticles( ParticleData& d ) const
+void SnowConstitutiveModel::initParticles( ParticleData& d ) const
 {
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
@@ -88,19 +88,19 @@ void SnowConstituativeModel::initParticles( ParticleData& d ) const
 	}
 }
 
-float SnowConstituativeModel::energyDensity( const ParticleData& d, size_t p ) const
+float SnowConstitutiveModel::energyDensity( const ParticleData& d, size_t p ) const
 {
 	Matrix3f rigidDeviation = d.particleF[p] - d.particleR[p];
 	float JminusOne = d.particleJ[p] - 1;
 	return ( d.particleMu[p] * matrixDoubleDot( rigidDeviation, rigidDeviation ) + 0.5f * d.particleLambda[p] * JminusOne * JminusOne );
 }
 	
-void SnowConstituativeModel::dEnergyDensitydF( Eigen::Matrix3f& result, const ParticleData& d, size_t p ) const
+void SnowConstitutiveModel::dEnergyDensitydF( Eigen::Matrix3f& result, const ParticleData& d, size_t p ) const
 {
 	result = 2 * d.particleMu[p] * ( d.particleF[p] - d.particleR[p] ) + d.particleLambda[p] * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
 }
 
-void SnowConstituativeModel::forceDifferentialDensity( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const
+void SnowConstitutiveModel::forceDifferentialDensity( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const
 {
 	
 		// work out energy derivatives with respect to the deformation gradient at this particle:
@@ -133,7 +133,7 @@ void SnowConstituativeModel::forceDifferentialDensity( Eigen::Matrix3f& result, 
 }
 
 
-float SnowConstituativeModel::matrixDoubleDot( const Matrix3f& a, const Matrix3f& b )
+float SnowConstitutiveModel::matrixDoubleDot( const Matrix3f& a, const Matrix3f& b )
 {
 	return
 		a(0,0) * b(0,0) + a(0,1) * b(0,1) + a(0,2) * b(0,2) + 
@@ -141,7 +141,7 @@ float SnowConstituativeModel::matrixDoubleDot( const Matrix3f& a, const Matrix3f
 		a(2,0) * b(2,0) + a(2,1) * b(2,1) + a(2,2) * b(2,2);
 }
 
-Matrix3f SnowConstituativeModel::computeRdifferential( const Matrix3f& dF, const Matrix3f& R, const Matrix3f& S )
+Matrix3f SnowConstitutiveModel::computeRdifferential( const Matrix3f& dF, const Matrix3f& R, const Matrix3f& S )
 {
 	Matrix3f M = R.transpose() * dF - dF.transpose() * R;
 	Vector3f w( M(0,1), M(0,2), M(1,2) );

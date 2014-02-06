@@ -359,7 +359,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\MpmSim\SnowConstituativeModel.cpp"
+				RelativePath=".\src\MpmSim\SnowConstitutiveModel.cpp"
 				>
 			</File>
 		</Filter>
@@ -383,7 +383,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\MpmSim\ConstituativeModel.h"
+				RelativePath=".\include\MpmSim\ConstitutiveModel.h"
 				>
 			</File>
 			<File
@@ -419,7 +419,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\MpmSim\SnowConstituativeModel.h"
+				RelativePath=".\include\MpmSim\SnowConstitutiveModel.h"
 				>
 			</File>
 		</Filter>

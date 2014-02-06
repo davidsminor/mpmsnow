@@ -1,16 +1,16 @@
-#ifndef MPMSIM_SNOWCONSTITUATIVEMODEL_H
-#define MPMSIM_SNOWCONSTITUATIVEMODEL_H
+#ifndef MPMSIM_SNOWConstitutiveMODEL_H
+#define MPMSIM_SNOWConstitutiveMODEL_H
 
-#include "ConstituativeModel.h"
+#include "ConstitutiveModel.h"
 
 namespace MpmSim
 {
 
-class SnowConstituativeModel : public ConstituativeModel
+class SnowConstitutiveModel : public ConstitutiveModel
 {
 public:
 	
-	SnowConstituativeModel(
+	SnowConstitutiveModel(
 			float youngsModulus,
 			float poissonRatio,
 			float hardening,

@@ -1,5 +1,5 @@
-#ifndef MPMSIM_CONSTITUATIVEMODEL_H
-#define MPMSIM_CONSTITUATIVEMODEL_H
+#ifndef MPMSIM_ConstitutiveMODEL_H
+#define MPMSIM_ConstitutiveMODEL_H
 
 #include "ParticleData.h"
 
@@ -8,10 +8,10 @@
 namespace MpmSim
 {
 
-class ConstituativeModel
+class ConstitutiveModel
 {
 public:
-	virtual ~ConstituativeModel() {}
+	virtual ~ConstitutiveModel() {}
 	
 	virtual void initParticles( ParticleData& p ) const = 0;
 	

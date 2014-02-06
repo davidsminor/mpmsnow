@@ -21,7 +21,7 @@
 
 #include "MpmSim/CubicBsplineShapeFunction.h"
 
-#include "MpmSim/SnowConstituativeModel.h"
+#include "MpmSim/SnowConstitutiveModel.h"
 
 #include "MpmSim/CollisionPlane.h"
 #include "MpmSim/ConjugateGradients.h"
@@ -55,7 +55,7 @@ int mouse_buttons = 0;
 ParticleData g_particles;
 
 CubicBsplineShapeFunction g_cubicBsplineShapeFunction;
-SnowConstituativeModel g_snowModel(
+SnowConstitutiveModel g_snowModel(
 		1.4e5f, // young's modulus
 		0.2f, // poisson ratio
 		10, // hardening

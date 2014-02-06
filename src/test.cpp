@@ -1,5 +1,6 @@
 #include "tests/TestShapeFunction.h"
 #include "tests/TestConjugateResiduals.h"
+#include "tests/TestSnowConstitutiveModel.h"
 
 #include "MpmSim/CubicBsplineShapeFunction.h"
 
@@ -10,6 +11,7 @@ int main(int argc, char** argv)
 {
 	testShapeFunction( CubicBsplineShapeFunction() );
 	testConjugateResiduals();
+	testSnowConstitutiveModel();
 
 	return 0;
 }

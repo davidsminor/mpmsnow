@@ -5,7 +5,7 @@
 #include "ParticleData.h"
 #include "CollisionObject.h"
 #include "LinearSolver.h"
-#include "ConstituativeModel.h"
+#include "ConstitutiveModel.h"
 
 #include <Eigen/Dense>
 
@@ -17,7 +17,7 @@ class Grid
 
 public:
 
-	Grid( const ParticleData& d, float gridH, float timeStep, const ShapeFunction& m_shapeFunction, const ConstituativeModel& model );
+	Grid( const ParticleData& d, float gridH, float timeStep, const ShapeFunction& m_shapeFunction, const ConstitutiveModel& model );
 
 	void draw() const;
 	void computeDensities( ParticleData& d ) const;
@@ -77,7 +77,7 @@ private:
 	std::vector<bool> m_nodeCollided;
 
 	const ShapeFunction& m_shapeFunction;
-	const ConstituativeModel& m_constituativeModel;
+	const ConstitutiveModel& m_ConstitutiveModel;
 
 };
 
