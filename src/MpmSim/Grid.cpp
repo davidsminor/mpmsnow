@@ -26,8 +26,8 @@ using namespace MpmSim;
 #define GRAVITY -9.8f
 #define COULOMBFRICTION 0.5f
 
-Grid::Grid( const ParticleData& d, float gridH, float timeStep, const ShapeFunction& shapeFunction, const ConstitutiveModel& model )
-	: m_gridH( gridH ), m_timeStep( timeStep ), m_shapeFunction( shapeFunction ), m_ConstitutiveModel( model )
+Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFunction, const ConstitutiveModel& model )
+	: m_gridH( d.gridSize ), m_timeStep( timeStep ), m_shapeFunction( shapeFunction ), m_ConstitutiveModel( model )
 {
 	// work out the physical size of the grid:
 	m_xmin = m_ymin = m_zmin = 1.e10;
@@ -599,10 +599,9 @@ inline void Grid::minMax( float x, float& min, float& max )
 
 inline int Grid::fixDim( float& min, float& max ) const
 {
-	float minPadded = min - 1.5f * m_gridH;
-	float maxPadded = max + 1.5f * m_gridH;
-	int n = int( ceil( ( maxPadded - minPadded ) / m_gridH ) ) + 1;
-	min = minPadded;
-	max = min + n * m_gridH;
-	return n;
+	int cellMin = int( floor( min / m_gridH ) ) - 1;
+	int cellMax = int( ceil( max / m_gridH ) ) + 2;
+	min = cellMin * m_gridH;
+	max = cellMax * m_gridH;
+	return cellMax - cellMin;
 }

@@ -1,3 +1,4 @@
+#include "tests/TestParticleData.h"
 #include "tests/TestShapeFunction.h"
 #include "tests/TestConjugateResiduals.h"
 #include "tests/TestSnowConstitutiveModel.h"
@@ -12,6 +13,7 @@ int main(int argc, char** argv)
 	testShapeFunction( CubicBsplineShapeFunction() );
 	testConjugateResiduals();
 	testSnowConstitutiveModel();
+	testParticleData();
 
 	return 0;
 }

@@ -17,7 +17,7 @@ class Grid
 
 public:
 
-	Grid( const ParticleData& d, float gridH, float timeStep, const ShapeFunction& m_shapeFunction, const ConstitutiveModel& model );
+	Grid( const ParticleData& d, float timeStep, const ShapeFunction& m_shapeFunction, const ConstitutiveModel& model );
 
 	void draw() const;
 	void computeDensities( ParticleData& d ) const;

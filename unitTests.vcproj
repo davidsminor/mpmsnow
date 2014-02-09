@@ -374,6 +374,10 @@
 					>
 				</File>
 				<File
+					RelativePath=".\src\tests\TestParticleData.cpp"
+					>
+				</File>
+				<File
 					RelativePath=".\src\tests\TestShapeFunction.cpp"
 					>
 				</File>
@@ -388,6 +392,10 @@
 			>
 			<File
 				RelativePath=".\include\tests\TestConjugateResiduals.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\tests\TestParticleData.h"
 				>
 			</File>
 			<File

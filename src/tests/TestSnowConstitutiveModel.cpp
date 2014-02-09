@@ -20,18 +20,14 @@ void testSnowConstitutiveModel()
 		0.1f, // compressive strength
 		0.2f	// tensile strength
 	);
-
-	ParticleData d;
-	d.particleX.resize(1);
-	d.particleF.resize(1);
-	d.particleFplastic.resize(1);
-	d.particleFinvTrans.resize(1);
-	d.particleR.resize(1);
-	d.particleS.resize(1);
-	d.particleJ.resize(1);
-	d.particleMu.resize(1);
-	d.particleLambda.resize(1);
 	
+	std::vector< Eigen::Vector3f > positions;
+	std::vector< float > masses;
+	positions.push_back( Eigen::Vector3f::Zero() );
+	masses.push_back( 1.0f );
+
+	ParticleData d( positions, masses, 1 );
+	snowModel.initParticles( d );
 	Matrix3f p = Matrix3f::Random();
 	p = p * p;
 	d.particleFplastic[0] = p;

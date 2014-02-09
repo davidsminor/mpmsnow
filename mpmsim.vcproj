@@ -73,6 +73,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
+				AdditionalDependencies="tbb.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -138,6 +139,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
+				AdditionalDependencies="tbb.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -352,6 +354,10 @@
 			</File>
 			<File
 				RelativePath=".\src\MpmSim\ImplicitUpdateMatrix.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\MpmSim\ParticleData.cpp"
 				>
 			</File>
 			<File

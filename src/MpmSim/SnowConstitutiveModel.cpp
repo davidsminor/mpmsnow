@@ -81,11 +81,14 @@ void SnowConstitutiveModel::updateDeformation( ParticleData& d ) const
 
 void SnowConstitutiveModel::initParticles( ParticleData& d ) const
 {
-	for( size_t p = 0; p < d.particleX.size(); ++p )
-	{
-		d.particleMu.push_back( m_mu );
-		d.particleLambda.push_back( m_lambda );
-	}
+	size_t nParticles = d.particleX.size();
+	d.particleFinvTrans.resize( nParticles, Eigen::Matrix3f::Zero() );
+	d.particleJ.resize( nParticles, 1.0f );
+	d.particleFplastic.resize( nParticles, Eigen::Matrix3f::Zero() );
+	d.particleR.resize( nParticles, Eigen::Matrix3f::Zero() );
+	d.particleS.resize( nParticles, Eigen::Matrix3f::Zero() );
+	d.particleMu.resize( nParticles, m_mu );
+	d.particleLambda.resize( nParticles, m_lambda );
 }
 
 float SnowConstitutiveModel::energyDensity( const ParticleData& d, size_t p ) const
