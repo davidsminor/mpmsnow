@@ -35,7 +35,7 @@ public:
 	}
 	
 	// energy differentials, using second derivatives of energy function
-	virtual void forceDifferentialDensity( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const
+	virtual void dEdFDifferential( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const
 	{
 	}
 

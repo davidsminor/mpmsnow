@@ -58,7 +58,18 @@ void SnowConstitutiveModel::updateDeformation( ParticleData& d ) const
 		d.particleF[p] = svd.matrixU() * diagonalMat * svd.matrixV().transpose();
 		d.particleFinvTrans[p] = svd.matrixU() * diagonalMatInv * svd.matrixV().transpose();
 		d.particleR[p] = svd.matrixU() * svd.matrixV().transpose();
-		d.particleS[p] = svd.matrixV() * diagonalMat * svd.matrixV().transpose();
+		
+		Matrix3f S = svd.matrixV() * diagonalMat * svd.matrixV().transpose();
+		Matrix3f G;
+		G(0,0) = S(0,0) + S(1,1);
+		G(1,1) = S(0,0) + S(2,2);
+		G(2,2) = S(1,1) + S(2,2);
+		
+		G(0,1) = G(1,0) = S(1,2);
+		G(0,2) = G(2,0) = -S(0,2);
+		G(1,2) = G(2,1) = S(0,1);
+		d.particleGinv[p] = G.inverse();
+
 		d.particleJ[p] = diagonalMat(0,0) * diagonalMat(1,1) * diagonalMat(2,2);
 		
 		
@@ -86,7 +97,7 @@ void SnowConstitutiveModel::initParticles( ParticleData& d ) const
 	d.particleJ.resize( nParticles, 1.0f );
 	d.particleFplastic.resize( nParticles, Eigen::Matrix3f::Identity() );
 	d.particleR.resize( nParticles, Eigen::Matrix3f::Identity() );
-	d.particleS.resize( nParticles, Eigen::Matrix3f::Identity() );
+	d.particleGinv.resize( nParticles, Eigen::Matrix3f::Identity() );
 	d.particleMu.resize( nParticles, m_mu );
 	d.particleLambda.resize( nParticles, m_lambda );
 }
@@ -103,7 +114,7 @@ void SnowConstitutiveModel::dEnergyDensitydF( Eigen::Matrix3f& result, const Par
 	result = 2 * d.particleMu[p] * ( d.particleF[p] - d.particleR[p] ) + d.particleLambda[p] * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
 }
 
-void SnowConstitutiveModel::forceDifferentialDensity( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const
+void SnowConstitutiveModel::dEdFDifferential( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const
 {
 	
 	// work out energy derivatives with respect to the deformation gradient at this particle:
@@ -123,7 +134,7 @@ void SnowConstitutiveModel::forceDifferentialDensity( Eigen::Matrix3f& result, c
 	float dJ = J * matrixDoubleDot( d.particleFinvTrans[p], dFp );
 	Matrix3f dFInvTrans = - d.particleFinvTrans[p] * dFp.transpose() * d.particleFinvTrans[p];
 	
-	Matrix3f dR = computeRdifferential( dFp, d.particleR[p], d.particleS[p] );
+	Matrix3f dR = computeRdifferential( dFp, d.particleR[p], d.particleGinv[p] );
 	
 	// start with differential of 2 * MU * ( F - R )...
 	result = 2 * d.particleMu[p] * ( dFp - dR );
@@ -144,23 +155,13 @@ float SnowConstitutiveModel::matrixDoubleDot( const Matrix3f& a, const Matrix3f&
 		a(2,0) * b(2,0) + a(2,1) * b(2,1) + a(2,2) * b(2,2);
 }
 
-Matrix3f SnowConstitutiveModel::computeRdifferential( const Matrix3f& dF, const Matrix3f& R, const Matrix3f& S )
+Matrix3f SnowConstitutiveModel::computeRdifferential( const Matrix3f& dF, const Matrix3f& R, const Matrix3f& Ginv )
 {
 	// \todo: compute w without computing the whole of M
 	Matrix3f M = R.transpose() * dF - dF.transpose() * R;
 	Vector3f w( M(0,1), M(0,2), M(1,2) );
 	
-	// \todo: precompute G inverse
-	Matrix3f G;
-	G(0,0) = S(0,0) + S(1,1);
-	G(1,1) = S(0,0) + S(2,2);
-	G(2,2) = S(1,1) + S(2,2);
-	
-	G(0,1) = G(1,0) = S(1,2);
-	G(0,2) = G(2,0) = -S(0,2);
-	G(1,2) = G(2,1) = S(0,1);
-	
-	w = G.inverse() * w;
+	w = Ginv * w;
 	
 	Matrix3f RtdR;
 	RtdR(0,0) = RtdR(1,1) = RtdR(2,2) = 0;

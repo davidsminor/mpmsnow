@@ -19,7 +19,7 @@ struct ParticleData
 	std::vector< Eigen::Matrix3f > particleF;
 	std::vector< Eigen::Matrix3f > particleFplastic;
 	std::vector< Eigen::Matrix3f > particleR;
-	std::vector< Eigen::Matrix3f > particleS;
+	std::vector< Eigen::Matrix3f > particleGinv;
 	std::vector< Eigen::Matrix3f > particleFinvTrans;
 	
 	std::vector< float > particleMu;

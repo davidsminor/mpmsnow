@@ -311,7 +311,7 @@ public:
 			} while( shIt.next() );
 			
 			Matrix3f forceMatrix;
-			g.constitutiveModel().forceDifferentialDensity( forceMatrix, dFp, d, p );
+			g.constitutiveModel().dEdFDifferential( forceMatrix, dFp, d, p );
 			forceMatrix = d.particleVolumes[p] * forceMatrix * d.particleF[p].transpose();
 
 			shIt.initialize( d.particleX[p], true );
