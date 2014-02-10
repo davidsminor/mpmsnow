@@ -106,32 +106,32 @@ void SnowConstitutiveModel::dEnergyDensitydF( Eigen::Matrix3f& result, const Par
 void SnowConstitutiveModel::forceDifferentialDensity( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const
 {
 	
-		// work out energy derivatives with respect to the deformation gradient at this particle:
-		// Ap = d2Psi / dF dF : dF (see the tech report). We've got dF, so just plug that into the
-		// formulae...
-		
-		// if you look in dEnergyDensitydF, you'll find it's computing this:
-		
-		// 2 * MU * ( d.particleF[p] - d.particleR[p] ) + LAMBDA * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
-		
-		// what we're doing here is just assuming dFp is small and working out the corresponding variation in
-		// that expression...
-		
-		float J = d.particleJ[p];
+	// work out energy derivatives with respect to the deformation gradient at this particle:
+	// Ap = d2Psi / dF dF : dF (see the tech report). We've got dF, so just plug that into the
+	// formulae...
+	
+	// if you look in dEnergyDensitydF, you'll find it's computing this:
+	
+	// 2 * MU * ( d.particleF[p] - d.particleR[p] ) + LAMBDA * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
+	
+	// what we're doing here is just assuming dFp is small and working out the corresponding variation in
+	// that expression...
+	
+	float J = d.particleJ[p];
 
-		// work out a couple of basic differentials:
-		float dJ = J * matrixDoubleDot( d.particleFinvTrans[p], dFp );
-		Matrix3f dFInvTrans = - d.particleFinvTrans[p] * dFp.transpose() * d.particleFinvTrans[p];
-		
-		Matrix3f dR = computeRdifferential( dFp, d.particleR[p], d.particleS[p] );
-		
-		// start with differential of 2 * MU * ( F - R )...
-		result = 2 * d.particleMu[p] * ( dFp - dR );
-		
-		// add on differential of LAMBDA * ( J - 1 ) * J * F^-t
-		// = LAMBDA * ( d( J - 1 ) * J F^-T + ( J - 1 ) * d( J F^-t ) )
-		// = LAMBDA * ( dJ * J F^-T + ( J - 1 ) * ( dJ F^-t + J * d( F^-t ) )
-		result += d.particleLambda[p] * ( dJ * J * d.particleFinvTrans[p] + ( J - 1 ) * ( dJ * d.particleFinvTrans[p] + J * dFInvTrans ) );
+	// work out a couple of basic differentials:
+	float dJ = J * matrixDoubleDot( d.particleFinvTrans[p], dFp );
+	Matrix3f dFInvTrans = - d.particleFinvTrans[p] * dFp.transpose() * d.particleFinvTrans[p];
+	
+	Matrix3f dR = computeRdifferential( dFp, d.particleR[p], d.particleS[p] );
+	
+	// start with differential of 2 * MU * ( F - R )...
+	result = 2 * d.particleMu[p] * ( dFp - dR );
+	
+	// add on differential of LAMBDA * ( J - 1 ) * J * F^-t
+	// = LAMBDA * ( d( J - 1 ) * J F^-T + ( J - 1 ) * d( J F^-t ) )
+	// = LAMBDA * ( dJ * J F^-T + ( J - 1 ) * ( dJ F^-t + J * d( F^-t ) )
+	result += d.particleLambda[p] * ( dJ * J * d.particleFinvTrans[p] + ( J - 1 ) * ( dJ * d.particleFinvTrans[p] + J * dFInvTrans ) );
 		
 }
 
