@@ -87,15 +87,9 @@ void ParticleData::computeProcessingPartitions()
 	// sort the spatial index so particles in the same voxel are adjacent:
 	voxelSort( spatialIndex.begin(), spatialIndex.end() );
 
-	for(int i=0;i<2;++i)
+	for(int i=0;i<8;++i)
 	{
-		for(int j=0;j<2;++j)
-		{
-			for(int k=0;k<2;++k)
-			{
-				processingPartitions[i][j][k].clear();
-			}
-		}
+		processingPartitions[ i&1 ][ (i&2) / 2][ (i&4) / 4].clear();
 	}
 
 	// now imagine chopping space up into little 2x2x2 voxel blocks. All
@@ -113,7 +107,7 @@ void ParticleData::computeProcessingPartitions()
 		if( voxel != currentVoxel || it == begin )
 		{
 			currentVoxel = voxel;
-			std::vector< std::pair<IndexIterator, IndexIterator> >& partition = processingPartitions[ voxel[0]&1 ][ voxel[1]&1 ][ voxel[2]&1 ];
+			PartitionList& partition = processingPartitions[ voxel[0]&1 ][ voxel[1]&1 ][ voxel[2]&1 ];
 			partition.push_back( std::make_pair( it, it ) );
 			partitionEnd = &partition.back().second;
 		}

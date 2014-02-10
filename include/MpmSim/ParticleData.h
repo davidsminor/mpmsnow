@@ -39,7 +39,8 @@ struct ParticleData
 	// 8 voxel lists, one for every corner of a cube. When you're splatting particles onto
 	// a grid, it's safe to splat voxels in a partition in paralell, as their shape functions
 	// will not overlap with other voxels in the partition.
-	std::vector< std::pair<IndexIterator, IndexIterator> > processingPartitions[2][2][2];
+	typedef std::vector< std::pair<IndexIterator, IndexIterator> > PartitionList;
+	PartitionList processingPartitions[2][2][2];
 
 	float gridSize;
 
