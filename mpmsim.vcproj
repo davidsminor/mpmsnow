@@ -53,7 +53,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="&quot;C:\ilmbase-1.0.1\Imath&quot;;&quot;$(CUDA_PATH)/include&quot;;./;./include;../../common/GLEW/include"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_DEPRECATE;USE_SSE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -73,7 +73,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				AdditionalDependencies="tbb.lib"
+				AdditionalDependencies="tbb_debug.lib opengl32.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -398,6 +398,10 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\Grid.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSim\Grid.inl"
 				>
 			</File>
 			<File

@@ -1,6 +1,9 @@
 #ifndef MPMSIM_GRID_H
 #define MPMSIM_GRID_H
 
+#include "tbb/enumerable_thread_specific.h"
+#include "tbb/blocked_range.h"
+
 #include "ShapeFunction.h"
 #include "ParticleData.h"
 #include "CollisionObject.h"
@@ -8,6 +11,10 @@
 #include "ConstitutiveModel.h"
 
 #include <Eigen/Dense>
+
+#define DECLARE_GRIDSPLATTER_CONSTRUCTOR( DerivedClass ) \
+	DerivedClass( const Grid* g, const ParticleData& d, const ParticleData::PartitionList& partition, Eigen::VectorXf& result, const void* args ) \
+		: Grid::GridSplatter( g, d, partition, result, args ) {}
 
 namespace MpmSim
 {
@@ -35,24 +42,66 @@ public:
 	void testForceDifferentials( const ParticleData& d );
 	void outputDiagnostics( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const;
 	
+	const Eigen::VectorXf& masses() const;
+	const Eigen::VectorXf& velocities() const;
+	const ConstitutiveModel& constitutiveModel() const;
+
 	float gridH() const;
 
 	void origin( Eigen::Vector3f& o ) const;
 
-private:
+	ShapeFunction::PointToGridIterator& pointIterator() const;
 	
-	friend class ImplicitUpdateMatrix;
+	friend class GridSplatter;
+	class GridSplatter
+	{
+		public:
+			GridSplatter(
+				const Grid* g,
+				const ParticleData& d,
+				const ParticleData::PartitionList& partition,
+				Eigen::VectorXf& result,
+				const void* args
+			);
+
+			void operator()(const tbb::blocked_range<int> &r) const;
+		
+		protected:
+			virtual void splat(
+				ParticleData::IndexIterator begin,
+				ParticleData::IndexIterator end,
+				const Grid& g,
+				const ParticleData& d,
+				Eigen::VectorXf& result,
+				const void* args ) const = 0;
+			
+		private:
+
+			const Grid* m_g;
+			const ParticleData& m_d;
+			const ParticleData::PartitionList& m_partition;
+			mutable Eigen::VectorXf& m_result;
+			const void* m_args;
+
+	};
+
+	template <class Splatter>
+	void splat( const ParticleData& d, Eigen::VectorXf& result, const void* args = 0 ) const;
+
+	inline int coordsToIndex( const Eigen::Vector3i& pos ) const;
 
 	void calculateForces( const ParticleData& d, Eigen::VectorXf& forces ) const;
 	void calculateForceDifferentials( const ParticleData& d, const Eigen::VectorXf& dx, Eigen::VectorXf& df ) const;
+	
+private:
+	
+	friend class ImplicitUpdateMatrix;
 
 	// testing
 	float calculateEnergy( const ParticleData& d ) const;
 	
 	static inline void minMax( float x, float& min, float& max );
 	inline int fixDim( float& min, float& max ) const;
-
-	inline int coordsToIndex( const Eigen::Vector3i& pos ) const;
 
 	float m_gridH;
 	float m_timeStep;
@@ -77,11 +126,14 @@ private:
 	std::vector<bool> m_nodeCollided;
 
 	const ShapeFunction& m_shapeFunction;
-	const ConstitutiveModel& m_ConstitutiveModel;
+	const ConstitutiveModel& m_constitutiveModel;
+	
+	mutable tbb::enumerable_thread_specific< std::auto_ptr< ShapeFunction::PointToGridIterator > > m_pointIterators;
 
 };
 
 } // namespace MpmSim
 
+#include "MpmSim/Grid.inl"
 
 #endif // MPMSIM_GRID_H
