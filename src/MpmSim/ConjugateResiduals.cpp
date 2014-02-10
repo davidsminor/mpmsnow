@@ -6,9 +6,10 @@
 using namespace Eigen;
 using namespace MpmSim;
 
-ConjugateResiduals::ConjugateResiduals( int iters, float tol_error ) :
+ConjugateResiduals::ConjugateResiduals( int iters, float tol_error, bool log ) :
 	m_iters( iters ),
-	m_tolError( tol_error )
+	m_tolError( tol_error ),
+	m_log( log )
 {
 }
 
@@ -37,7 +38,12 @@ void ConjugateResiduals::operator()
 	VectorXf r = b;
 	
 	VectorXf p = r;
-	
+	if( m_log )
+	{
+		residuals.push_back( r );
+		searchDirections.push_back( p );
+	}
+
 	VectorXf Ap( N );
 	A.multVector( p, Ap );
 
@@ -57,7 +63,7 @@ void ConjugateResiduals::operator()
 		r -= alpha * Ap;
 
 		float rNorm2 = r.squaredNorm();
-		std::cerr << i << ": " << sqrt( rNorm2 ) << " / " << sqrt( threshold ) << std::endl;
+		std::cerr << i << ": " << sqrt( rNorm2 ) << " / " << sqrt( threshold ) << "  " << alpha << std::endl;
 		if( rNorm2 < threshold )
 		{
 			return;
@@ -72,6 +78,13 @@ void ConjugateResiduals::operator()
 		
 		Ap = Ar + beta * Ap;
 		p = r + beta * p;
+		
+		if( m_log )
+		{
+			residuals.push_back( r );
+			searchDirections.push_back( p );
+		}
+		
 		++i;
 	}
 

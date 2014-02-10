@@ -10,17 +10,21 @@ class ConjugateResiduals : public LinearSolver
 {
 public:
 	
-	ConjugateResiduals( int iters, float tol_error );
+	ConjugateResiduals( int iters, float tol_error, bool log=false );
 
 	virtual void operator()(
 		const ProceduralMatrix& mat,
 		const Eigen::VectorXf& rhs,
 		Eigen::VectorXf& x ) const;
 
+	mutable std::vector<Eigen::VectorXf> residuals;
+	mutable std::vector<Eigen::VectorXf> searchDirections;
+
 private:
 
 	int m_iters;
 	float m_tolError;
+	bool m_log;
 
 };
 
