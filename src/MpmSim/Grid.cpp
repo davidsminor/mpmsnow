@@ -27,7 +27,7 @@ using namespace MpmSim;
 #define COULOMBFRICTION 0.5f
 
 Grid::GridSplatter::GridSplatter(
-	const Grid* g,
+	const Grid& g,
 	const ParticleData& d,
 	const ParticleData::PartitionList& partition,
 	Eigen::VectorXf& result,
@@ -47,7 +47,7 @@ void Grid::GridSplatter::operator()(const tbb::blocked_range<int> &r) const
 	for (int i = r.begin(); i != r.end(); ++i)
 	{
 		// splat all the particles in this voxel:
-		splat( m_partition[i].first, m_partition[i].second, *m_g, m_d, m_result, m_args );
+		splat( m_partition[i].first, m_partition[i].second, m_g, m_d, m_result, m_args );
 	}
 }
 

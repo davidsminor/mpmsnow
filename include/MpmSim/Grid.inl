@@ -13,7 +13,7 @@ void Grid::splat( const ParticleData& d, Eigen::VectorXf& result, const void* ar
 	for( int i=0; i < 8; ++i )
 	{
 		const ParticleData::PartitionList& partition = d.processingPartitions[ i&1 ][ (i&2) / 2][ (i&4) / 4];
-		Splatter s( this, d, partition, result, args );
+		Splatter s( *this, d, partition, result, args );
 		tbb::parallel_for( tbb::blocked_range<int>(0, (int)partition.size()), s );
 	}
 }

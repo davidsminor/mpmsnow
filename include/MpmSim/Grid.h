@@ -13,7 +13,7 @@
 #include <Eigen/Dense>
 
 #define DECLARE_GRIDSPLATTER_CONSTRUCTOR( DerivedClass ) \
-	DerivedClass( const Grid* g, const ParticleData& d, const ParticleData::PartitionList& partition, Eigen::VectorXf& result, const void* args ) \
+	DerivedClass( const Grid& g, const ParticleData& d, const ParticleData::PartitionList& partition, Eigen::VectorXf& result, const void* args ) \
 		: Grid::GridSplatter( g, d, partition, result, args ) {}
 
 namespace MpmSim
@@ -57,7 +57,7 @@ public:
 	{
 		public:
 			GridSplatter(
-				const Grid* g,
+				const Grid& g,
 				const ParticleData& d,
 				const ParticleData::PartitionList& partition,
 				Eigen::VectorXf& result,
@@ -77,7 +77,7 @@ public:
 			
 		private:
 
-			const Grid* m_g;
+			const Grid& m_g;
 			const ParticleData& m_d;
 			const ParticleData::PartitionList& m_partition;
 			mutable Eigen::VectorXf& m_result;
