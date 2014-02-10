@@ -82,11 +82,11 @@ void SnowConstitutiveModel::updateDeformation( ParticleData& d ) const
 void SnowConstitutiveModel::initParticles( ParticleData& d ) const
 {
 	size_t nParticles = d.particleX.size();
-	d.particleFinvTrans.resize( nParticles, Eigen::Matrix3f::Zero() );
+	d.particleFinvTrans.resize( nParticles, Eigen::Matrix3f::Identity() );
 	d.particleJ.resize( nParticles, 1.0f );
-	d.particleFplastic.resize( nParticles, Eigen::Matrix3f::Zero() );
-	d.particleR.resize( nParticles, Eigen::Matrix3f::Zero() );
-	d.particleS.resize( nParticles, Eigen::Matrix3f::Zero() );
+	d.particleFplastic.resize( nParticles, Eigen::Matrix3f::Identity() );
+	d.particleR.resize( nParticles, Eigen::Matrix3f::Identity() );
+	d.particleS.resize( nParticles, Eigen::Matrix3f::Identity() );
 	d.particleMu.resize( nParticles, m_mu );
 	d.particleLambda.resize( nParticles, m_lambda );
 }
