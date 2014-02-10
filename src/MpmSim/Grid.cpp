@@ -152,7 +152,6 @@ Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFun
 	m_gridMasses.setZero();
 	
 	splat< MassSplatter >( d, m_gridMasses );
-	std::cerr << m_gridMasses.minCoeff() << "/" << m_gridMasses.maxCoeff() << std::endl;
 
 	// grid masses can end up less than zero due to numerical issues in the shape functions, so clamp 'em:
 	for( int i=0; i < m_gridMasses.size(); ++i )
@@ -168,7 +167,6 @@ Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFun
 	m_gridVelocities.setZero();
 	
 	splat< VelocitySplatter >( d, m_gridVelocities );
-	std::cerr << m_gridVelocities.minCoeff() << "/" << m_gridVelocities.maxCoeff() << std::endl;
 	
 }
 
@@ -337,9 +335,6 @@ void Grid::calculateForceDifferentials( const ParticleData& d, const VectorXf& d
 {
 	df.setZero();
 	splat< ForceDifferentialSplatter >( d, df, &dx );
-	
-	std::cerr << "calculateForceDifferentials" << std::endl;
-	std::cerr << df.minCoeff() << "/" << df.maxCoeff() << std::endl;
 }
 
 
@@ -397,9 +392,6 @@ void Grid::calculateForces( const ParticleData& d, VectorXf& forces ) const
 	
 	// add on internal forces:
 	splat< ForceSplatter >( d, forces );
-	std::cerr << "calculateForces" << std::endl;
-	std::cerr << forces.minCoeff() << "/" << forces.maxCoeff() << std::endl;
-
 }
 
 float Grid::calculateEnergy( const ParticleData& d ) const
