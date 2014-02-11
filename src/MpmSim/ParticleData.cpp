@@ -1,5 +1,6 @@
 #include "MpmSim/ParticleData.h"
 #include <algorithm>
+#include <stdexcept>
 
 using namespace MpmSim;
 using namespace Eigen;
@@ -26,7 +27,7 @@ ParticleData::ParticleData( const std::vector<Eigen::Vector3f>& x, const std::ve
 	computeProcessingPartitions();
 
 	particleV.resize( x.size(), Eigen::Vector3f::Zero() );
-	particleF.resize( x.size(), Eigen::Matrix3f::Zero() );
+	particleF.resize( x.size(), Eigen::Matrix3f::Identity() );
 	
 }
 
@@ -99,7 +100,7 @@ void ParticleData::computeProcessingPartitions()
 	Eigen::Vector3i currentVoxel;
 	IndexIterator begin = spatialIndex.begin();
 	IndexIterator end = spatialIndex.end();
-	IndexIterator* partitionEnd;
+	IndexIterator* partitionEnd = 0;
 	for( IndexIterator it = begin; it != end; ++it )
 	{
 		Eigen::Vector3f x = particleX[ *it ] / ( 4 * gridSize );

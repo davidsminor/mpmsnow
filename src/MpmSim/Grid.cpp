@@ -293,7 +293,6 @@ public:
 		ShapeFunction::PointToGridIterator& shIt = g.pointIterator();
 		Vector3i particleCell;
 		Vector3f weightGrad;
-		const Eigen::VectorXf& masses = g.masses();
 		for( ParticleData::IndexIterator it = begin; it != end; ++it )
 		{
 			int p = *it;
@@ -379,10 +378,6 @@ public:
 
 void Grid::calculateForces( const ParticleData& d, VectorXf& forces ) const
 {
-
-	ShapeFunction::PointToGridIterator& shIt = pointIterator();
-	Vector3i particleCell;
-	Vector3f weightGrad;
 
 	// start with gravity:
 	for( int i=0; i < m_gridMasses.size(); ++i )
@@ -714,7 +709,7 @@ void Grid::updateDeformationGradients( ParticleData& d )
 	m_constitutiveModel.updateDeformation( d );
 }
 
-inline int Grid::coordsToIndex( const Eigen::Vector3i& p ) const
+int Grid::coordsToIndex( const Eigen::Vector3i& p ) const
 {
 	return p[0] + m_nx * ( p[1] + m_ny * p[2] );
 }

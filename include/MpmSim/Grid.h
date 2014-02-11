@@ -63,7 +63,9 @@ public:
 				Eigen::VectorXf& result,
 				const void* args
 			);
-
+			
+			virtual ~GridSplatter() {}
+			
 			void operator()(const tbb::blocked_range<int> &r) const;
 		
 		protected:
@@ -88,7 +90,7 @@ public:
 	template <class Splatter>
 	void splat( const ParticleData& d, Eigen::VectorXf& result, const void* args = 0 ) const;
 
-	inline int coordsToIndex( const Eigen::Vector3i& pos ) const;
+	int coordsToIndex( const Eigen::Vector3i& pos ) const;
 
 	void calculateForces( const ParticleData& d, Eigen::VectorXf& forces ) const;
 	void calculateForceDifferentials( const ParticleData& d, const Eigen::VectorXf& dx, Eigen::VectorXf& df ) const;

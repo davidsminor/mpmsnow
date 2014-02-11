@@ -21,4 +21,4 @@ void Grid::splat( const ParticleData& d, Eigen::VectorXf& result, const void* ar
 
 } //namespace MpmSim
 
-#endif MPMSIM_GRID_INL
+#endif // MPMSIM_GRID_INL
