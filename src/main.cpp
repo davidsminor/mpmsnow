@@ -24,7 +24,6 @@
 #include "MpmSim/SnowConstitutiveModel.h"
 
 #include "MpmSim/CollisionPlane.h"
-#include "MpmSim/ConjugateGradients.h"
 #include "MpmSim/ConjugateResiduals.h"
 
 using namespace Eigen;
@@ -313,7 +312,7 @@ void display()
 	glDisable( GL_LIGHTING );
 	
 	// update grid velocities using internal stresses...
-	g.updateGridVelocities( *g_particles, g_collisionObjects, ConjugateGradients( 60, 1.e-4 ) );
+	g.updateGridVelocities( *g_particles, g_collisionObjects, ConjugateResiduals( 120, 1.e-4 ) );
 	
 	// transfer the grid velocities back onto the particles:
 	g.updateParticleVelocities( *g_particles );
