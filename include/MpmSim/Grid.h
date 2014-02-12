@@ -43,7 +43,10 @@ public:
 	void outputDiagnostics( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const;
 	
 	const Eigen::VectorXf& masses() const;
-	const Eigen::VectorXf& velocities() const;
+
+	const Eigen::VectorXf& getVelocities() const;
+	void setVelocities( const Eigen::VectorXf& );
+
 	const ConstitutiveModel& constitutiveModel() const;
 
 	float gridH() const;
@@ -92,7 +95,13 @@ public:
 
 	int coordsToIndex( const Eigen::Vector3i& pos ) const;
 
+	// energy stored in the grid. Only used for testing...
+	float calculateEnergy( const ParticleData& d ) const;
+	
+	// forces (due to energy derivatives)
 	void calculateForces( const ParticleData& d, Eigen::VectorXf& forces ) const;
+
+	// computes how the forces change when you perturb the grid nodes by dx:
 	void calculateForceDifferentials( const ParticleData& d, const Eigen::VectorXf& dx, Eigen::VectorXf& df ) const;
 	
 private:
@@ -100,7 +109,6 @@ private:
 	friend class ImplicitUpdateMatrix;
 
 	// testing
-	float calculateEnergy( const ParticleData& d ) const;
 	
 	static inline void minMax( float x, float& min, float& max );
 	inline int fixDim( float& min, float& max ) const;

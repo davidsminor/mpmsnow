@@ -175,9 +175,13 @@ const Eigen::VectorXf& Grid::masses() const
 	return m_gridMasses;
 }
 
-const Eigen::VectorXf& Grid::velocities() const
+const Eigen::VectorXf& Grid::getVelocities() const
 {
 	return m_gridVelocities;
+}
+void Grid::setVelocities( const Eigen::VectorXf& velocities )
+{
+	m_gridVelocities = velocities;
 }
 
 const ConstitutiveModel& Grid::constitutiveModel() const
