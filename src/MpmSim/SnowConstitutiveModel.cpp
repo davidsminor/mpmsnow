@@ -35,27 +35,33 @@ void SnowConstitutiveModel::updateDeformation( ParticleData& d ) const
 		// apply plastic yeild:
 		Matrix3f diagonalMat = Matrix3f::Zero();
 		Matrix3f diagonalMatInv = Matrix3f::Zero();
+		bool modifiedSVD = false;
 		for( int i=0; i < 3; ++i )
 		{
 			// stretching:
 			if( singularValues[i] > 1 + m_tensileStrength )
 			{
+				modifiedSVD = true;
 				singularValues[i] = 1 + m_tensileStrength;
 			}
 
 			// compression:
 			if( singularValues[i] < 1 - m_compressiveStrength )
 			{
+				modifiedSVD = true;
 				singularValues[i] = 1 - m_compressiveStrength;
 			}
 			diagonalMat(i,i) = singularValues[i];
 			diagonalMatInv(i,i) = 1.0f / singularValues[i];
 		}
 		
-		Matrix3f FNplusOne = d.particleF[p] * d.particleFplastic[p];
-		
-		d.particleFplastic[p] = svd.matrixV() * diagonalMatInv * svd.matrixU().transpose() * FNplusOne;
-		d.particleF[p] = svd.matrixU() * diagonalMat * svd.matrixV().transpose();
+		if( modifiedSVD )
+		{
+			Matrix3f FNplusOne = d.particleF[p] * d.particleFplastic[p];
+			d.particleFplastic[p] = svd.matrixV() * diagonalMatInv * svd.matrixU().transpose() * FNplusOne;
+			d.particleF[p] = svd.matrixU() * diagonalMat * svd.matrixV().transpose();
+		}
+
 		d.particleFinvTrans[p] = svd.matrixU() * diagonalMatInv * svd.matrixV().transpose();
 		d.particleR[p] = svd.matrixU() * svd.matrixV().transpose();
 		
