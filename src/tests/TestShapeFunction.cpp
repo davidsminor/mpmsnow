@@ -86,17 +86,17 @@ void testShapeFunction( const ShapeFunction& shapeFunction )
 		Eigen::Vector3f weightGrad;
 		it.dw( weightGrad );
 
-		float dwx = (
+		float dwx = -(
 			evaluateShapeFunction( shapeFunction, particlePos, gridH, worldPos + Eigen::Vector3f( dx, 0, 0 ) ) -
 			evaluateShapeFunction( shapeFunction, particlePos, gridH, worldPos + Eigen::Vector3f( -dx, 0, 0 ) )
 		) / ( 2 * dx );
 
-		float dwy = (
+		float dwy = -(
 			evaluateShapeFunction( shapeFunction, particlePos, gridH, worldPos + Eigen::Vector3f( 0, dx, 0 ) ) -
 			evaluateShapeFunction( shapeFunction, particlePos, gridH, worldPos + Eigen::Vector3f( 0, -dx, 0 ) )
 		) / ( 2 * dx );
 
-		float dwz = (
+		float dwz = -(
 			evaluateShapeFunction( shapeFunction, particlePos, gridH, worldPos + Eigen::Vector3f( 0, 0, dx ) ) -
 			evaluateShapeFunction( shapeFunction, particlePos, gridH, worldPos + Eigen::Vector3f( 0, 0, -dx ) )
 		) / ( 2 * dx );

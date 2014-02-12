@@ -88,9 +88,9 @@ void ShapeFunction::PointToGridIterator::dw( Eigen::Vector3f& g ) const
 	{
 		throw std::runtime_error( "ShapeFunction::PointToGridIterator::dw(): derivatives not computed!" );
 	}
-	g[0] = m_dw[0][ m_pos[0] ] *  m_w[1][ m_pos[1] ] *  m_w[2][ m_pos[2] ];
-	g[1] =  m_w[0][ m_pos[0] ] * m_dw[1][ m_pos[1] ] *  m_w[2][ m_pos[2] ];
-	g[2] =  m_w[0][ m_pos[0] ] *  m_w[1][ m_pos[1] ] * m_dw[2][ m_pos[2] ];
+	g[0] = -m_dw[0][ m_pos[0] ] *  m_w[1][ m_pos[1] ] *  m_w[2][ m_pos[2] ];
+	g[1] = - m_w[0][ m_pos[0] ] * m_dw[1][ m_pos[1] ] *  m_w[2][ m_pos[2] ];
+	g[2] = - m_w[0][ m_pos[0] ] *  m_w[1][ m_pos[1] ] * m_dw[2][ m_pos[2] ];
 }
 
 float ShapeFunction::PointToGridIterator::w() const
