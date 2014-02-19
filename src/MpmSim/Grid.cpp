@@ -252,17 +252,26 @@ void Grid::updateParticleVelocities( ParticleData& d )
 {
 	ShapeFunction::PointToGridIterator& shIt = pointIterator();
 	Vector3i particleCell;
-
-	// this is, like, totally doing things FLIP style. The paper recommends a combination of FLIP and PIC...
+	
+	const float alpha = 0.95f;
+	
+	// blend FLIP and PIC, as pure FLIP allows spurious particle motion
+	// inside the cells:
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
+		Vector3f vFlip = d.particleV[p];
+		Vector3f vPic = Vector3f::Zero();
 		shIt.initialize( d.particleX[p] );
 		do
 		{
+			// soo... should I be interpolating momentum here instead? Need to experiment...
 			shIt.gridPos( particleCell );
 			int idx = coordsToIndex( particleCell );
-			d.particleV[p] += shIt.w() * ( m_gridVelocities.segment<3>( 3 * idx ) - m_prevGridVelocities.segment<3>( 3 * idx ) );
+			float w = shIt.w();
+			vFlip += w * ( m_gridVelocities.segment<3>( 3 * idx ) - m_prevGridVelocities.segment<3>( 3 * idx ) );
+			vPic += w * m_gridVelocities.segment<3>( 3 * idx );
 		} while( shIt.next() );
+		d.particleV[p] = alpha * vFlip + ( 1.0f - alpha ) * vPic;
 	}
 }
 
