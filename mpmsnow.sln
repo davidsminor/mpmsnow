@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "simTest", "simTest.vcproj",
 		{4AB397A0-5938-47D3-9FBB-B15A8D2AAF7C} = {4AB397A0-5938-47D3-9FBB-B15A8D2AAF7C}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "houdiniPlugin", "houdiniPlugin.vcproj", "{B917BE05-B5B0-435F-A303-C6FA52D31567}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -31,6 +33,10 @@ Global
 		{BB3AEE03-BA31-4940-9DCB-3FDA13B9FCC5}.Debug|Win32.Build.0 = Debug|Win32
 		{BB3AEE03-BA31-4940-9DCB-3FDA13B9FCC5}.Release|Win32.ActiveCfg = Release|Win32
 		{BB3AEE03-BA31-4940-9DCB-3FDA13B9FCC5}.Release|Win32.Build.0 = Release|Win32
+		{B917BE05-B5B0-435F-A303-C6FA52D31567}.Debug|Win32.ActiveCfg = Debug|Win32
+		{B917BE05-B5B0-435F-A303-C6FA52D31567}.Debug|Win32.Build.0 = Debug|Win32
+		{B917BE05-B5B0-435F-A303-C6FA52D31567}.Release|Win32.ActiveCfg = Release|Win32
+		{B917BE05-B5B0-435F-A303-C6FA52D31567}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
