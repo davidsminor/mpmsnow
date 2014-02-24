@@ -12,3 +12,5 @@
 *.lib
 *.dll
 *.ilk
+*.exp
+*.res
