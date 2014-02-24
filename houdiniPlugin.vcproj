@@ -65,7 +65,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="mpmsim.lib"
 				LinkIncremental="2"
+				AdditionalLibraryDirectories="./$(ConfigurationName)"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
@@ -141,9 +143,10 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="&quot;C:\Program Files (x86)\Side Effects Software\Houdini 13.0.314\custom\houdini\dsolib\*.a&quot; &#x0D;&#x0A;&quot;C:\Program Files (x86)\Side Effects Software\Houdini 13.0.314\custom\houdini\dsolib\*.lib&quot;"
+				AdditionalDependencies="mpmsim.lib"
 				OutputFile="$(OutDir)$(ProjectName)_$(ConfigurationName)_13.0.314.dll"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="C:\Program Files (x86)\Side Effects Software\Houdini 13.0.314\custom\houdini\dsolib"
+				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\Side Effects Software\Houdini 13.0.314\custom\houdini\dsolib&quot;;&quot;./$(ConfigurationName)&quot;"
 				GenerateManifest="false"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(OutDir)$(TargetName).pdb"

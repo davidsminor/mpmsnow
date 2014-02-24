@@ -1,6 +1,4 @@
 
-#define M_PI 3.14159265359
-
 #include <SYS/SYS_Math.h>
 #include <UT/UT_DSOVersion.h>
 #include <UT/UT_Matrix3.h>
@@ -11,8 +9,10 @@
 #include <OP/OP_Operator.h>
 #include <OP/OP_OperatorTable.h>
 #include <SOP/SOP_Guide.h>
+
 #include "houdiniPlugin/SOP_MPMSim.h"
 
+#include "MpmSim/Grid.h"
 
 void
 newSopOperator(OP_OperatorTable *table)

@@ -14,6 +14,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "simTest", "simTest.vcproj",
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "houdiniPlugin", "houdiniPlugin.vcproj", "{B917BE05-B5B0-435F-A303-C6FA52D31567}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4AB397A0-5938-47D3-9FBB-B15A8D2AAF7C} = {4AB397A0-5938-47D3-9FBB-B15A8D2AAF7C}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

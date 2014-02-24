@@ -3,6 +3,8 @@
 
 #include <SOP/SOP_Node.h>
 
+#include "MpmSim/ParticleData.h"
+
 class SOP_MPMSim : public SOP_Node
 {
 public:
