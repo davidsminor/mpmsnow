@@ -139,7 +139,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				AdditionalDependencies="tbb.lib"
+				AdditionalDependencies="tbb.lib opengl32.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
