@@ -148,18 +148,20 @@ static void testForces()
 	std::vector<float> masses;
 	positions.push_back( Vector3f( 0.1f,0.2f,0.f ) );
 	masses.push_back( 1.0f );
-	for( int i=0; i < 500; ++i )
+	for( int i=0; i < 4; ++i )
 	{
-		float xr = ( static_cast <float> (rand()) / static_cast <float> (RAND_MAX) - 0.5f );
-		float yr = ( static_cast <float> (rand()) / static_cast <float> (RAND_MAX) - 0.5f );
-		float zr = ( static_cast <float> (rand()) / static_cast <float> (RAND_MAX) - 0.5f );
-		
-		positions.push_back( Vector3f( xr, yr, zr ) );
-		masses.push_back( 1.0f );
+		for( int j=0; j < 4; ++j )
+		{
+			for( int k=0; k < 4; ++k )
+			{
+				positions.push_back( Vector3f( float( i ) / 3 - 0.5f, float( j ) / 3 - 0.5f, float( k ) / 3 - 0.5f ) );
+				masses.push_back( 1.0f );
+			}
+		}
 	}
-	
+
 	// create particle data:
-	const float gridSize = 0.2f;
+	const float gridSize = 0.5f;
 	ParticleData d( positions, masses, gridSize );
 	
 	// give it a sinusoidal velocity field and displace it a bit:
@@ -229,9 +231,16 @@ static void testForces()
 	// calculating the energy in the final state (in which one of the grid nodes
 	// will have moved a distance delta along one of the axes), and using the result
 	// to calculate a finite difference derivative!
-	float delta = 0.1f;
-	for( int idx = m.size()/3; idx < m.size(); ++idx )
+	float delta = 0.05f;
+	float squaredError(0);
+	float squaredForce(0);
+	int count(0);
+	for( int idx = 0; idx < m.size(); ++idx )
 	{
+		if( m[idx] < 1 )
+		{
+			continue;
+		}
 		for( size_t dim = 0; dim < 3; ++dim )
 		{
 			gridVelocities.setZero();
@@ -252,12 +261,14 @@ static void testForces()
 			
 			// so force = -dE/dX = ( e0 - e ) / delta
 			float f = ( eMinus - ePlus ) / ( 2 * delta );
+			squaredError += ( f - forces( 3 * idx + dim ) ) * ( f - forces( 3 * idx + dim ) );
+			squaredForce += forces( 3 * idx + dim ) * forces( 3 * idx + dim );
+			++count;
 			std::cerr << f << " == " << forces( 3 * idx + dim ) << "?  " << (3 * idx + dim) << " of " << forces.size() << std::endl;
 		}
-		break;
 	}
-
-	std::cerr << std::endl;
+	
+	assert( squaredError / squaredForce < 1.e-4 );
 	
 }
 
@@ -266,7 +277,7 @@ void testGrid()
 {
 	testMassSplatting();
 	testDeformationGradients();
-	//testForces();
+	testForces();
 }
 
 }
