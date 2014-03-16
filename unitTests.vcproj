@@ -378,6 +378,10 @@
 					>
 				</File>
 				<File
+					RelativePath=".\src\tests\TestMultiGridSolver.cpp"
+					>
+				</File>
+				<File
 					RelativePath=".\src\tests\TestParticleData.cpp"
 					>
 				</File>
@@ -400,6 +404,10 @@
 			</File>
 			<File
 				RelativePath=".\include\tests\TestGrid.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\tests\TestMultiGridSolver.h"
 				>
 			</File>
 			<File
