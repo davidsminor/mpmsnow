@@ -129,8 +129,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				AdditionalIncludeDirectories="&quot;C:\ilmbase-1.0.1\Imath&quot;;&quot;$(CUDA_PATH)/include&quot;;./;./include;../../common/GLEW/include"
-				PreprocessorDefinitions="WIN32;_CONSOLE"
-				RuntimeLibrary="0"
+				PreprocessorDefinitions="WIN32;_CONSOLE;NDEBUG"
+				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"

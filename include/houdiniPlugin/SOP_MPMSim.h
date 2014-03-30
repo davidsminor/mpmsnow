@@ -4,6 +4,7 @@
 #include <SOP/SOP_Node.h>
 
 #include "MpmSim/ParticleData.h"
+#include "MpmSim/SnowConstitutiveModel.h"
 
 class SOP_MPMSim : public SOP_Node
 {
@@ -26,10 +27,17 @@ protected:
     virtual OP_ERROR		 cookMySop(OP_Context &context);
 
 private:
-    void	getGroups(UT_String &str){ evalString(str, "group", 0, 0); }
-    fpreal	AMP(fpreal t)		{ return evalFloat("amp", 0, t); }
-    fpreal	PHASE(fpreal t)		{ return evalFloat("phase", 0, t); }
-    fpreal	PERIOD(fpreal t)	{ return evalFloat("period", 0, t); }
+    fpreal	gridSize(fpreal t)		{ return evalFloat("gridSize", 0, t); }
+    int	startFrame(fpreal t)	{ return evalInt("startFrame", 0, t); }
+    int	subSteps(fpreal t)	{ return evalInt("subSteps", 0, t); }
+	float tolerance(fpreal t)	{ return evalFloat("tolerance", 0, t); }
+	int maxIterations(fpreal t)	{ return evalInt("maxIterations", 0, t); }
+	
+	fpreal m_prevCookTime;
+
+	OP_ERROR createParticles(OP_Context &context);
+	std::auto_ptr< MpmSim::ParticleData > m_particleData;
+	std::auto_ptr< MpmSim::SnowConstitutiveModel > m_snowModel;
 
     /// This variable is used together with the call to the "checkInputChanged"
     /// routine to notify the handles (if any) if the input has changed.

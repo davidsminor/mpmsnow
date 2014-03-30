@@ -148,6 +148,7 @@
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\Side Effects Software\Houdini 13.0.314\custom\houdini\dsolib&quot;;&quot;./$(ConfigurationName)&quot;"
 				GenerateManifest="false"
+				IgnoreDefaultLibraryNames="LIBCMT"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(OutDir)$(TargetName).pdb"
 				SubSystem="2"
@@ -192,6 +193,10 @@
 				RelativePath=".\src\houdiniPlugin\SOP_MPMSim.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\src\houdiniPlugin\VDBCollisionObject.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -200,6 +205,10 @@
 			>
 			<File
 				RelativePath=".\include\houdiniPlugin\SOP_MPMSim.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\houdiniPlugin\VDBCollisionObject.h"
 				>
 			</File>
 		</Filter>
