@@ -2,6 +2,8 @@
 
 #include "MpmSim/Grid.h"
 #include "MpmSim/SnowConstitutiveModel.h"
+#include "MpmSim/ConjugateResiduals.h"
+#include "MpmSim/ConjugateGradients.h"
 #include "MpmSim/CubicBsplineShapeFunction.h"
 
 #include <iostream>
@@ -272,12 +274,97 @@ static void testForces()
 	
 }
 
+void testImplicitUpdate()
+{
+	// create some particles:
+	std::vector<Vector3f> positions;
+	std::vector<float> masses;
+	positions.push_back( Vector3f( 0.1f,0.2f,0.f ) );
+	masses.push_back( 1.0f );
+	for( int i=0; i < 4; ++i )
+	{
+		for( int j=0; j < 4; ++j )
+		{
+			for( int k=0; k < 4; ++k )
+			{
+				positions.push_back( Vector3f( float( i ) / 3 - 0.5f, float( j ) / 3 - 0.5f, float( k ) / 3 - 0.5f ) );
+				masses.push_back( 1.0f );
+			}
+		}
+	}
+
+	// create particle data:
+	const float gridSize = 0.5f;
+	ParticleData d( positions, masses, gridSize );
+	
+	// give it a sinusoidal velocity field and displace it a bit:
+	for( size_t p=0; p < d.particleX.size(); ++p )
+	{
+		d.particleV[p][0] = 0.01f*sin( 6 * d.particleX[p][0] );
+		d.particleV[p][1] = 0.01f*sin( 6 * d.particleX[p][1] );
+		d.particleV[p][2] = 0.01f*sin( 6 * d.particleX[p][2] );
+	}
+	
+	CubicBsplineShapeFunction shapeFunction;
+	SnowConstitutiveModel snowModel(
+		1.4e5f, // young's modulus
+		0.2f, // poisson ratio
+		0, // hardening
+		100000.0f, // compressive strength
+		100000.0f	// tensile strength
+	);
+	snowModel.initParticles( d );
+	
+	const float timeStep = 0.005f;
+	Grid g( d, timeStep, shapeFunction, snowModel );
+
+	g.computeDensities( d );
+	d.particleVolumes.resize( d.particleX.size() );
+	for( size_t p = 0; p < d.particleDensities.size(); ++p )
+	{
+		d.particleVolumes[p] = d.particleM[p] / d.particleDensities[p];
+	}
+	
+	// save grid velocities:
+	VectorXf initialGridVelocities( g.getVelocities().size() );
+	for( int i=0; i < g.getVelocities().size(); ++i )
+	{
+		initialGridVelocities[i] = g.getVelocities()[i];
+	}
+
+	// do an implicit update:
+	std::vector<CollisionObject*> collisionObjects;
+	g.updateGridVelocities( d, collisionObjects, ConjugateResiduals( 500, 1.e-7 ) );
+
+	// transfer the grid velocities back onto the particles:
+	g.updateParticleVelocities( d );
+	
+	// update particle deformation gradients:
+	g.updateDeformationGradients( d );
+	
+	// calculate da forces brah, and do a backwards explicit update!
+	VectorXf forces = VectorXf::Zero( initialGridVelocities.size() );
+	g.calculateForces( d, forces );
+	
+	const VectorXf& gridVelocities = g.getVelocities();
+	const VectorXf& gridMasses = g.masses();
+	for( int i=0; i < gridMasses.size(); ++i )
+	{
+		if( gridMasses[i] > 0 )
+		{
+			std::cerr << initialGridVelocities.segment<3>( 3*i ).transpose() << " ==  ";
+			std::cerr << ( gridVelocities.segment<3>( 3*i ) - ( timeStep / gridMasses[i] ) * forces.segment<3>( 3*i ) ).transpose() << "?" << std::endl;
+		}
+	}
+	std::cerr << "dun" << std::endl;
+}
 
 void testGrid()
 {
 	testMassSplatting();
 	testDeformationGradients();
 	testForces();
+	testImplicitUpdate();
 }
 
 }
