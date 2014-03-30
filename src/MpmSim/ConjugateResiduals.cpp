@@ -35,9 +35,14 @@ void ConjugateResiduals::operator()
 	
 	const int N = (int)b.size();
 	
-	VectorXf r = b;
+	VectorXf r(N);
+	VectorXf p(N);
+	for( int i=0; i < b.size(); ++i )
+	{
+		r[i] = b[i];
+		p[i] = b[i];
+	}
 	
-	VectorXf p = r;
 	if( m_log )
 	{
 		residuals.push_back( r );
@@ -63,7 +68,7 @@ void ConjugateResiduals::operator()
 		r -= alpha * Ap;
 
 		float rNorm2 = r.squaredNorm();
-		std::cerr << i << ": " << sqrt( rNorm2 ) << " / " << sqrt( threshold ) << "  " << alpha << std::endl;
+		std::cerr << i << ": " << Ar.norm() << "," << sqrt( rNorm2 ) << " / " << sqrt( threshold ) << "  " << alpha << std::endl;
 		if( rNorm2 < threshold )
 		{
 			return;

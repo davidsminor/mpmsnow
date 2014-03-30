@@ -138,6 +138,16 @@ Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFun
 		minMax( d.particleX[i][2], m_zmin, m_zmax );
 	}
 	
+	Vector3f averageV = Vector3f::Zero();
+	for( int i=0; i < d.particleV.size(); ++i )
+	{
+		averageV += d.particleV[i];
+	}
+	averageV /= d.particleV.size();
+
+	std::cerr << "average v: " << averageV.transpose() << std::endl;
+	std::cerr << "grid bbox: " << m_xmin << ", " << m_ymin << ", " << m_zmin << " --> " << m_xmax << ", " << m_ymax << ", " << m_zmax << std::endl;
+
 	// calculate grid dimensions and quantize bounding box:
 	m_nx = fixDim( m_xmin, m_xmax );
 	m_ny = fixDim( m_ymin, m_ymax );
@@ -254,6 +264,16 @@ void Grid::updateParticleVelocities( ParticleData& d )
 	Vector3i particleCell;
 	
 	const float alpha = 0.95f;
+	float maxv = 0;
+	for( size_t p = 0; p < m_gridVelocities.size() / 3; ++p )
+	{
+		float v = m_gridVelocities.segment<3>(p*3).norm();
+		if( v > maxv )
+		{
+			v = maxv;
+		}
+	}
+	std::cerr << "updateParticleVelocities: " << maxv << std::endl;
 	
 	// blend FLIP and PIC, as pure FLIP allows spurious particle motion
 	// inside the cells:
@@ -683,13 +703,27 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 		ImplicitUpdateMatrix( d, *this, collisionObjects ),
 		forwardMomenta,
 		m_gridVelocities );
-	
+	/*
+	float maxMass = 0;
+	for( int i=0; i < m_gridMasses.size(); ++i )
+	{
+		if( m_gridMasses[i] > maxMass )
+		{
+			maxMass = m_gridMasses[i];
+		}
+	}
+	*/
+
 	// more funky remapping to make the solver happy:
 	for( int i=0; i < m_gridMasses.size(); ++i )
 	{
-		if( m_gridMasses[i] != 0 )
+		if( m_gridMasses[i] > 1.e-8 )
 		{
 			m_gridVelocities.segment<3>( 3 * i ) /= sqrt( m_gridMasses[i] );
+		}
+		else
+		{
+			m_gridVelocities.segment<3>( 3 * i ).setZero();
 		}
 	}
 }
