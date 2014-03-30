@@ -4,6 +4,7 @@
 #include <UT/UT_Matrix3.h>
 #include <UT/UT_Matrix4.h>
 #include <UT/UT_Interrupt.h>
+#include <UT/UT_VDBUtils.h>
 #include <GU/GU_Detail.h>
 #include <GU/GU_PrimPart.h>
 #include <GEO/GEO_PrimVDB.h>
@@ -98,27 +99,50 @@ SOP_MPMSim::createParticles(OP_Context &context)
 	}
 	
 	const GU_Detail *initialStateGdp = inputGeo(0);
-	const GEO_PrimVDB *vdb;
+	const GEO_PrimVDB *pVdb = 0;
+	const GEO_PrimVDB *vVdb = 0;
+	int nprims = initialStateGdp->primitives().entries();
 	std::cerr << "input prims: " <<initialStateGdp->primitives().entries() << std::endl;
-	if( initialStateGdp->primitives().entries() == 1 )
+	for( int i=0; i < nprims; ++i )
 	{
-        const GEO_Primitive *prim = initialStateGdp->primitives().entry(0);
+        const GEO_Primitive *prim = initialStateGdp->primitives().entry(i);
 		if( !prim )
 		{
 			std::cerr << "prim is null?" << std::endl;
 		}
-		else
+
+        const GEO_PrimVDB* vdb = dynamic_cast<const GEO_PrimVDB *>(prim);
+		std::cerr << vdb->getGridName() << std::endl;
+		switch( vdb->getStorageType() )
 		{
-			std::cerr << "yup - got prim 0" << std::endl;
+			case UT_VDB_INVALID: std::cerr << "UT_VDB_INVALID" << std::endl; break;
+			case UT_VDB_FLOAT: std::cerr << "UT_VDB_FLOAT" << std::endl; break;
+			case UT_VDB_DOUBLE: std::cerr << "UT_VDB_DOUBLE" << std::endl; break;
+			case UT_VDB_INT32: std::cerr << "UT_VDB_INT32" << std::endl; break;
+			case UT_VDB_INT64: std::cerr << "UT_VDB_INT64" << std::endl; break;
+			case UT_VDB_BOOL: std::cerr << "UT_VDB_BOOL" << std::endl; break;
+			case UT_VDB_VEC3F: std::cerr << "UT_VDB_VEC3F" << std::endl; break;
+			case UT_VDB_VEC3D: std::cerr << "UT_VDB_VEC3D" << std::endl; break;
+			case UT_VDB_VEC3I: std::cerr << "UT_VDB_VEC3I" << std::endl; break;
 		}
-        vdb = dynamic_cast<const GEO_PrimVDB *>(prim);
+
+		if( vdb->getGridName() == std::string("surface") && vdb->getStorageType() == UT_VDB_FLOAT )
+		{
+			std::cerr << "got surface vdb" << std::endl;
+			pVdb = vdb;
+		}
+		else if( vdb->getGridName() == std::string("v") && vdb->getStorageType() == UT_VDB_VEC3F )
+		{
+			std::cerr << "got velocity vdb" << std::endl;
+			vVdb = vdb;
+		}
 	}
 	
-	if( vdb )
+	if( pVdb )
 	{
 		float h = gridSize( context.getTime() ) / 2;
 		UT_BoundingBox bbox;
-		vdb->getBBox( &bbox );
+		pVdb->getBBox( &bbox );
 		
 		int nx = (int)ceil( bbox.sizeX() / h );
 		int ny = (int)ceil( bbox.sizeY() / h );
@@ -133,7 +157,7 @@ SOP_MPMSim::createParticles(OP_Context &context)
 			{
 				for( int k=0; k < nz; ++k )
 				{
-					float vdbValue = vdb->getValueF( UT_Vector3( bbox.xmin() + ( i + 0.5 ) * h, bbox.ymin() + ( j + 0.5 ) * h, bbox.zmin() + ( k + 0.5 ) * h ) );
+					float vdbValue = pVdb->getValueF( UT_Vector3( bbox.xmin() + ( i + 0.5 ) * h, bbox.ymin() + ( j + 0.5 ) * h, bbox.zmin() + ( k + 0.5 ) * h ) );
 					
 					if( vdbValue < 0 )
 					{
@@ -147,6 +171,19 @@ SOP_MPMSim::createParticles(OP_Context &context)
 
 		m_particleData.reset( new MpmSim::ParticleData( x, m, 2 * h ) );
 		m_snowModel->initParticles( *( m_particleData.get() ) );
+		if( vVdb )
+		{
+			
+			const std::vector<Eigen::Vector3f>& x = m_particleData->particleX;
+			std::vector<Eigen::Vector3f>& v = m_particleData->particleV;
+			for( size_t i=0; i < x.size(); ++i )
+			{
+				UT_Vector3D vdbValue = vVdb->getValueV3( UT_Vector3( x[i][0], x[i][1], x[i][2] ) );
+				v[i][0] = vdbValue.x();
+				v[i][1] = vdbValue.y();
+				v[i][2] = vdbValue.z();
+			}
+		}
 		unlockInput(0);
 		return UT_ERROR_NONE;
 	}
@@ -252,7 +289,7 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 			
 			for( int i=0; i < steps; ++i )
 			{
-				std::cerr << "update particles " << dt << " " << h << std::endl;
+				std::cerr << "update particles " << dt << " " << h << " (" << i+1 << " of " << steps << ")" << std::endl;
 
 				std::cerr << "construct grid" << std::endl;
 				MpmSim::CubicBsplineShapeFunction shapeFunction;
