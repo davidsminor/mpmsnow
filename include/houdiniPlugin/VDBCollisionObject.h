@@ -1,10 +1,7 @@
 #ifndef MPMSIMHOUDINI_VDBCOLLISIONOBJECT_H
 #define MPMSIMHOUDINI_VDBCOLLISIONOBJECT_H
 
-#pragma warning(push, 0) 
-#pragma warning( disable : 4503 )
 #include <GEO/GEO_PrimVDB.h>
-#pragma warning(pop)
 
 #include "MpmSim/CollisionObject.h"
 
