@@ -7,6 +7,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
+#include <math.h>
 
 #include <GL/gl.h>
 
@@ -133,6 +135,11 @@ Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFun
 
 	for( size_t i=0; i < d.particleX.size(); ++i )
 	{
+		float prod = d.particleX[i][0] * d.particleX[i][1] * d.particleX[i][2];
+		if( isinff(prod) || isnanf(prod) )
+		{
+			throw std::runtime_error( "grid has non finite dimensions!" );
+		}
 		minMax( d.particleX[i][0], m_xmin, m_xmax );
 		minMax( d.particleX[i][1], m_ymin, m_ymax );
 		minMax( d.particleX[i][2], m_zmin, m_zmax );
@@ -157,8 +164,14 @@ Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFun
 	m_gridOrigin[1] = m_ymin;
 	m_gridOrigin[2] = m_zmin;
 	
+	long long ncells = (long long)m_nx * (long long)m_ny * (long long)m_nz;
+	if( ncells > 4000000000 || ncells <= 0 )
+	{
+		throw std::runtime_error( "grid is too big" );
+	}
+	
 	// calculate masses:
-	m_gridMasses.resize( m_nx * m_ny * m_nz );
+	m_gridMasses.resize( ncells );
 	m_gridMasses.setZero();
 	
 	splat< MassSplatter >( d, m_gridMasses );
@@ -173,7 +186,7 @@ Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFun
 	}
 
 	// calculate velocities:
-	m_gridVelocities.resize( m_nx * m_ny * m_nz * 3 );
+	m_gridVelocities.resize( ncells * 3 );
 	m_gridVelocities.setZero();
 	
 	splat< VelocitySplatter >( d, m_gridVelocities );
@@ -670,8 +683,15 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 
 								// remaining component is velocity paralell to the object:
 								Vector3f vTangent = forwardVelocity - vPerp;
-
-								forwardVelocity = vTangent * ( 1 + COULOMBFRICTION * nDotV / vTangent.norm() );
+								float vtNorm = vTangent.norm();
+								if( vtNorm > 0 )
+								{
+									forwardVelocity = vTangent * ( 1 + COULOMBFRICTION * nDotV / vTangent.norm() );
+								}
+								else
+								{
+									forwardVelocity.setZero();
+								}
 							}
 						}
 					}
@@ -693,27 +713,17 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 	for( int i=0; i < m_gridMasses.size(); ++i )
 	{
 		m_gridVelocities.segment<3>( 3 * i ) *= sqrt( m_gridMasses[i] );
-		if( m_gridMasses[i] != 0 )
+		if( m_gridMasses[i] > 1.e-8 )
 		{
 			forwardMomenta.segment<3>( 3 * i ) /= sqrt( m_gridMasses[i] );
 		}
 	}
-
+	
 	implicitSolver(
 		ImplicitUpdateMatrix( d, *this, collisionObjects ),
 		forwardMomenta,
 		m_gridVelocities );
-	/*
-	float maxMass = 0;
-	for( int i=0; i < m_gridMasses.size(); ++i )
-	{
-		if( m_gridMasses[i] > maxMass )
-		{
-			maxMass = m_gridMasses[i];
-		}
-	}
-	*/
-
+	
 	// more funky remapping to make the solver happy:
 	for( int i=0; i < m_gridMasses.size(); ++i )
 	{
