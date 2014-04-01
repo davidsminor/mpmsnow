@@ -40,12 +40,22 @@ static PRM_Name        names[] = {
     PRM_Name("subSteps",		"Sub Steps"),
     PRM_Name("startFrame",		"Start Frame"),
     PRM_Name("tolerance",		"Tolerance"),
-    PRM_Name("maxIterations",	"Max Iterations"),
+    PRM_Name("maxIterations",		"Max Iterations"),
+    PRM_Name("youngsModulus",		"Young's Modulus"),
+    PRM_Name("poissonRatio",		"Poisson Ratio"),
+    PRM_Name("hardening",		"Hardening"),
+    PRM_Name("compressiveStrength",	"Compressive Strength"),
+    PRM_Name("tensileStrength",		"Tensile Strength"),
 };
 
 static PRM_Default      toleranceDefault(1.e-4);         // Default to 5 divisions
 static PRM_Default      iterationsDefault(60);         // Default to 5 divisions
 
+static PRM_Default      youngsModulusDefault( 1.4e5f );
+static PRM_Default      poissonRatioDefault( 0.2f );
+static PRM_Default      hardeningDefault( 10 );
+static PRM_Default      compressiveStrengthDefault( 2.5e-2 );
+static PRM_Default      tensileStrengthDefault( 7.5e-3 );
 
 PRM_Template
 SOP_MPMSim::myTemplateList[] = {
@@ -54,6 +64,11 @@ SOP_MPMSim::myTemplateList[] = {
     PRM_Template(PRM_INT,	1, &names[2], PRMoneDefaults),
     PRM_Template(PRM_FLT_J,	1, &names[3], &toleranceDefault),
     PRM_Template(PRM_INT,	1, &names[4], &iterationsDefault),
+    PRM_Template(PRM_FLT_J,	1, &names[5], &youngsModulusDefault),
+    PRM_Template(PRM_FLT_J,	1, &names[6], &poissonRatioDefault),
+    PRM_Template(PRM_FLT_J,	1, &names[7], &hardeningDefault),
+    PRM_Template(PRM_FLT_J,	1, &names[8], &compressiveStrengthDefault),
+    PRM_Template(PRM_FLT_J,	1, &names[9], &tensileStrengthDefault),
     PRM_Template(),
 };
 
@@ -67,15 +82,6 @@ SOP_MPMSim::myConstructor(OP_Network *net, const char *name, OP_Operator *op)
 SOP_MPMSim::SOP_MPMSim(OP_Network *net, const char *name, OP_Operator *op)
 	: SOP_Node(net, name, op), m_prevCookTime(-1000000), myGroup(0)
 {
-	m_snowModel.reset(
-		new MpmSim::SnowConstitutiveModel(
-			1.4e5f, // young's modulus
-			0.2f, // poisson ratio
-			10, // hardening
-			2.5e-2f, // compressive strength
-			7.5e-3f	// tensile strength
-		)
-	);
 }
 
 SOP_MPMSim::~SOP_MPMSim() {}
@@ -105,13 +111,13 @@ SOP_MPMSim::createParticles(OP_Context &context)
 	std::cerr << "input prims: " <<initialStateGdp->primitives().entries() << std::endl;
 	for( int i=0; i < nprims; ++i )
 	{
-        const GEO_Primitive *prim = initialStateGdp->primitives().entry(i);
+		const GEO_Primitive *prim = initialStateGdp->primitives().entry(i);
 		if( !prim )
 		{
 			std::cerr << "prim is null?" << std::endl;
 		}
 
-        const GEO_PrimVDB* vdb = dynamic_cast<const GEO_PrimVDB *>(prim);
+		const GEO_PrimVDB* vdb = dynamic_cast<const GEO_PrimVDB *>(prim);
 		std::cerr << vdb->getGridName() << std::endl;
 		switch( vdb->getStorageType() )
 		{
@@ -184,6 +190,15 @@ SOP_MPMSim::createParticles(OP_Context &context)
 				v[i][2] = vdbValue.z();
 			}
 		}
+		else
+		{
+			const std::vector<Eigen::Vector3f>& x = m_particleData->particleX;
+			std::vector<Eigen::Vector3f>& v = m_particleData->particleV;
+			for( size_t i=0; i < x.size(); ++i )
+			{
+				v[i].setZero();
+			}
+		}
 		unlockInput(0);
 		return UT_ERROR_NONE;
 	}
@@ -203,7 +218,7 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 	std::cerr << "cookMySop" << std::endl;
 	OP_Node::flags().timeDep = 1;
 	// this is when we evaluate the collision objects:
-    fpreal t = context.getTime();
+	fpreal t = context.getTime();
 	
 	// The context takes seconds, not frame, so we convert.
 	fpreal startTime = OPgetDirector()->getChannelManager()->getTime( startFrame(t) );
@@ -218,6 +233,16 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 	
 	if( !m_particleData.get() )
 	{
+		m_snowModel.reset(
+			new MpmSim::SnowConstitutiveModel(
+				youngsModulus( startTime ),
+				poissonRatio( startTime ),
+				hardening( startTime ),
+				compressiveStrength( startTime ),
+				tensileStrength( startTime )
+			)
+		);
+		
 		std::cerr << "construct particles" << std::endl;
 		OP_Context particlesContext = context;
 		particlesContext.setTime( startTime );
@@ -227,13 +252,14 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 			unlockInputs();
 			return error();
 		}
+		
 		m_prevCookTime = t - 1;
 	}
 	
 	std::cerr << "yeah! lock inputs" << std::endl;
 	// Before we do anything, we must lock our inputs.  Before returning,
-    //	we have to make sure that the inputs get unlocked.
-    if (lockInputs(context) >= UT_ERROR_ABORT)
+	//	we have to make sure that the inputs get unlocked.
+	if (lockInputs(context) >= UT_ERROR_ABORT)
 	{
 		std::cerr << "Lock inputs failed" << std::endl;
 		return error();
@@ -292,39 +318,46 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 				std::cerr << "update particles " << dt << " " << h << " (" << i+1 << " of " << steps << ")" << std::endl;
 
 				std::cerr << "construct grid" << std::endl;
-				MpmSim::CubicBsplineShapeFunction shapeFunction;
-				MpmSim::Grid g(
-					*(m_particleData.get()),
-					dt,	// time step
-					shapeFunction,
-					*( m_snowModel.get() )
-				);
-
-				if( m_particleData->particleVolumes.empty() )
+				try
 				{
-					std::cerr << "compute particle volumes" << std::endl;
-					g.computeDensities( *(m_particleData.get()) );
-					m_particleData->particleVolumes.resize( m_particleData->particleX.size() );
-					for( size_t i = 0; i < m_particleData->particleDensities.size(); ++i )
+					MpmSim::CubicBsplineShapeFunction shapeFunction;
+					MpmSim::Grid g(
+						*(m_particleData.get()),
+						dt,	// time step
+						shapeFunction,
+						*( m_snowModel.get() )
+					);
+
+					if( m_particleData->particleVolumes.empty() )
 					{
-						m_particleData->particleVolumes[i] = m_particleData->particleM[i] / m_particleData->particleDensities[i];
+						std::cerr << "compute particle volumes" << std::endl;
+						g.computeDensities( *(m_particleData.get()) );
+						m_particleData->particleVolumes.resize( m_particleData->particleX.size() );
+						for( size_t i = 0; i < m_particleData->particleDensities.size(); ++i )
+						{
+							m_particleData->particleVolumes[i] = m_particleData->particleM[i] / m_particleData->particleDensities[i];
+						}
+					}
+
+					// update grid velocities using internal stresses...
+					g.updateGridVelocities( *(m_particleData.get()), collisionObjects, MpmSim::ConjugateResiduals( maxIterations(t), tolerance(t) ) );
+
+					// transfer the grid velocities back onto the particles:
+					g.updateParticleVelocities( *(m_particleData.get()) );
+
+					// update particle deformation gradients:
+					g.updateDeformationGradients( *(m_particleData.get()) );
+
+					// update positions...
+					m_particleData->advance( dt );
+					if( boss->opInterrupt() )
+					{
+						break;
 					}
 				}
-				
-				// update grid velocities using internal stresses...
-				g.updateGridVelocities( *(m_particleData.get()), collisionObjects, MpmSim::ConjugateResiduals( maxIterations(t), tolerance(t) ) );
-				
-				// transfer the grid velocities back onto the particles:
-				g.updateParticleVelocities( *(m_particleData.get()) );
-				
-				// update particle deformation gradients:
-				g.updateDeformationGradients( *(m_particleData.get()) );
-
-				// update positions...
-				m_particleData->advance( dt );
-				if( boss->opInterrupt() )
+				catch( const std::exception& e )
 				{
-					break;
+					std::cerr << e.what() << std::endl;
 				}
 			}
 			boss->opEnd();

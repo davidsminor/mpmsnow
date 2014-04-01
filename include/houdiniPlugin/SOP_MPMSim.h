@@ -27,11 +27,18 @@ protected:
     virtual OP_ERROR		 cookMySop(OP_Context &context);
 
 private:
-    fpreal	gridSize(fpreal t)		{ return evalFloat("gridSize", 0, t); }
-    int	startFrame(fpreal t)	{ return evalInt("startFrame", 0, t); }
-    int	subSteps(fpreal t)	{ return evalInt("subSteps", 0, t); }
-	float tolerance(fpreal t)	{ return evalFloat("tolerance", 0, t); }
-	int maxIterations(fpreal t)	{ return evalInt("maxIterations", 0, t); }
+	fpreal	gridSize(fpreal t)		{ return evalFloat("gridSize", 0, t); }
+	int	startFrame(fpreal t)		{ return evalInt("startFrame", 0, t); }
+	int	subSteps(fpreal t)		{ return evalInt("subSteps", 0, t); }
+	float tolerance(fpreal t)		{ return evalFloat("tolerance", 0, t); }
+	int maxIterations(fpreal t)		{ return evalInt("maxIterations", 0, t); }
+	
+	float youngsModulus(fpreal t)		{ return evalFloat("youngsModulus", 0, t); }
+	float poissonRatio(fpreal t)		{ return evalFloat("poissonRatio", 0, t); }
+	float hardening(fpreal t)		{ return evalFloat("hardening", 0, t); }
+	float compressiveStrength(fpreal t)	{ return evalFloat("compressiveStrength", 0, t); }
+	float tensileStrength(fpreal t)		{ return evalFloat("tensileStrength", 0, t); }
+	
 	
 	fpreal m_prevCookTime;
 
@@ -39,13 +46,13 @@ private:
 	std::auto_ptr< MpmSim::ParticleData > m_particleData;
 	std::auto_ptr< MpmSim::SnowConstitutiveModel > m_snowModel;
 
-    /// This variable is used together with the call to the "checkInputChanged"
-    /// routine to notify the handles (if any) if the input has changed.
-    GU_DetailGroupPair	 myDetailGroupPair;
+	/// This variable is used together with the call to the "checkInputChanged"
+	/// routine to notify the handles (if any) if the input has changed.
+	GU_DetailGroupPair	 myDetailGroupPair;
 
-    /// This is the group of geometry to be manipulated by this SOP and cooked
-    /// by the method "cookInputGroups".
-    const GA_PointGroup	*myGroup;
+	/// This is the group of geometry to be manipulated by this SOP and cooked
+	/// by the method "cookInputGroups".
+	const GA_PointGroup	*myGroup;
 };
 
 #endif
