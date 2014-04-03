@@ -4,7 +4,7 @@ using namespace Eigen;
 using namespace MpmSim;
 using namespace MpmSimHoudini;
 
-VDBCollisionObject::VDBCollisionObject( const GEO_PrimVDB* vdb ) : m_vdb( vdb )
+VDBCollisionObject::VDBCollisionObject( const GEO_PrimVDB* vdb, const GEO_PrimVDB* velocityVdb ) : m_vdb( vdb ), m_velocityVdb( velocityVdb )
 {
 }
 
@@ -23,7 +23,17 @@ void VDBCollisionObject::grad( const Eigen::Vector3f& x, Eigen::Vector3f& dPhi )
 
 void VDBCollisionObject::velocity( const Eigen::Vector3f& x, Eigen::Vector3f& v ) const
 {
-	v.setZero();
+	if( m_velocityVdb )
+	{
+		UT_Vector3 ret = m_velocityVdb->getValueV3( UT_Vector3( x[0], x[1], x[2] ) );
+		v[0] = ret.x();
+		v[1] = ret.y();
+		v[2] = ret.z();
+	}
+	else
+	{
+		v.setZero();
+	}
 }
 
 void VDBCollisionObject::draw() const

@@ -271,7 +271,7 @@ void Grid::computeDensities( ParticleData& d ) const
 	}
 }
 
-void Grid::updateParticleVelocities( ParticleData& d )
+void Grid::updateParticleVelocities( ParticleData& d, const std::vector<CollisionObject*>& collisionObjects )
 {
 	ShapeFunction::PointToGridIterator& shIt = pointIterator();
 	Vector3i particleCell;
@@ -305,6 +305,8 @@ void Grid::updateParticleVelocities( ParticleData& d )
 			vPic += w * m_gridVelocities.segment<3>( 3 * idx );
 		} while( shIt.next() );
 		d.particleV[p] = alpha * vFlip + ( 1.0f - alpha ) * vPic;
+		
+		collide( d.particleV[p], d.particleX[p], collisionObjects );
 	}
 }
 
@@ -630,6 +632,56 @@ void Grid::testForceDifferentials( const ParticleData& d )
 	m_gridVelocities = originalGridVelocities;
 }
 
+bool Grid::collide( Eigen::Vector3f& v, const Eigen::Vector3f& x, const std::vector<CollisionObject*>& collisionObjects )
+{
+	bool nodeCollided = false;
+	for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
+	{
+		float phi = collisionObjects[objIdx]->phi( x );
+		if( phi <= 0 )
+		{
+			// intersecting the object
+			Vector3f vObj;
+			collisionObjects[objIdx]->velocity( x, vObj );
+			
+			Vector3f n;
+			collisionObjects[objIdx]->grad( x, n );
+			n.normalize();
+			
+			// subtract off object velocity:
+			v -= vObj;
+			
+			float nDotV = n.dot( v );
+			if( nDotV < 0 )
+			{
+				// trying to move into the object:
+				nodeCollided = true;
+
+				// velocity perpendicular to the object
+				Vector3f vPerp = nDotV * n;
+
+				// remaining component is velocity paralell to the object:
+				Vector3f vTangent = v - vPerp;
+				float vtNorm = vTangent.norm();
+				if( vtNorm >= -nDotV * COULOMBFRICTION )
+				{
+					v = vTangent * ( 1 + COULOMBFRICTION * nDotV / vTangent.norm() );
+				}
+				else
+				{
+					v.setZero();
+				}
+			}
+			
+			// add object velocity back on:
+			v += vObj;
+		}
+	}
+	
+	return nodeCollided;
+}
+
+
 void Grid::updateGridVelocities( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const LinearSolver& implicitSolver )
 {
 	m_prevGridVelocities = m_gridVelocities;
@@ -663,38 +715,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 
 					// apply collisions:
 					Vector3f x( m_gridH * i + m_xmin, m_gridH * j + m_ymin, m_gridH * k + m_zmin );
-					for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
-					{
-						float phi = collisionObjects[objIdx]->phi( x );
-						if( phi <= 0 )
-						{
-							// intersecting the object
-							Vector3f n;
-							collisionObjects[objIdx]->grad( x, n );
-							n.normalize();
-							float nDotV = n.dot( forwardVelocity );
-							if( nDotV < 0 )
-							{
-								// trying to move into the object:
-								m_nodeCollided[idx] = true;
-
-								// velocity perpendicular to the object
-								Vector3f vPerp = nDotV * n;
-
-								// remaining component is velocity paralell to the object:
-								Vector3f vTangent = forwardVelocity - vPerp;
-								float vtNorm = vTangent.norm();
-								if( vtNorm > 0 )
-								{
-									forwardVelocity = vTangent * ( 1 + COULOMBFRICTION * nDotV / vTangent.norm() );
-								}
-								else
-								{
-									forwardVelocity.setZero();
-								}
-							}
-						}
-					}
+					m_nodeCollided[ idx ] = collide( forwardVelocity, x, collisionObjects );
 					
 					forwardMomenta.segment<3>( 3 * idx ) = forwardVelocity * m_gridMasses[idx];
 				}
@@ -719,6 +740,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 		}
 	}
 	
+	// this is broken for moving collision objects! Currently the implicit update matrix thinks they're not moving...
 	implicitSolver(
 		ImplicitUpdateMatrix( d, *this, collisionObjects ),
 		forwardMomenta,

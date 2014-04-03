@@ -35,7 +35,7 @@ public:
 		const LinearSolver& implicitSolver );
 
 	void updateDeformationGradients( ParticleData& d );
-	void updateParticleVelocities( ParticleData& d );
+	void updateParticleVelocities( ParticleData& d, const std::vector<CollisionObject*>& collisionObjects );
 	
 	// testing:
 	void testForces( const ParticleData& d );
@@ -103,6 +103,8 @@ public:
 
 	// computes how the forces change when you perturb the grid nodes by dx:
 	void calculateForceDifferentials( const ParticleData& d, const Eigen::VectorXf& dx, Eigen::VectorXf& df ) const;
+	
+	static bool collide( Eigen::Vector3f& v, const Eigen::Vector3f& x, const std::vector<CollisionObject*>& collisionObjects );
 	
 private:
 	

@@ -315,7 +315,7 @@ void display()
 	g.updateGridVelocities( *g_particles, g_collisionObjects, ConjugateResiduals( 120, 1.e-4 ) );
 	
 	// transfer the grid velocities back onto the particles:
-	g.updateParticleVelocities( *g_particles );
+	g.updateParticleVelocities( *g_particles, g_collisionObjects );
 	
 	// update particle deformation gradients:
 	g.updateDeformationGradients( *g_particles );

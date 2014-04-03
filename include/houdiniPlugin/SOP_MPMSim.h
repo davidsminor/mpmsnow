@@ -2,6 +2,8 @@
 #define SOP_MPMSIM_H
 
 #include <SOP/SOP_Node.h>
+#include <GEO/GEO_PrimVDB.h>
+#include <GU/GU_Detail.h>
 
 #include "MpmSim/ParticleData.h"
 #include "MpmSim/SnowConstitutiveModel.h"
@@ -39,6 +41,7 @@ private:
 	float compressiveStrength(fpreal t)	{ return evalFloat("compressiveStrength", 0, t); }
 	float tensileStrength(fpreal t)		{ return evalFloat("tensileStrength", 0, t); }
 	
+	void findVDBs( 	const GU_Detail *detail, const GEO_PrimVDB *&pVdb, const GEO_PrimVDB *&vVdb );
 	
 	fpreal m_prevCookTime;
 

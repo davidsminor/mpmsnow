@@ -13,7 +13,7 @@ class VDBCollisionObject : public MpmSim::CollisionObject
 
 public:
 	
-	VDBCollisionObject( const GEO_PrimVDB* vdb );
+	VDBCollisionObject( const GEO_PrimVDB* vdb, const GEO_PrimVDB* velocityVdb = 0 );
 
 	virtual float phi( const Eigen::Vector3f& x ) const;
 
@@ -26,6 +26,7 @@ public:
 private:
 	
 	const GEO_PrimVDB* m_vdb;
+	const GEO_PrimVDB* m_velocityVdb;
 
 };
 

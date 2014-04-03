@@ -337,7 +337,7 @@ void testImplicitUpdate()
 	g.updateGridVelocities( d, collisionObjects, ConjugateResiduals( 500, 1.e-7 ) );
 
 	// transfer the grid velocities back onto the particles:
-	g.updateParticleVelocities( d );
+	g.updateParticleVelocities( d, collisionObjects );
 	
 	// update particle deformation gradients:
 	g.updateDeformationGradients( d );

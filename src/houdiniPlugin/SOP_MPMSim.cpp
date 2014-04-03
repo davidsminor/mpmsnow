@@ -94,27 +94,18 @@ SOP_MPMSim::cookInputGroups(OP_Context &context, int alone)
     return cookInputPointGroups(context, myGroup, myDetailGroupPair, alone);
 }
 
-OP_ERROR
-SOP_MPMSim::createParticles(OP_Context &context)
+
+void SOP_MPMSim::findVDBs( const GU_Detail *detail, const GEO_PrimVDB *&pVdb, const GEO_PrimVDB *&vVdb )
 {
-	// cook first input with supplied context
-	if (lockInput(0, context) >= UT_ERROR_ABORT)
-	{
-		std::cerr << "couldn't lock input " << std::endl;
-		return UT_ERROR_ABORT;
-	}
-	
-	const GU_Detail *initialStateGdp = inputGeo(0);
-	const GEO_PrimVDB *pVdb = 0;
-	const GEO_PrimVDB *vVdb = 0;
-	int nprims = initialStateGdp->primitives().entries();
-	std::cerr << "input prims: " <<initialStateGdp->primitives().entries() << std::endl;
+	int nprims = detail->primitives().entries();
+	std::cerr << "input prims: " <<detail->primitives().entries() << std::endl;
 	for( int i=0; i < nprims; ++i )
 	{
-		const GEO_Primitive *prim = initialStateGdp->primitives().entry(i);
+		const GEO_Primitive *prim = detail->primitives().entry(i);
 		if( !prim )
 		{
 			std::cerr << "prim is null?" << std::endl;
+			continue;
 		}
 
 		const GEO_PrimVDB* vdb = dynamic_cast<const GEO_PrimVDB *>(prim);
@@ -143,6 +134,23 @@ SOP_MPMSim::createParticles(OP_Context &context)
 			vVdb = vdb;
 		}
 	}
+}
+
+OP_ERROR
+SOP_MPMSim::createParticles(OP_Context &context)
+{
+	// cook first input with supplied context
+	if (lockInput(0, context) >= UT_ERROR_ABORT)
+	{
+		std::cerr << "couldn't lock input " << std::endl;
+		return UT_ERROR_ABORT;
+	}
+	
+	const GU_Detail *initialStateGdp = inputGeo(0);
+	const GEO_PrimVDB *pVdb = 0;
+	const GEO_PrimVDB *vVdb = 0;
+	
+	findVDBs( initialStateGdp, pVdb, vVdb );
 	
 	if( pVdb )
 	{
@@ -287,7 +295,7 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 	{
 		UT_Interrupt *boss = UTgetInterrupt();
 		if (boss->opStart("Advancing Sim..."))
-        {
+        	{
 			int steps = subSteps(t);
 			float dt = float(t - m_prevCookTime) / steps;
 			float h = (float)gridSize(t);
@@ -296,15 +304,29 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 			std::vector< MpmSim::CollisionObject* > collisionObjects;
 			
 			const GU_Detail *collisionsGdp = inputGeo(1);
-			int numPrims = collisionsGdp->primitives().entries();
-			for( int i=0; i < numPrims; ++i )
+			
+			const GEO_PrimVDB *pVdb = 0;
+			const GEO_PrimVDB *vVdb = 0;
+			findVDBs( collisionsGdp, pVdb, vVdb );
+			
+			if( !pVdb )
 			{
-				const GEO_PrimVDB *vdb = dynamic_cast<const GEO_PrimVDB *>( collisionsGdp->primitives().entry(i) );
-				if( vdb )
-				{
-					std::cerr << "add collsion object!" << std::endl;
-					vdbCollisions.push_back( MpmSimHoudini::VDBCollisionObject( vdb ) );
-				}
+				opError(OP_BAD_OPINPUT_READ, "Couldn't find VDB for collision SDF!");
+				boss->opEnd();
+				unlockInputs();
+				gdp->notifyCache(GU_CACHE_ALL);
+				return error();
+			}
+			
+			if( vVdb )
+			{
+				std::cerr << "found collision vdb with velocity" << std::endl;
+				vdbCollisions.push_back( MpmSimHoudini::VDBCollisionObject( pVdb, vVdb ) );
+			}
+			else
+			{
+				vdbCollisions.push_back( MpmSimHoudini::VDBCollisionObject( pVdb ) );
+				std::cerr << "found static collision vdb" << std::endl;
 			}
 			
 			std::cerr << vdbCollisions.size() << " vdb collisions!" << std::endl;
@@ -343,7 +365,7 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 					g.updateGridVelocities( *(m_particleData.get()), collisionObjects, MpmSim::ConjugateResiduals( maxIterations(t), tolerance(t) ) );
 
 					// transfer the grid velocities back onto the particles:
-					g.updateParticleVelocities( *(m_particleData.get()) );
+					g.updateParticleVelocities( *(m_particleData.get()), collisionObjects );
 
 					// update particle deformation gradients:
 					g.updateDeformationGradients( *(m_particleData.get()) );
@@ -368,14 +390,14 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 	
 	std::cerr << "create " << x.size() << " particles" << std::endl;
 	
-	GU_PrimParticle* particles = GU_PrimParticle::build( gdp, x.size() );
+	GU_PrimParticle::build( gdp, x.size() );
 	for( size_t i=0; i < x.size(); ++i )
 	{
 		gdp->setPos3( i, UT_Vector3(x[i][0],x[i][1],x[i][2]) );
 	}
 	
 	m_prevCookTime = t;
-    unlockInputs();
+	unlockInputs();
 	gdp->notifyCache(GU_CACHE_ALL);
-    return error();
+	return error();
 }
