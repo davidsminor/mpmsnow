@@ -24,8 +24,7 @@ void ConjugateResiduals::operator()
 	// this more numerically stable
 	// (eg http://webmail.cs.yale.edu/publications/techreports/tr107.pdf).
 	// Do we need this?
-	x.setZero();
-
+	
 	float bNorm2 = b.squaredNorm();
 	if(bNorm2 == 0) 
 	{
@@ -36,11 +35,19 @@ void ConjugateResiduals::operator()
 	const int N = (int)b.size();
 	
 	VectorXf r(N);
+	A.multVector( x, r );
+	r = b - r;
+	
+	VectorXf Ar( N );
+	A.multVector( r, Ar );
+	float rAr = r.dot( Ar );
+	
 	VectorXf p(N);
+	VectorXf Ap(N);
 	for( int i=0; i < b.size(); ++i )
 	{
-		r[i] = b[i];
-		p[i] = b[i];
+		p[i] = r[i];
+		Ap[i] = Ar[i];
 	}
 	
 	if( m_log )
@@ -48,15 +55,7 @@ void ConjugateResiduals::operator()
 		residuals.push_back( r );
 		searchDirections.push_back( p );
 	}
-
-	VectorXf Ap( N );
-	A.multVector( p, Ap );
-
-	VectorXf Ar( N );
-	A.multVector( r, Ar );
-
-	float rAr = r.dot( Ar );
-
+	
 	int i = 0;
 	while( i < m_iters )
 	{
