@@ -81,11 +81,7 @@ void SnowConstitutiveModel::updateDeformation( ParticleData& d ) const
 		
 		// apply hardening:
 		float hardeningFactor = exp( m_hardening * ( 1 - d.particleFplastic[p].determinant() ) );
-		if( hardeningFactor > 1 )
-		{
-			hardeningFactor = 1;
-		}
-
+		
 		d.particleMu[p] = m_mu * hardeningFactor;
 		d.particleLambda[p] = m_lambda * hardeningFactor;
 		
