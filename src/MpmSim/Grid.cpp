@@ -136,11 +136,7 @@ Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFun
 	for( size_t i=0; i < d.particleX.size(); ++i )
 	{
 		float prod = d.particleX[i][0] * d.particleX[i][1] * d.particleX[i][2];
-#ifdef WIN32
-		if( !_finite(prod) )
-#else
 		if( isinff(prod) || isnanf(prod) )
-#endif
 		{
 			throw std::runtime_error( "grid has non finite dimensions!" );
 		}
@@ -538,11 +534,12 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 					m_nodeCollided[ idx ] = collide( forwardVelocity, x, collisionObjects );
 					
 					forwardMomenta.segment<3>( 3 * idx ) = forwardVelocity * m_gridMasses[idx];
-					m_gridVelocities.segment<3>( 3 * idx ) = forwardVelocity;
 				}
 			}
 		}
 	}
+	
+	m_gridVelocities.setZero();
 	
 	// So we want to solve 
 	// m * v^(n+1) - m_timeStep * dF(v^(n+1) * m_timeStep) = forwardMomenta
@@ -556,10 +553,6 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 		if( m_gridMasses[i] > 1.e-8 )
 		{
 			forwardMomenta.segment<3>( 3 * i ) /= sqrt( m_gridMasses[i] );
-		}
-		else
-		{
-			forwardMomenta.segment<3>( 3 * i ).setZero();
 		}
 	}
 	
