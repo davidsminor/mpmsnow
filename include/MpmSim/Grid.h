@@ -28,19 +28,14 @@ public:
 
 	void draw() const;
 	void computeDensities( ParticleData& d ) const;
-
+ 
 	void updateGridVelocities(
 		const ParticleData& d,
 		const std::vector<CollisionObject*>& collisionObjects,
 		const LinearSolver& implicitSolver );
 
-	void updateDeformationGradients( ParticleData& d );
+	float updateDeformationGradients( ParticleData& d );
 	void updateParticleVelocities( ParticleData& d, const std::vector<CollisionObject*>& collisionObjects );
-	
-	// testing:
-	void testForces( const ParticleData& d );
-	void testForceDifferentials( const ParticleData& d );
-	void outputDiagnostics( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const;
 	
 	const Eigen::VectorXf& masses() const;
 

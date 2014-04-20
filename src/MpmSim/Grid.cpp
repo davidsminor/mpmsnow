@@ -35,7 +35,7 @@ Grid::GridSplatter::GridSplatter(
 	Eigen::VectorXf& result,
 	const void* args
 ) :
-	m_g( g ),
+	m_g( g ), 
 	m_d( d ),
 	m_partition( partition ),
 	m_result( result ),
@@ -452,190 +452,6 @@ float Grid::calculateEnergy( const ParticleData& d ) const
 }
 
 
-void Grid::outputDiagnostics( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects ) const
-{
-	std::ofstream f( "/tmp/diagnostics.dat", std::ofstream::out );
-	
-	
-	f << "grid masses: " << std::endl;
-	for( int i=0; i < m_gridMasses.size(); ++i )
-	{
-		f << m_gridMasses[i] << std::endl;
-	}
-	
-	f << "particle data: " << std::endl;
-	float maxv = 0;
-	for( size_t p = 0; p < d.particleX.size(); ++p )
-	{
-		f << "p: " << d.particleX[p].transpose() << " v: " << d.particleV[p].transpose() << " m: " << d.particleM[p] << " J: " << d.particleJ[p] << std::endl;
-		float v = d.particleV[p].norm();
-		if( v > maxv )
-		{
-			v = maxv;
-		}
-	}
-	
-	f << "max v " << maxv << std::endl;
-	
-	VectorXf x( m_gridVelocities.size() );
-	x.setZero();
-	
-	VectorXf b( m_gridVelocities.size() );
-	MatrixXf M( m_gridVelocities.size(), m_gridVelocities.size() );
-	
-	float maxDiagonal( -1000000000 );
-	float minDiagonal( 1000000000 );
-	
-	std::cerr << "evaluate matrix:" << std::endl;
-	
-	f << "diagonals:" << std::endl;
-	ImplicitUpdateMatrix mat( d, *this, collisionObjects );
-	for( int i=0; i < x.size(); ++i )
-	{
-		std::cerr << i << " of " << x.size() << std::endl;
-
-		x[i] = 1;
-		mat.multVector( x, b );
-		x[i] = 0;
-
-		M.block( 0, i, x.size(), 1 ) = b;
-		f << M(i,i) << std::endl;
-		if( M(i,i) > maxDiagonal )
-		{
-			maxDiagonal = M(i,i);
-		}
-		if( M(i,i) < minDiagonal )
-		{
-			minDiagonal = M(i,i);
-		}
-	}
-	
-	f << "diagonal check: " << minDiagonal << " - " << maxDiagonal << std::endl;
-
-	MatrixXf shouldBeZero = M.transpose() - M;
-	f << "symmetry check: " << shouldBeZero.maxCoeff() << " - " << shouldBeZero.minCoeff() << std::endl;
-	 
-#ifdef HAVE_CORTEX
-	
-	Imath::Box2i dataWindow;
-	dataWindow.min = Imath::V2i( 1 );
-	dataWindow.max = Imath::V2i( x.size() );
-	Imath::Box2i displayWindow = dataWindow;
-	
-	IECore::ImagePrimitivePtr image = new IECore::ImagePrimitive( dataWindow, displayWindow );
-	IECore::FloatVectorDataPtr matrixData = new IECore::FloatVectorData;
-	matrixData->writable().resize( x.size() * x.size() );
-	
-	std::vector<float>::iterator pixel = matrixData->writable().begin();
-	for( int i=0; i < x.size(); ++i )
-	{
-		for( int j=0; j < x.size(); ++j )
-		{
-			*pixel++ = M(i,j);
-		}
-	}
-	image->variables["R"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, matrixData );
-	
-	IECore::Writer::create( image, "/tmp/matrix.exr" )->write();
-	
-#endif
-
-	/*
-	std::cerr << "compute eigenstuffs!!" << std::endl;
-
-	EigenSolver<MatrixXf> es(M, false);
-	
-	std::cerr << "done!" << std::endl;
-	f << "eigenvalues: " << std::endl;
-	for( int i=0; i < es.eigenvalues().size(); ++i )
-	{
-		f << es.eigenvalues()[i] << std::endl;
-	}
-	*/
-}
-
-void Grid::testForces( const ParticleData& d )
-{
-	// save the state so we don't screw the sim up:
-	VectorXf originalGridVelocities = m_gridVelocities;
-
-	// calculate da forces brah!
-	VectorXf forces( m_gridVelocities.size() );
-	calculateForces( d, forces );
-	
-	// calculate unperturbed energy:
-	float e0 = calculateEnergy( d );
-	
-	// now we're gonna calculate energy derivatives... the stupid way!
-	// we're gonna do this component by component, and we're gonna do it
-	// by zeroing out the grid velocities, setting the component we're gonna
-	// test to delta/m_timeStep, advancing bits of the sim with that velocity field,
-	// calculating the energy in the final state (in which one of the grid nodes
-	// will have moved a distance delta along one of the axes), and using the result
-	// to calculate a finite difference derivative!
-	float delta = 0.01f;
-	for( int idx = 0; idx < m_gridMasses.size(); ++idx )
-	{
-		for( size_t dim = 0; dim < 3; ++dim )
-		{
-			ParticleData dTest = d;
-			m_gridVelocities.setZero();
-			
-			// perturb current grid point a distance delta along the current axis,
-			// and calculate the resulting deformation gradients:
-			m_gridVelocities( 3 * idx + dim ) = delta / m_timeStep;
-			updateDeformationGradients( dTest );
-			
-			// calculate the resulting energy:
-			float e = calculateEnergy( dTest );
-			
-			// so force = -dE/dX = ( e0 - e ) / delta
-			float f = ( e0 - e ) / delta;
-			std::cerr << f << " == " << forces( 3 * idx + dim ) << "?  " << (3 * idx + dim) << " of " << forces.size() << std::endl;
-		}
-	}
-
-	m_gridVelocities = originalGridVelocities;
-
-}
-
-void Grid::testForceDifferentials( const ParticleData& d )
-{
-	// calculate da forces brah!
-	VectorXf forces( m_gridVelocities.size() );
-	calculateForces( d, forces );
-
-	// small random perturbation on the grid nodes:
-	VectorXf dx( m_gridVelocities.size() );
-	dx.setRandom();
-	dx = dx * 0.01f;
-	
-	// calculate force differentials resulting from this perturbation:
-	VectorXf forceDifferentials( m_gridVelocities.size() );
-	calculateForceDifferentials( d, dx, forceDifferentials );
-	
-	// save the state so we don't screw the sim up:
-	VectorXf originalGridVelocities = m_gridVelocities;
-	ParticleData dTest = d;
-	
-	m_gridVelocities = dx / m_timeStep;
-	updateDeformationGradients( dTest );
-	VectorXf perturbedForces( m_gridVelocities.size() );
-	calculateForces( dTest, perturbedForces );
-	
-	VectorXf actualForceDifferentials = perturbedForces - forces;
-	
-	for( int i=0; i <forceDifferentials.size(); ++i )
-	{
-		#ifdef WIN32
-		Sleep(100);
-		#endif
-		std::cerr << forceDifferentials[i] << " == " << actualForceDifferentials[i] << "? " << i << " of " << forceDifferentials.size() << std::endl;
-	}
-	
-	m_gridVelocities = originalGridVelocities;
-}
-
 bool Grid::collide( Eigen::Vector3f& v, const Eigen::Vector3f& x, const std::vector<CollisionObject*>& collisionObjects )
 {
 	bool nodeCollided = false;
@@ -768,13 +584,14 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 }
 
 
-void Grid::updateDeformationGradients( ParticleData& d )
+float Grid::updateDeformationGradients( ParticleData& d )
 {
 
 	ShapeFunction::PointToGridIterator& shIt = pointIterator();
 	Vector3f weightGrad;
 	Vector3i particleCell;
 	Matrix3f delV;
+	float maxMovement(0);
 
 	for( size_t p = 0; p < d.particleX.size(); ++p )
 	{
@@ -788,11 +605,18 @@ void Grid::updateDeformationGradients( ParticleData& d )
 			delV += m_gridVelocities.segment<3>( 3 * idx ) * weightGrad.transpose();
 		} while( shIt.next() );
 		
+		float movement = 0.5 * ( delV + delV.transpose() ).norm();
+		if( movement > maxMovement )
+		{
+			maxMovement = movement;
+		}
+
 		Matrix3f newParticleF = ( Matrix3f::Identity() + m_timeStep * delV ) * d.particleF[p];
 		d.particleF[p] = newParticleF;
 	}
 
 	m_constitutiveModel.updateDeformation( d );
+	return maxMovement;
 }
 
 int Grid::coordsToIndex( const Eigen::Vector3i& p ) const
