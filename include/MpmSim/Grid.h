@@ -24,7 +24,7 @@ class Grid
 
 public:
 
-	Grid( const ParticleData& d, float timeStep, const ShapeFunction& m_shapeFunction, const ConstitutiveModel& model );
+	Grid( const ParticleData& d, float timeStep, const ShapeFunction& m_shapeFunction, const ConstitutiveModel& model, int dimension = 3 );
 
 	void draw() const;
 	void computeDensities( ParticleData& d ) const;
@@ -139,20 +139,12 @@ private:
 	float m_gridH;
 	float m_timeStep;
 	
-	Eigen::Vector3f m_gridOrigin;
-
-	float m_xmin;
-	float m_ymin;
-	float m_zmin;
-
-	float m_xmax;
-	float m_ymax;
-	float m_zmax;
+	Eigen::Vector3f m_min;
+	Eigen::Vector3f m_max;
+	Eigen::Vector3i m_n;
 	
-	int m_nx;
-	int m_ny;
-	int m_nz;
-
+	int m_dimension;
+	
 	Eigen::VectorXf m_gridMasses;
 	Eigen::VectorXf m_gridVelocities;
 	Eigen::VectorXf m_prevGridVelocities;

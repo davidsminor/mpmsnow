@@ -38,18 +38,18 @@ void ImplicitUpdateMatrix::multVector( const Eigen::VectorXf& vNPlusOne, Eigen::
 		}
 	}
 
-	for( int i=0; i < m_g.m_nx; ++i )
+	for( int i=0; i < m_g.m_n[0]; ++i )
 	{
-		for( int j=0; j < m_g.m_ny; ++j )
+		for( int j=0; j < m_g.m_n[1]; ++j )
 		{
-			for( int k=0; k < m_g.m_nz; ++k )
+			for( int k=0; k < m_g.m_n[2]; ++k )
 			{
 				int idx = m_g.coordsToIndex( Vector3i( i, j, k ) );
 				Vector3f v = vTransformed.segment<3>( 3 * idx );
 				
 				if( m_g.m_nodeCollided[idx] && m_g.m_gridMasses[ idx ] != 0 )
 				{
-					Vector3f x( m_g.m_gridH * i + m_g.m_xmin, m_g.m_gridH * j + m_g.m_ymin, m_g.m_gridH * k + m_g.m_zmin );
+					Vector3f x( m_g.m_gridH * i + m_g.m_min[0], m_g.m_gridH * j + m_g.m_min[1], m_g.m_gridH * k + m_g.m_min[2] );
 					for( size_t objIdx = 0; objIdx < m_collisionObjects.size(); ++objIdx )
 					{
 						// intersecting the object
@@ -72,11 +72,11 @@ void ImplicitUpdateMatrix::multVector( const Eigen::VectorXf& vNPlusOne, Eigen::
 	m_g.calculateForceDifferentials( m_d, m_g.m_timeStep * vTransformed, df );
 	
 	result.resize( vTransformed.size() );
-	for( int i=0; i < m_g.m_nx; ++i )
+	for( int i=0; i < m_g.m_n[0]; ++i )
 	{
-		for( int j=0; j < m_g.m_ny; ++j )
+		for( int j=0; j < m_g.m_n[1]; ++j )
 		{
-			for( int k=0; k < m_g.m_nz; ++k )
+			for( int k=0; k < m_g.m_n[2]; ++k )
 			{
 				int idx = m_g.coordsToIndex( Vector3i( i, j, k ) );
 				Vector3f resultMomentum = m_g.m_gridMasses[ idx ] * vTransformed.segment<3>( 3 * idx ) - m_g.m_timeStep * df.segment<3>( 3 * idx );
@@ -84,7 +84,7 @@ void ImplicitUpdateMatrix::multVector( const Eigen::VectorXf& vNPlusOne, Eigen::
 				// ok. So when you do this, is the matrix even symmetric any more? Maybe this should be in calculateForceDifferentials as well?
 				if( m_g.m_nodeCollided[idx] )
 				{
-					Vector3f x( m_g.m_gridH * i + m_g.m_xmin, m_g.m_gridH * j + m_g.m_ymin, m_g.m_gridH * k + m_g.m_zmin );
+					Vector3f x( m_g.m_gridH * i + m_g.m_min[0], m_g.m_gridH * j + m_g.m_min[1], m_g.m_gridH * k + m_g.m_min[2] );
 					for( size_t objIdx = 0; objIdx < m_collisionObjects.size(); ++objIdx )
 					{
 						// intersecting the object

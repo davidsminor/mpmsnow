@@ -126,12 +126,12 @@ public:
 
 
 
-Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFunction, const ConstitutiveModel& model )
-	: m_gridH( d.gridSize ), m_timeStep( timeStep ), m_shapeFunction( shapeFunction ), m_constitutiveModel( model )
+Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFunction, const ConstitutiveModel& model, int dimension )
+	: m_gridH( d.gridSize ), m_timeStep( timeStep ), m_dimension( dimension ), m_shapeFunction( shapeFunction ), m_constitutiveModel( model )
 {
 	// work out the physical size of the grid:
-	m_xmin = m_ymin = m_zmin = 1.e10;
-	m_xmax = m_ymax = m_zmax = -1.e10;
+	m_min.setConstant( 1.e10 );
+	m_max.setConstant( -1.e10 );
 
 	for( size_t i=0; i < d.particleX.size(); ++i )
 	{
@@ -145,9 +145,10 @@ Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFun
 		{
 			throw std::runtime_error( "grid has non finite dimensions!" );
 		}
-		minMax( d.particleX[i][0], m_xmin, m_xmax );
-		minMax( d.particleX[i][1], m_ymin, m_ymax );
-		minMax( d.particleX[i][2], m_zmin, m_zmax );
+		for( int j=0; j < m_dimension; ++j )
+		{
+			minMax( d.particleX[i][j], m_min[j], m_max[j] );
+		}
 	}
 	
 	Vector3f averageV = Vector3f::Zero();
@@ -158,18 +159,16 @@ Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFun
 	averageV /= d.particleV.size();
 
 	std::cerr << "average v: " << averageV.transpose() << std::endl;
-	std::cerr << "grid bbox: " << m_xmin << ", " << m_ymin << ", " << m_zmin << " --> " << m_xmax << ", " << m_ymax << ", " << m_zmax << std::endl;
+	std::cerr << "grid bbox: " << m_min.transpose() << " --> " << m_max.transpose() << std::endl;
 
 	// calculate grid dimensions and quantize bounding box:
-	m_nx = fixDim( m_xmin, m_xmax );
-	m_ny = fixDim( m_ymin, m_ymax );
-	m_nz = fixDim( m_zmin, m_zmax );
+	m_n.setConstant(1);
+	for( int j=0; j < m_dimension; ++j )
+	{
+		m_n[j] = fixDim( m_min[j], m_max[j] );
+	}
 	
-	m_gridOrigin[0] = m_xmin;
-	m_gridOrigin[1] = m_ymin;
-	m_gridOrigin[2] = m_zmin;
-	
-	long long ncells = (long long)m_nx * (long long)m_ny * (long long)m_nz;
+	long long ncells = (long long)m_n[0] * (long long)m_n[1] * (long long)m_n[2];
 	if( ncells > 4000000000 || ncells <= 0 )
 	{
 		throw std::runtime_error( "grid is too big" );
@@ -223,31 +222,31 @@ void Grid::draw() const
 	glBegin( GL_LINES );
 
 	// xy
-	for( int i=0; i <= m_nx; ++i )
+	for( int i=0; i <= m_n[0]; ++i )
 	{
-		for( int j=0; j <= m_ny; ++j )
+		for( int j=0; j <= m_n[1]; ++j )
 		{
-			glVertex3f( m_xmin + i * m_gridH, m_ymin + j * m_gridH, m_zmin );
-			glVertex3f( m_xmin + i * m_gridH, m_ymin + j * m_gridH, m_zmax );
+			glVertex3f( m_min[0] + i * m_gridH, m_min[1] + j * m_gridH, m_min[2] );
+			glVertex3f( m_min[0] + i * m_gridH, m_min[1] + j * m_gridH, m_max[2] );
 		}
 	}
 	// zy
-	for( int i=0; i <= m_nz; ++i )
+	for( int i=0; i <= m_n[2]; ++i )
 	{
-		for( int j=0; j <= m_ny; ++j )
+		for( int j=0; j <= m_n[1]; ++j )
 		{
-			glVertex3f( m_xmin, m_ymin + j * m_gridH, m_zmin + i * m_gridH );
-			glVertex3f( m_xmax, m_ymin + j * m_gridH, m_zmin + i * m_gridH );
+			glVertex3f( m_min[0], m_min[1] + j * m_gridH, m_min[2] + i * m_gridH );
+			glVertex3f( m_max[0], m_min[1] + j * m_gridH, m_min[2] + i * m_gridH );
 		}
 	}
 
 	// xz
-	for( int i=0; i <= m_nx; ++i )
+	for( int i=0; i <= m_n[0]; ++i )
 	{
-		for( int j=0; j <= m_nz; ++j )
+		for( int j=0; j <= m_n[2]; ++j )
 		{
-			glVertex3f( m_xmin + i * m_gridH, m_ymin, m_zmin + j * m_gridH );
-			glVertex3f( m_xmin + i * m_gridH, m_ymax, m_zmin + j * m_gridH );
+			glVertex3f( m_min[0] + i * m_gridH, m_min[1], m_min[2] + j * m_gridH );
+			glVertex3f( m_min[0] + i * m_gridH, m_max[1], m_min[2] + j * m_gridH );
 		}
 	}
 	glEnd();
@@ -322,9 +321,7 @@ float Grid::gridH() const
 
 void Grid::origin( Eigen::Vector3f& o ) const
 {
-	o[0] = m_xmin;
-	o[1] = m_ymin;
-	o[2] = m_zmin;
+	o = m_min;
 }
 
 class ForceDifferentialSplatter : public Grid::GridSplatter
@@ -514,11 +511,11 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 	// work out forward velocity update - that's equation 10 in the paper:
 	VectorXf forwardMomenta( m_gridVelocities.size() );
 	m_nodeCollided.resize( m_gridMasses.size() );
-	for( int i=0; i < m_nx; ++i )
+	for( int i=0; i < m_n[0]; ++i )
 	{
-		for( int j=0; j < m_ny; ++j )
+		for( int j=0; j < m_n[1]; ++j )
 		{
-			for( int k=0; k < m_nz; ++k )
+			for( int k=0; k < m_n[2]; ++k )
 			{
 				int idx = coordsToIndex( Vector3i( i, j, k ) );
 				m_nodeCollided[idx] = false;
@@ -535,7 +532,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 					Vector3f forwardVelocity = velocity + m_timeStep * force / m_gridMasses[idx];
 
 					// apply collisions:
-					Vector3f x( m_gridH * i + m_xmin, m_gridH * j + m_ymin, m_gridH * k + m_zmin );
+					Vector3f x( m_gridH * i + m_min[0], m_gridH * j + m_min[1], m_gridH * k + m_min[2] );
 					m_nodeCollided[ idx ] = collide( forwardVelocity, x, collisionObjects );
 					
 					forwardMomenta.segment<3>( 3 * idx ) = forwardVelocity * m_gridMasses[idx];
@@ -619,7 +616,7 @@ float Grid::updateDeformationGradients( ParticleData& d )
 
 int Grid::coordsToIndex( const Eigen::Vector3i& p ) const
 {
-	return p[0] + m_nx * ( p[1] + m_ny * p[2] );
+	return p[0] + m_n[0] * ( p[1] + m_n[1] * p[2] );
 }
 
 
@@ -637,8 +634,8 @@ inline void Grid::minMax( float x, float& min, float& max )
 
 inline int Grid::fixDim( float& min, float& max ) const
 {
-	int cellMin = int( floor( min / m_gridH ) ) - 1;
-	int cellMax = int( ceil( max / m_gridH ) ) + 3;
+	int cellMin = int( floor( min / m_gridH ) ) - m_shapeFunction.supportRadius() + 1;
+	int cellMax = int( ceil( max / m_gridH ) ) + m_shapeFunction.supportRadius() + 1;
 	min = cellMin * m_gridH;
 	max = cellMax * m_gridH;
 	return cellMax - cellMin;
@@ -660,8 +657,8 @@ Grid::PointToGridIterator::PointToGridIterator( const Grid& g ) :
 {
 	for( int dim=0; dim < 3; ++dim )
 	{
-		m_w[dim].resize( m_diameter );
-		m_dw[dim].resize( m_diameter );
+		m_w[dim].resize( m_diameter, 1 );
+		m_dw[dim].resize( m_diameter, 0 );
 	}
 }
 
@@ -671,9 +668,9 @@ void Grid::PointToGridIterator::initialize( const Vector3f& p, bool computeDeriv
 	int r = (int)m_w[0].size() / 2;
 	m_pos.setZero();
 
-	for( int dim=0; dim < 3; ++dim )
+	for( int dim=0; dim < m_grid.m_dimension; ++dim )
 	{
-		float fracDimPos = ( p[dim] - m_grid.m_gridOrigin[dim] ) / m_grid.m_gridH;
+		float fracDimPos = ( p[dim] - m_grid.m_min[dim] ) / m_grid.m_gridH;
 		int dimPos = (int)floor( fracDimPos );
 		fracDimPos -= dimPos;
 		int j;
@@ -699,14 +696,26 @@ void Grid::PointToGridIterator::initialize( const Vector3f& p, bool computeDeriv
 
 bool Grid::PointToGridIterator::next()
 {
+
 	++m_pos[0];
 	if( m_pos[0] >= m_diameter )
 	{
+		if( m_grid.m_dimension == 1 )
+		{
+			return false;
+		}
+
 		m_pos[0] = 0;
 		++m_pos[1];
 		
 		if( m_pos[1] >= m_diameter )
 		{
+			
+			if( m_grid.m_dimension == 2 )
+			{
+				return false;
+			}
+
 			m_pos[1] = 0;
 			++m_pos[2];
 		}
