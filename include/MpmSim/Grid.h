@@ -48,7 +48,33 @@ public:
 
 	void origin( Eigen::Vector3f& o ) const;
 
-	ShapeFunction::PointToGridIterator& pointIterator() const;
+	class PointToGridIterator
+	{
+	public:
+		
+		PointToGridIterator( const Grid& g );
+		
+		void initialize( const Eigen::Vector3f& p, bool computeDerivatives = false );
+		bool next();
+		void gridPos( Eigen::Vector3i& pos ) const;
+		void dw( Eigen::Vector3f& g ) const;
+		float w() const;
+
+	private:
+
+		const Grid& m_grid;
+
+		int m_diameter;
+		
+		std::vector<float> m_w[3];
+		std::vector<float> m_dw[3];
+		Eigen::Vector3i m_pos;
+		Eigen::Vector3i m_base;
+		bool m_gradients;
+		
+	};
+	
+	PointToGridIterator& pointIterator() const;
 	
 	friend class GridSplatter;
 	class GridSplatter
@@ -135,7 +161,7 @@ private:
 	const ShapeFunction& m_shapeFunction;
 	const ConstitutiveModel& m_constitutiveModel;
 	
-	mutable tbb::enumerable_thread_specific< std::auto_ptr< ShapeFunction::PointToGridIterator > > m_pointIterators;
+	mutable tbb::enumerable_thread_specific< std::auto_ptr< PointToGridIterator > > m_pointIterators;
 
 };
 
