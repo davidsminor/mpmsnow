@@ -24,18 +24,22 @@ class Grid
 
 public:
 
-	Grid( const ParticleData& d, float timeStep, const ShapeFunction& m_shapeFunction, const ConstitutiveModel& model, int dimension = 3 );
+	Grid(
+		ParticleData& d,
+		const std::vector<CollisionObject*>& collisionObjects,
+		float timeStep,
+		const ShapeFunction& m_shapeFunction,
+		const ConstitutiveModel& model,
+		int dimension = 3
+	);
 
 	void draw() const;
-	void computeDensities( ParticleData& d ) const;
+	void computeDensities() const;
  
-	void updateGridVelocities(
-		const ParticleData& d,
-		const std::vector<CollisionObject*>& collisionObjects,
-		const LinearSolver& implicitSolver );
+	void updateGridVelocities( const LinearSolver& implicitSolver );
 
-	float updateDeformationGradients( ParticleData& d );
-	void updateParticleVelocities( ParticleData& d, const std::vector<CollisionObject*>& collisionObjects );
+	float updateDeformationGradients();
+	void updateParticleVelocities();
 	
 	const Eigen::VectorXf& masses() const;
 
@@ -131,10 +135,11 @@ private:
 	
 	friend class ImplicitUpdateMatrix;
 
-	// testing
-	
 	static inline void minMax( float x, float& min, float& max );
 	inline int fixDim( float& min, float& max ) const;
+	
+	ParticleData& m_d;
+	const std::vector<CollisionObject*>& m_collisionObjects;
 
 	float m_gridH;
 	float m_timeStep;

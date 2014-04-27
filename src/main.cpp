@@ -109,23 +109,19 @@ int main(int argc, char** argv)
 
 	std::vector<Eigen::Vector3f> x;
 	std::vector<float> m;
-	for( int i=-10; i <= 10; ++i )
+	for( int i=-3; i <= 3; ++i )
 	{
-		for( int j=-10; j <= 10; ++j )
+		for( int j=-3; j <= 3; ++j )
 		{
-			for( int k=-10; k <= 10; ++k )
+			for( int n=0; n < particlesPerCell; ++n )
 			{
-				for( int n=0; n < particlesPerCell; ++n )
-				{
-					float xr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					float yr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					float zr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-					Vector3f pos( particleSpacing * float( i + xr ), 1 + particleSpacing * float( j + yr ), particleSpacing * float( k + zr ) );
-					
-					x.push_back( pos );
-					m.push_back( initialDensity * particleVolume / particlesPerCell );
-					
-				}
+				float xr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+				float yr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+				Vector3f pos( particleSpacing * float( i + xr ), 1 + particleSpacing * float( j + yr ), 0 );
+				
+				x.push_back( pos );
+				m.push_back( initialDensity * particleVolume / particlesPerCell );
+				
 			}
 		}
 	}
@@ -265,24 +261,19 @@ void display()
 	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
 
 	
-	// draw collision objects:
-	for( size_t i=0; i < g_collisionObjects.size(); ++i )
-	{
-		g_collisionObjects[i]->draw();
-	}
-	
 	// instantiate grid and rasterize!
 	Grid g(
 		*g_particles,
+		g_collisionObjects,
 		g_timeStep,	// time step
 		g_cubicBsplineShapeFunction,
-		g_snowModel
+		g_snowModel,
+		2
 	);
 
-	//g.draw();
 	if( g_particles->particleVolumes.empty() )
 	{
-		g.computeDensities( *g_particles );
+		g.computeDensities();
 		g_particles->particleVolumes.resize( g_particles->particleX.size() );
 		for( size_t i = 0; i < g_particles->particleDensities.size(); ++i )
 		{
@@ -290,6 +281,14 @@ void display()
 		}
 	}
 	
+	// draw collision objects:
+	for( size_t i=0; i < g_collisionObjects.size(); ++i )
+	{
+		g_collisionObjects[i]->draw();
+	}
+	
+	//g.draw();
+
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_NORMAL_ARRAY);
 	glEnable( GL_LIGHTING );
@@ -312,13 +311,13 @@ void display()
 	glDisable( GL_LIGHTING );
 	
 	// update grid velocities using internal stresses...
-	g.updateGridVelocities( *g_particles, g_collisionObjects, ConjugateResiduals( 120, 1.e-4 ) );
+	g.updateGridVelocities( ConjugateResiduals( 120, 1.e-4 ) );
 	
 	// transfer the grid velocities back onto the particles:
-	g.updateParticleVelocities( *g_particles, g_collisionObjects );
+	g.updateParticleVelocities();
 	
 	// update particle deformation gradients:
-	g.updateDeformationGradients( *g_particles );
+	g.updateDeformationGradients();
 
 	// update positions...
 	g_particles->advance( g_timeStep );

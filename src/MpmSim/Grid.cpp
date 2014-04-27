@@ -126,8 +126,21 @@ public:
 
 
 
-Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFunction, const ConstitutiveModel& model, int dimension )
-	: m_gridH( d.gridSize ), m_timeStep( timeStep ), m_dimension( dimension ), m_shapeFunction( shapeFunction ), m_constitutiveModel( model )
+Grid::Grid(
+		ParticleData& d,
+		const std::vector<CollisionObject*>& collisionObjects,
+		float timeStep,
+		const ShapeFunction& shapeFunction,
+		const ConstitutiveModel& model,
+		int dimension
+) :
+	m_d( d ),
+	m_collisionObjects( collisionObjects ),
+	m_gridH( d.gridSize ),
+	m_timeStep( timeStep ),
+	m_dimension( dimension ),
+	m_shapeFunction( shapeFunction ),
+	m_constitutiveModel( model )
 {
 	// work out the physical size of the grid:
 	m_min.setConstant( 1.e10 );
@@ -152,11 +165,13 @@ Grid::Grid( const ParticleData& d, float timeStep, const ShapeFunction& shapeFun
 	}
 	
 	Vector3f averageV = Vector3f::Zero();
-	for( int i=0; i < d.particleV.size(); ++i )
+	for( size_t i=0; i < d.particleV.size(); ++i )
 	{
 		averageV += d.particleV[i];
 	}
-	averageV /= d.particleV.size();
+	averageV[0] /= (int)d.particleV.size();
+	averageV[1] /= (int)d.particleV.size();
+	averageV[2] /= (int)d.particleV.size();
 
 	std::cerr << "average v: " << averageV.transpose() << std::endl;
 	std::cerr << "grid bbox: " << m_min.transpose() << " --> " << m_max.transpose() << std::endl;
@@ -252,30 +267,30 @@ void Grid::draw() const
 	glEnd();
 }
 
-void Grid::computeDensities( ParticleData& d ) const
+void Grid::computeDensities() const
 {
-	d.particleDensities.resize( d.particleX.size(), 0 );
+	m_d.particleDensities.resize( m_d.particleX.size(), 0 );
 	
 	Grid::PointToGridIterator& shIt = pointIterator();
 	Vector3i particleCell;
 	
 	float cellVolume = m_gridH * m_gridH * m_gridH;
-	for( size_t p = 0; p < d.particleX.size(); ++p )
+	for( size_t p = 0; p < m_d.particleX.size(); ++p )
 	{
-		shIt.initialize( d.particleX[p] );
+		shIt.initialize( m_d.particleX[p] );
 		do
 		{
 			shIt.gridPos( particleCell );
 			int idx = coordsToIndex( particleCell );
 			
 			// accumulate the particle's density:
-			d.particleDensities[p] += shIt.w() * m_gridMasses[ idx ] / cellVolume;
+			m_d.particleDensities[p] += shIt.w() * m_gridMasses[ idx ] / cellVolume;
 					
 		} while( shIt.next() );
 	}
 }
 
-void Grid::updateParticleVelocities( ParticleData& d, const std::vector<CollisionObject*>& collisionObjects )
+void Grid::updateParticleVelocities()
 {
 	Grid::PointToGridIterator& shIt = pointIterator();
 	Vector3i particleCell;
@@ -294,11 +309,11 @@ void Grid::updateParticleVelocities( ParticleData& d, const std::vector<Collisio
 	
 	// blend FLIP and PIC, as pure FLIP allows spurious particle motion
 	// inside the cells:
-	for( size_t p = 0; p < d.particleX.size(); ++p )
+	for( size_t p = 0; p < m_d.particleX.size(); ++p )
 	{
-		Vector3f vFlip = d.particleV[p];
+		Vector3f vFlip = m_d.particleV[p];
 		Vector3f vPic = Vector3f::Zero();
-		shIt.initialize( d.particleX[p] );
+		shIt.initialize( m_d.particleX[p] );
 		do
 		{
 			// soo... should I be interpolating momentum here instead? Need to experiment...
@@ -308,9 +323,9 @@ void Grid::updateParticleVelocities( ParticleData& d, const std::vector<Collisio
 			vFlip += w * ( m_gridVelocities.segment<3>( 3 * idx ) - m_prevGridVelocities.segment<3>( 3 * idx ) );
 			vPic += w * m_gridVelocities.segment<3>( 3 * idx );
 		} while( shIt.next() );
-		d.particleV[p] = alpha * vFlip + ( 1.0f - alpha ) * vPic;
+		m_d.particleV[p] = alpha * vFlip + ( 1.0f - alpha ) * vPic;
 		
-		collide( d.particleV[p], d.particleX[p], collisionObjects );
+		collide( m_d.particleV[p], m_d.particleX[p], m_collisionObjects );
 	}
 }
 
@@ -500,13 +515,13 @@ bool Grid::collide( Eigen::Vector3f& v, const Eigen::Vector3f& x, const std::vec
 }
 
 
-void Grid::updateGridVelocities( const ParticleData& d, const std::vector<CollisionObject*>& collisionObjects, const LinearSolver& implicitSolver )
+void Grid::updateGridVelocities( const LinearSolver& implicitSolver )
 {
 	m_prevGridVelocities = m_gridVelocities;
 
 	// work out forces on grid points:
 	VectorXf forces( m_gridVelocities.size() );
-	calculateForces( d, forces );
+	calculateForces( m_d, forces );
 	
 	// work out forward velocity update - that's equation 10 in the paper:
 	VectorXf forwardMomenta( m_gridVelocities.size() );
@@ -533,7 +548,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 
 					// apply collisions:
 					Vector3f x( m_gridH * i + m_min[0], m_gridH * j + m_min[1], m_gridH * k + m_min[2] );
-					m_nodeCollided[ idx ] = collide( forwardVelocity, x, collisionObjects );
+					m_nodeCollided[ idx ] = collide( forwardVelocity, x, m_collisionObjects );
 					
 					forwardMomenta.segment<3>( 3 * idx ) = forwardVelocity * m_gridMasses[idx];
 				}
@@ -560,7 +575,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 	
 	// this is broken for moving collision objects! Currently the implicit update matrix thinks they're not moving...
 	implicitSolver(
-		ImplicitUpdateMatrix( d, *this, collisionObjects ),
+		ImplicitUpdateMatrix( m_d, *this, m_collisionObjects ),
 		forwardMomenta,
 		m_gridVelocities );
 	
@@ -579,7 +594,7 @@ void Grid::updateGridVelocities( const ParticleData& d, const std::vector<Collis
 }
 
 
-float Grid::updateDeformationGradients( ParticleData& d )
+float Grid::updateDeformationGradients()
 {
 
 	Grid::PointToGridIterator& shIt = pointIterator();
@@ -588,10 +603,10 @@ float Grid::updateDeformationGradients( ParticleData& d )
 	Matrix3f delV;
 	float maxMovement(0);
 
-	for( size_t p = 0; p < d.particleX.size(); ++p )
+	for( size_t p = 0; p < m_d.particleX.size(); ++p )
 	{
 		delV.setZero();
-		shIt.initialize( d.particleX[p], true );
+		shIt.initialize( m_d.particleX[p], true );
 		do
 		{
 			shIt.gridPos( particleCell );
@@ -600,17 +615,17 @@ float Grid::updateDeformationGradients( ParticleData& d )
 			delV += m_gridVelocities.segment<3>( 3 * idx ) * weightGrad.transpose();
 		} while( shIt.next() );
 		
-		float movement = 0.5 * ( delV + delV.transpose() ).norm();
+		float movement = 0.5f * ( delV + delV.transpose() ).norm();
 		if( movement > maxMovement )
 		{
 			maxMovement = movement;
 		}
 
-		Matrix3f newParticleF = ( Matrix3f::Identity() + m_timeStep * delV ) * d.particleF[p];
-		d.particleF[p] = newParticleF;
+		Matrix3f newParticleF = ( Matrix3f::Identity() + m_timeStep * delV ) * m_d.particleF[p];
+		m_d.particleF[p] = newParticleF;
 	}
 
-	m_constitutiveModel.updateDeformation( d );
+	m_constitutiveModel.updateDeformation( m_d );
 	return maxMovement;
 }
 
@@ -667,6 +682,7 @@ void Grid::PointToGridIterator::initialize( const Vector3f& p, bool computeDeriv
 	m_gradients = computeDerivatives;
 	int r = (int)m_w[0].size() / 2;
 	m_pos.setZero();
+	m_base.setZero();
 
 	for( int dim=0; dim < m_grid.m_dimension; ++dim )
 	{
