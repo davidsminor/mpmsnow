@@ -182,6 +182,10 @@ Grid::Grid(
 	{
 		m_n[j] = fixDim( m_min[j], m_max[j] );
 	}
+	for( int j=m_dimension; j < 3; ++j )
+	{
+		m_min[j] = m_max[j] = 0;
+	}
 	
 	long long ncells = (long long)m_n[0] * (long long)m_n[1] * (long long)m_n[2];
 	if( ncells > 4000000000 || ncells <= 0 )
