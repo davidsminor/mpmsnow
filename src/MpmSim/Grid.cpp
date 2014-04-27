@@ -265,6 +265,38 @@ void Grid::draw() const
 		}
 	}
 	glEnd();
+	
+	glEnable( GL_LIGHTING );
+	for( size_t i=0; i < m_collisionObjects.size(); ++i )
+	{
+		m_collisionObjects[i]->draw();
+	}
+	glDisable( GL_LIGHTING );
+	
+	for( size_t p = 0; p < m_d.particleX.size(); ++p )
+	{
+		float r = 2 * pow( m_d.particleVolumes[p], 1.0f/3 ) / ( 4 * 3.1415926 / 3 );
+		Eigen::Vector3f x = m_d.particleF[p] * Eigen::Vector3f(1,0,0);
+		Eigen::Vector3f y = m_d.particleF[p] * Eigen::Vector3f(0,1,0);
+		Eigen::Vector3f z = m_d.particleF[p] * Eigen::Vector3f(0,0,1);
+		
+		glBegin( GL_QUADS );
+		glColor3f( 1,0,1 );
+		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] + y[1] ), 0 );
+		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] + y[1] ), 0 );
+		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] - y[1] ), 0 );
+		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] - y[1] ), 0 );
+		glEnd();
+		
+		glBegin( GL_LINE_LOOP );
+		glColor3f( 1,1,1 );
+		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] + y[1] ), 0 );
+		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] + y[1] ), 0 );
+		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] - y[1] ), 0 );
+		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] - y[1] ), 0 );
+		glEnd();
+
+	}
 }
 
 void Grid::computeDensities() const

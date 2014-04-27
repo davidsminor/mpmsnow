@@ -281,34 +281,7 @@ void display()
 		}
 	}
 	
-	// draw collision objects:
-	for( size_t i=0; i < g_collisionObjects.size(); ++i )
-	{
-		g_collisionObjects[i]->draw();
-	}
-	
-	//g.draw();
-
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_NORMAL_ARRAY);
-	glEnable( GL_LIGHTING );
-	
-	glVertexPointer(3, GL_FLOAT, 0, (float*)&g_spherePoints[0]);
-	glNormalPointer(GL_FLOAT, 0, (float*)&g_spherePoints[0]);
-	
-	for( size_t p = 0; p < g_particles->particleX.size(); ++p )
-	{
-		float r = 2 * pow( g_particles->particleVolumes[p], 1.0f/3 ) / ( 4 * 3.1415926 / 3 );
-		glPushMatrix();
-		glTranslatef( g_particles->particleX[p][0],g_particles->particleX[p][1],g_particles->particleX[p][2] );
-		glScalef( r, r, r );
-		glDrawArrays(GL_TRIANGLES, 0, (int)g_spherePoints.size());
-		glPopMatrix();
-	}
-	
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_NORMAL_ARRAY);
-	glDisable( GL_LIGHTING );
+	g.draw();
 	
 	// update grid velocities using internal stresses...
 	g.updateGridVelocities( ConjugateResiduals( 120, 1.e-4 ) );
