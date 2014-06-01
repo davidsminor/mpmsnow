@@ -34,9 +34,9 @@ using namespace MpmSim;
 const unsigned int window_width = 512;
 const unsigned int window_height = 512;
 
-float g_theta(0.2);
-float g_phi(-0.2);
-float g_r(6);
+float g_x(0);
+float g_y(0);
+float g_r(0.5);
 
 // GL functionality
 bool initGL(int *argc, char** argv);
@@ -69,7 +69,7 @@ GLuint g_matrixTexture;
 
 // collision objects:
 // ground plane at y = 0
-CollisionPlane g_groundPlane( Vector4f( 0, 1, 0, 0 ) );
+CollisionPlane g_groundPlane( Vector4f( 0.3, 1, 0, 0 ) );
 std::vector< CollisionObject* > g_collisionObjects;
 
 #define LAT_DIVISIONS 4
@@ -220,11 +220,7 @@ bool initGL(int *argc, char **argv)
 	glMatrixMode(GL_PROJECTION);
 
 	glLoadIdentity();
-	gluPerspective(	30,
- 			double( window_width ) / window_height,
- 			0.01,
- 			20);
-	
+
 	return true;
 }
 
@@ -239,27 +235,8 @@ void display()
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-
-	gluLookAt(	g_r * cos( g_theta ) * sin( g_phi ),
-				g_r * sin( g_theta ),
- 				g_r * cos( g_theta ) * cos( g_phi ),
- 				0.0, 0.0, 0.0,
- 				0.0, 1.0, 0.0
-	);
-
-	// lights:
 	
-	GLfloat light_ambient[] = { 0.0, 0.0, 0.0, 1.0 };
-	GLfloat light_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
-	GLfloat light_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-	GLfloat light_position[] = { 1.0, 1.0, 1.0, 0.0 };
-	
-	glEnable( GL_LIGHT0 );
-	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-
+	glOrtho( g_x - g_r, g_x + g_r, g_y - g_r, g_y + g_r, -1, 1);
 	
 	// instantiate grid and rasterize!
 	Grid g(
@@ -375,12 +352,12 @@ void motion(int x, int y)
 
 	if (mouse_buttons & 1)
 	{
-		g_theta += dy * 0.2 * M_PI / 180.0;
-		g_phi -= dx * 0.2 * M_PI / 180.0;
+		g_x -= 0.001 * dx * g_r;
+		g_y += 0.001 * dy * g_r;
 	}
 	else if (mouse_buttons & 4)
 	{
-		g_r += dy * 0.01;
+		g_r *= exp( 0.01 * dy );
 	}
 
 	mouse_old_x = x;
