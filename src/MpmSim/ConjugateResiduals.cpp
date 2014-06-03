@@ -1,6 +1,9 @@
 #include "MpmSim/ConjugateResiduals.h"
 #include "MpmSim/Grid.h"
 
+#include <GL/gl.h>
+#include <GL/glut.h>
+
 #include <iostream>
 
 using namespace Eigen;
@@ -17,7 +20,8 @@ void ConjugateResiduals::operator()
 (
 		const ProceduralMatrix& A,
 		const Eigen::VectorXf& b,
-		Eigen::VectorXf& x
+		Eigen::VectorXf& x,
+		Debug* d
 ) const
 {
 	// NB: there are papers with an extra bit that supposedly makes
@@ -64,6 +68,11 @@ void ConjugateResiduals::operator()
 		float alpha = rAr / Ap.dot( Ap );
 		x += alpha * p;
 		
+		if( d )
+		{
+			(*d)( x );
+		}
+
 		// update residual:
 		r -= alpha * Ap;
 

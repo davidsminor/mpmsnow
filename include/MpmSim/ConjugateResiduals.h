@@ -15,7 +15,8 @@ public:
 	virtual void operator()(
 		const ProceduralMatrix& mat,
 		const Eigen::VectorXf& rhs,
-		Eigen::VectorXf& x ) const;
+		Eigen::VectorXf& x,
+		Debug* d=0 ) const;
 
 	mutable std::vector<Eigen::VectorXf> residuals;
 	mutable std::vector<Eigen::VectorXf> searchDirections;

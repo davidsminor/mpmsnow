@@ -220,6 +220,20 @@ const Eigen::VectorXf& Grid::masses() const
 {
 	return m_gridMasses;
 }
+const Vector3i& Grid::dimensions() const
+{
+	return m_n;
+}
+
+const Eigen::Vector3f& Grid::minCoord() const
+{
+	return m_min;
+}
+
+const Eigen::Vector3f& Grid::maxCoord() const
+{
+	return m_max;
+}
 
 const Eigen::VectorXf& Grid::getVelocities() const
 {
@@ -235,73 +249,7 @@ const ConstitutiveModel& Grid::constitutiveModel() const
 	return m_constitutiveModel;
 }
 
-void Grid::draw() const
-{
-	glColor3f( 0,0.3f,0 );
-	glBegin( GL_LINES );
 
-	// xy
-	for( int i=0; i <= m_n[0]; ++i )
-	{
-		for( int j=0; j <= m_n[1]; ++j )
-		{
-			glVertex3f( m_min[0] + i * m_gridH, m_min[1] + j * m_gridH, m_min[2] );
-			glVertex3f( m_min[0] + i * m_gridH, m_min[1] + j * m_gridH, m_max[2] );
-		}
-	}
-	// zy
-	for( int i=0; i <= m_n[2]; ++i )
-	{
-		for( int j=0; j <= m_n[1]; ++j )
-		{
-			glVertex3f( m_min[0], m_min[1] + j * m_gridH, m_min[2] + i * m_gridH );
-			glVertex3f( m_max[0], m_min[1] + j * m_gridH, m_min[2] + i * m_gridH );
-		}
-	}
-
-	// xz
-	for( int i=0; i <= m_n[0]; ++i )
-	{
-		for( int j=0; j <= m_n[2]; ++j )
-		{
-			glVertex3f( m_min[0] + i * m_gridH, m_min[1], m_min[2] + j * m_gridH );
-			glVertex3f( m_min[0] + i * m_gridH, m_max[1], m_min[2] + j * m_gridH );
-		}
-	}
-	glEnd();
-	
-	glEnable( GL_LIGHTING );
-	for( size_t i=0; i < m_collisionObjects.size(); ++i )
-	{
-		m_collisionObjects[i]->draw();
-	}
-	glDisable( GL_LIGHTING );
-	
-	for( size_t p = 0; p < m_d.particleX.size(); ++p )
-	{
-		float r = 2 * pow( m_d.particleVolumes[p], 1.0f/3 ) / ( 4 * 3.1415926 / 3 );
-		Eigen::Vector3f x = m_d.particleF[p] * Eigen::Vector3f(1,0,0);
-		Eigen::Vector3f y = m_d.particleF[p] * Eigen::Vector3f(0,1,0);
-		Eigen::Vector3f z = m_d.particleF[p] * Eigen::Vector3f(0,0,1);
-		
-		glBegin( GL_QUADS );
-		glColor3f( 1,0,1 );
-		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] + y[1] ), 0 );
-		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] + y[1] ), 0 );
-		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] - y[1] ), 0 );
-		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] - y[1] ), 0 );
-		glEnd();
-		
-		glBegin( GL_LINE_LOOP );
-		glColor3f( 1,1,1 );
-		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] + y[1] ), 0 );
-		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] + y[1] ), 0 );
-		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] - y[1] ), 0 );
-		glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] - y[1] ), 0 );
-		glEnd();
-
-	}
-}
 
 void Grid::computeDensities() const
 {
@@ -551,7 +499,7 @@ bool Grid::collide( Eigen::Vector3f& v, const Eigen::Vector3f& x, const std::vec
 }
 
 
-void Grid::updateGridVelocities( const LinearSolver& implicitSolver )
+void Grid::updateGridVelocities( const LinearSolver& implicitSolver, LinearSolver::Debug* d )
 {
 	m_prevGridVelocities = m_gridVelocities;
 
@@ -613,7 +561,8 @@ void Grid::updateGridVelocities( const LinearSolver& implicitSolver )
 	implicitSolver(
 		ImplicitUpdateMatrix( m_d, *this, m_collisionObjects ),
 		forwardMomenta,
-		m_gridVelocities );
+		m_gridVelocities,
+		d );
 	
 	// more funky remapping to make the solver happy:
 	for( int i=0; i < m_gridMasses.size(); ++i )

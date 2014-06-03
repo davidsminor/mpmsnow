@@ -36,7 +36,7 @@ public:
 	void draw() const;
 	void computeDensities() const;
  
-	void updateGridVelocities( const LinearSolver& implicitSolver );
+	void updateGridVelocities( const LinearSolver& implicitSolver, LinearSolver::Debug* d = 0 );
 
 	float updateDeformationGradients();
 	void updateParticleVelocities();
@@ -131,6 +131,10 @@ public:
 	
 	static bool collide( Eigen::Vector3f& v, const Eigen::Vector3f& x, const std::vector<CollisionObject*>& collisionObjects );
 	
+	const Eigen::Vector3i& dimensions() const;
+	const Eigen::Vector3f& minCoord() const;
+	const Eigen::Vector3f& maxCoord() const;
+
 private:
 	
 	friend class ImplicitUpdateMatrix;

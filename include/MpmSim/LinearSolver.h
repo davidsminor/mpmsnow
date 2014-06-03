@@ -16,10 +16,17 @@ class LinearSolver
 public:
 	virtual ~LinearSolver() {}
 	
+	class Debug
+	{
+		public:
+			virtual void operator()( Eigen::VectorXf& x ) = 0;
+	};
+	
 	virtual void operator()(
 		const ProceduralMatrix& mat,
 		const Eigen::VectorXf& rhs,
-		Eigen::VectorXf& x ) const = 0;
+		Eigen::VectorXf& x,
+		Debug* d=0 ) const = 0;
 	
 };
 

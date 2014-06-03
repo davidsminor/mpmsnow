@@ -69,7 +69,7 @@ GLuint g_matrixTexture;
 
 // collision objects:
 // ground plane at y = 0
-CollisionPlane g_groundPlane( Vector4f( 0.3, 1, 0, 0 ) );
+CollisionPlane g_groundPlane( Vector4f( 0.7, 1, 0, 0 ) );
 std::vector< CollisionObject* > g_collisionObjects;
 
 #define LAT_DIVISIONS 4
@@ -104,14 +104,14 @@ int main(int argc, char** argv)
 
 	float particleSpacing( g_gridSize );
 	float particleVolume = particleSpacing * particleSpacing * particleSpacing;
-	const int particlesPerCell = 3;
-	const float initialDensity = 400;
+	const int particlesPerCell = 5;
+	const float initialDensity = 100;
 
 	std::vector<Eigen::Vector3f> x;
 	std::vector<float> m;
-	for( int i=-3; i <= 3; ++i )
+	for( int i=-5; i <= 5; ++i )
 	{
-		for( int j=-3; j <= 3; ++j )
+		for( int j=-5; j <= 5; ++j )
 		{
 			for( int n=0; n < particlesPerCell; ++n )
 			{
@@ -225,13 +225,108 @@ bool initGL(int *argc, char **argv)
 }
 
 
+class GridDrawWotsit : public LinearSolver::Debug
+{
+public:
+	GridDrawWotsit( Grid& g, ParticleData& d, float timeStep, const std::vector< CollisionObject* >& collisionObjects ) :
+		m_g( g ),
+		m_d( d ),
+		m_timeStep( timeStep ),
+		m_collisionObjects( collisionObjects )
+	{
+	}
+	
+	Grid& m_g;
+	ParticleData& m_d;
+	float m_timeStep;
+	const std::vector< CollisionObject* >& m_collisionObjects;
+
+	virtual void operator()( Eigen::VectorXf& velocities )
+	{
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glDisable( GL_DEPTH_TEST );
+		
+		float maxMass(0);
+		for( int i=0; i < m_g.masses().size(); ++i )
+		{
+			if( m_g.masses()[i] > maxMass ) maxMass = m_g.masses()[i];
+		}
+
+		glBegin( GL_QUADS );
+		for( int i=0; i < m_g.dimensions()[0]; ++i )
+		{
+			for( int j=0; j < m_g.dimensions()[1]; ++j )
+			{
+				int index = m_g.coordsToIndex( Vector3i( i, j, m_g.dimensions()[2]/2 ) );
+				float mass = m_g.masses()[ index ] / maxMass;
+				glColor3f( mass, mass, mass);
+				glVertex3f( m_g.minCoord()[0] + (i-0.5) * m_g.gridH(), m_g.minCoord()[1] + (j-0.5) * m_g.gridH(), 0 );
+				glVertex3f( m_g.minCoord()[0] + (i+0.5) * m_g.gridH(), m_g.minCoord()[1] + (j-0.5) * m_g.gridH(), 0 );
+				glVertex3f( m_g.minCoord()[0] + (i+0.5) * m_g.gridH(), m_g.minCoord()[1] + (j+0.5) * m_g.gridH(), 0 );
+				glVertex3f( m_g.minCoord()[0] + (i-0.5) * m_g.gridH(), m_g.minCoord()[1] + (j+0.5) * m_g.gridH(), 0 );
+			}
+		}
+		glEnd();
+
+		for( size_t p = 0; p < m_d.particleX.size(); ++p )
+		{
+			float r = 2 * pow( m_d.particleVolumes[p], 1.0f/3 ) / ( 4 * 3.1415926 / 3 );
+			Eigen::Vector3f x = m_d.particleF[p] * Eigen::Vector3f(1,0,0);
+			Eigen::Vector3f y = m_d.particleF[p] * Eigen::Vector3f(0,1,0);
+			Eigen::Vector3f z = m_d.particleF[p] * Eigen::Vector3f(0,0,1);
+			
+			glBegin( GL_QUADS );
+			glColor3f( 1,0,1 );
+			glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] + y[1] ), 0 );
+			glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] + y[1] ), 0 );
+			glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] - y[1] ), 0 );
+			glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] - y[1] ), 0 );
+			glEnd();
+			
+			glBegin( GL_LINE_LOOP );
+			glColor3f( 1,1,1 );
+			glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] + y[1] ), 0 );
+			glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] + y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] + y[1] ), 0 );
+			glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( -x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( -x[1] - y[1] ), 0 );
+			glVertex3f( m_d.particleX[p][0] + 0.5f * r * ( x[0] - y[0] ), m_d.particleX[p][1] + 0.5f * r * ( x[1] - y[1] ), 0 );
+			glEnd();
+
+		}
+
+		glBegin( GL_LINES );
+		glColor3f( 1, 0, 0 );
+		for( int i=0; i < m_g.dimensions()[0]; ++i )
+		{
+			for( int j=0; j < m_g.dimensions()[1]; ++j )
+			{
+				int index = m_g.coordsToIndex( Vector3i( i, j, m_g.dimensions()[2]/2 ) );
+				Vector3f v = velocities.segment<3>( 3*index ) / sqrt( m_g.masses()[ index ] );
+				glVertex3f( m_g.minCoord()[0] + i * m_g.gridH(), m_g.minCoord()[1] + j * m_g.gridH(), 0 );
+				glVertex3f( m_g.minCoord()[0] + i * m_g.gridH() + v[0]*m_timeStep * 5, m_g.minCoord()[1] + j * m_g.gridH() + v[1]*m_timeStep * 5, 0 );
+			}
+		}
+		glEnd();
+		
+		glEnable( GL_LIGHTING );
+		for( size_t i=0; i < m_collisionObjects.size(); ++i )
+		{
+			m_collisionObjects[i]->draw();
+		}
+		glDisable( GL_LIGHTING );
+	
+		glutSwapBuffers();
+	}
+
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //! Display callback
 ////////////////////////////////////////////////////////////////////////////////
 void display()
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -258,10 +353,11 @@ void display()
 		}
 	}
 	
-	g.draw();
+	//g.draw();
+	GridDrawWotsit drawyThingy( g, *g_particles, g_timeStep, g_collisionObjects );
 	
 	// update grid velocities using internal stresses...
-	g.updateGridVelocities( ConjugateResiduals( 120, 1.e-4 ) );
+	g.updateGridVelocities( ConjugateResiduals( 120, 1.e-4 ), &drawyThingy );
 	
 	// transfer the grid velocities back onto the particles:
 	g.updateParticleVelocities();
@@ -273,7 +369,6 @@ void display()
 	g_particles->advance( g_timeStep );
 	++g_time;
 
-	glutSwapBuffers();
 	
 #ifdef HAVE_CORTEX
 	
