@@ -5,8 +5,16 @@
 
 using namespace MpmSim;
 
-Sim::Sim( const std::vector<Eigen::Vector3f>& x, const std::vector<float>& masses, float gridSize ) :
-	m_gridSize( gridSize )
+Sim::Sim(
+	const std::vector<Eigen::Vector3f>& x,
+	const std::vector<float>& masses,
+	float gridSize,
+	const ShapeFunction& shapeFunction,
+	const ConstitutiveModel& model
+) :
+	m_gridSize( gridSize ),
+	m_shapeFunction( shapeFunction ),
+	m_constitutiveModel( model )
 {
 	VectorData* p = new VectorData;
 	p->m_data = x;
@@ -198,7 +206,7 @@ void Sim::calculateBodies()
 
 		// partition the particles in this body in an 8 color checkerboard
 		// pattern so they can be processed in paralell
-		b.computeProcessingPartitions( particleX, 4 * m_gridSize );
+		b.computeProcessingPartitions( particleX, 2 * m_shapeFunction.supportRadius() * m_gridSize );
 	}
 }
 

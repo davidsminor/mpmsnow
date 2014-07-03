@@ -2,6 +2,9 @@
 #define MPMSIM_SIM_H
 
 #include "MpmSim/MaterialPointData.h"
+#include "MpmSim/ConstitutiveModel.h"
+#include "MpmSim/ShapeFunction.h"
+
 #include <map>
 #include <memory>
 
@@ -14,7 +17,13 @@ class Sim
 public:
 
 	// construct a sim from initial conditions:
-	Sim( const std::vector<Eigen::Vector3f>& x, const std::vector<float>& masses, float gridSize );
+	Sim(
+		const std::vector<Eigen::Vector3f>& x,
+		const std::vector<float>& masses,
+		float gridSize,
+		const ShapeFunction& shapeFunction,
+		const ConstitutiveModel& model
+	);
 	
 	~Sim();
 
@@ -107,6 +116,12 @@ private:
 
 	// computational grid cell size
 	float m_gridSize;
+	
+	// shape function for interpolating particles back and forth between grids
+	const ShapeFunction& m_shapeFunction;
+
+	// constitutive model governing the material physics
+	const ConstitutiveModel& m_constitutiveModel;
 
 };
 

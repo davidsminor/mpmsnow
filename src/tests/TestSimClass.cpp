@@ -1,14 +1,45 @@
 #include "tests/TestSimClass.h"
 
 #include "MpmSim/Sim.h"
+#include "MpmSim/CubicBsplineShapeFunction.h"
+#include "MpmSim/ConstitutiveModel.h"
 
 #include <iostream>
 
 using namespace MpmSim;
 using namespace Eigen;
 
+// useless constitutive model for testing purposes:
+class TestConstitutiveModel : public MpmSim::ConstitutiveModel
+{
+public:
+	
+	virtual void initParticles( ParticleData& p ) const
+	{
+	}
+
+	virtual void updateDeformation( ParticleData& d ) const
+	{
+	}
+
+	virtual float energyDensity( const ParticleData& d, size_t p ) const
+	{
+		return 0;
+	}
+	
+	virtual void dEnergyDensitydF( Eigen::Matrix3f& result, const ParticleData& d, size_t p ) const
+	{
+	}
+	
+	virtual void dEdFDifferential( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const
+	{
+	}
+
+};
+
 namespace MpmSimTest
 {
+
 
 void testNeighbourQuery()
 {
@@ -92,8 +123,11 @@ void testBodies()
 	}
 	
 	// 4 particles per cell
-	Sim sim( positions, masses, gridSize );
+	CubicBsplineShapeFunction shapeFunction;
+	TestConstitutiveModel constitutiveModel;
+	Sim sim( positions, masses, gridSize, shapeFunction, constitutiveModel );
 	
+	/*
 	// sensible particle variables?
 	assert( sim.numParticleVariables() == 4 );
 	assert( sim.particleVariable<MpmSim::ScalarData>("m") );
@@ -103,7 +137,8 @@ void testBodies()
 	
 	assert( sim.particleVariable<MpmSim::ScalarData>("F") == 0 );
 	assert( sim.particleVariable<MpmSim::ScalarData>("Fiddlesticks") == 0 );
-	
+	*/
+
 	sim.calculateBodies();
 	assert( sim.ballisticParticles().size() == 16 * 16 * 16 );
 	
@@ -131,8 +166,10 @@ void testProcessingPartitions()
 			}
 		}
 	}
-		
-	Sim sim( positions, masses, gridSize );
+	
+	CubicBsplineShapeFunction shapeFunction;
+	TestConstitutiveModel constitutiveModel;
+	Sim sim( positions, masses, gridSize, shapeFunction, constitutiveModel );
 	sim.calculateBodies();
 	
 	assert( sim.numBodies() == 1 );
