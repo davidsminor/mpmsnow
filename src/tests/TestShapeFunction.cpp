@@ -1,4 +1,7 @@
 
+#include "MpmSim/ParticleData.h"
+#include "MpmSim/Grid.h"
+
 #include "tests/TestShapeFunction.h"
 
 using namespace MpmSim; 
@@ -11,6 +14,35 @@ static float evaluateShapeFunction( const ShapeFunction& shapeFunction, const Ei
 
 namespace MpmSimTest
 {
+
+class TestConstitutiveModel : public ConstitutiveModel
+{
+public:
+	
+	TestConstitutiveModel() {}
+
+	virtual void initParticles( ParticleData& p ) const {};
+
+	// update deformation at particle p:
+	virtual void updateDeformation( ParticleData& d ) const {};
+
+	// energy density for particle p:
+	virtual float energyDensity( const ParticleData& d, size_t p ) const
+	{
+		return 0;
+	}
+	
+	// derivative of energy density with respect to the deformation gradient at particle p:
+	virtual void dEnergyDensitydF( Eigen::Matrix3f& result, const ParticleData& d, size_t p ) const
+	{
+	}
+	
+	// energy differentials, using second derivatives of energy function
+	virtual void dEdFDifferential( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const
+	{
+	}
+
+};
 
 void testShapeFunction( const ShapeFunction& shapeFunction )
 {
@@ -45,7 +77,18 @@ void testShapeFunction( const ShapeFunction& shapeFunction )
 	Eigen::Vector3f particlePos( 0.15321f, 2.29587345f, -3.897576f );
 	Eigen::Vector3i gridPos;
 	const float gridH = 0.314857f;
-	ShapeFunction::PointToGridIterator it( shapeFunction, gridH, gridOrigin );
+	
+	std::vector<Eigen::Vector3f> positions;
+	positions.push_back( gridOrigin );
+
+	std::vector<float> masses;
+	masses.push_back( 1 );
+
+	ParticleData d( positions, masses, gridH );
+	TestConstitutiveModel model;
+	std::vector<CollisionObject*> collisionObjects;
+	Grid g(d, collisionObjects, 0.01f, shapeFunction, model );
+	Grid::PointToGridIterator it( g );
 	it.initialize( particlePos, true );
 	int pointsVisited = 0;
 	float totalWeight = 0;
