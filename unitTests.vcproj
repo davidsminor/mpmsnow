@@ -390,6 +390,10 @@
 					>
 				</File>
 				<File
+					RelativePath=".\src\tests\TestSimClass.cpp"
+					>
+				</File>
+				<File
 					RelativePath=".\src\tests\TestSnowConstitutiveModel.cpp"
 					>
 				</File>
@@ -416,6 +420,10 @@
 			</File>
 			<File
 				RelativePath=".\include\tests\TestShapeFunction.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\tests\TestSimClass.h"
 				>
 			</File>
 			<File

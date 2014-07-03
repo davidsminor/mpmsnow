@@ -367,6 +367,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\MpmSim\Sim.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\MpmSim\SnowConstitutiveModel.cpp"
 				>
 			</File>
@@ -415,6 +419,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\MpmSim\MaterialPointData.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\MpmSim\ParticleData.h"
 				>
 			</File>
@@ -428,6 +436,14 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\ShapeFunction.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSim\Sim.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSim\Sim.inl"
 				>
 			</File>
 			<File
