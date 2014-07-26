@@ -1,7 +1,8 @@
 #include "tests/TestSnowConstitutiveModel.h"
 
 #include "MpmSim/SnowConstitutiveModel.h"
-#include "MpmSim/ParticleData.h"
+#include "MpmSim/CubicBsplineShapeFunction.h"
+#include "MpmSim/Sim.h"
 
 #include <iostream>
 
@@ -25,44 +26,71 @@ void testSnowConstitutiveModel()
 	std::vector< float > masses;
 	positions.push_back( Eigen::Vector3f::Zero() );
 	masses.push_back( 1.0f );
-
-	ParticleData d( positions, masses, 1 );
-	snowModel.initParticles( d );
+	
+	const float gridSize(1);
+	CubicBsplineShapeFunction shapeFunction;
+	Sim::CollisionObjectSet collisionObjects;
+	Sim::ForceFieldSet forceFields;
+	Sim sim( positions, masses, gridSize, shapeFunction, snowModel, collisionObjects, forceFields );
 	Matrix3f p = Matrix3f::Random();
 	p = p * p;
-	d.particleFplastic[0] = p;
+	
+	// should have created all this particle data for the sim:
+	MpmSim::MatrixData* particleFData = sim.particleVariable<MpmSim::MatrixData>("F");
+	assert( particleFData );
+	MpmSim::MatrixData* particleFplasticData = sim.particleVariable<MpmSim::MatrixData>("Fp");
+	assert( particleFplasticData );
+	MpmSim::MatrixData* particleFinvTransData = sim.particleVariable<MpmSim::MatrixData>("FinvTrans");
+	assert( particleFinvTransData );
+	MpmSim::ScalarData* particleJData = sim.particleVariable<MpmSim::ScalarData>("J");
+	assert( particleJData );
+	MpmSim::MatrixData* particleRData = sim.particleVariable<MpmSim::MatrixData>("R");
+	assert( particleRData );
+	MpmSim::MatrixData* particleGinvData = sim.particleVariable<MpmSim::MatrixData>("Ginv");
+	assert( particleGinvData );
+	MpmSim::ScalarData* particleMuData = sim.particleVariable<MpmSim::ScalarData>("mu");
+	assert( particleMuData );
+	MpmSim::ScalarData* particleLambdaData = sim.particleVariable<MpmSim::ScalarData>("lambda");
+	assert( particleLambdaData );
+	
+	std::vector<Eigen::Matrix3f>& particleF = particleFData->m_data;
+	std::vector<Eigen::Matrix3f>& particleFplastic = particleFplasticData->m_data;
+	std::vector<Eigen::Matrix3f>& particleFinvTrans = particleFinvTransData->m_data;
+	std::vector<float>& particleJ = particleJData->m_data;
+
+	particleFplastic[0] = p;
 	
 	Matrix3f m = Matrix3f::Random();
 	m = m * m;
-	d.particleF[0] = m;
+	particleF[0] = m;
 	
-	snowModel.updateDeformation(d);
+	snowModel.updateParticleData( sim );
 	
 	// test general matrix decomposition properties:
-	assert( ( d.particleF[0] * d.particleFplastic[0] - m * p ).norm() < 1.e-4 );
-	assert( ( d.particleF[0].inverse().transpose() - d.particleFinvTrans[0] ).norm() < 1.e-4 );
-	assert( fabs( d.particleJ[0] - d.particleF[0].determinant() ) < 1.e-4 );
+	assert( ( particleF[0] * particleFplastic[0] - m * p ).norm() < 1.e-4 );
+	assert( ( particleF[0].inverse().transpose() - particleFinvTrans[0] ).norm() < 1.e-4 );
+	assert( fabs( particleJ[0] - particleF[0].determinant() ) < 1.e-4 );
 	
 	// test stretch clamping:
-	d.particleFplastic[0] = Matrix3f::Identity();
-	d.particleF[0] = Matrix3f::Identity();
-	d.particleF[0](0,0) = 1.3f;
-	d.particleF[0](1,1) = 0.8f;
+	particleFplastic[0] = Matrix3f::Identity();
+	particleF[0] = Matrix3f::Identity();
+	particleF[0](0,0) = 1.3f;
+	particleF[0](1,1) = 0.8f;
 	
-	snowModel.updateDeformation(d);
+	snowModel.updateParticleData( sim );
 	
-	assert( abs( d.particleF[0](0,0) - 1.2f ) < 1.e-4 );
-	assert( abs( d.particleF[0](1,1) - 0.9f ) < 1.e-4 );
+	assert( abs( particleF[0](0,0) - 1.2f ) < 1.e-4 );
+	assert( abs( particleF[0](1,1) - 0.9f ) < 1.e-4 );
 	
 	// set deformation within yeild limits:
-	d.particleF[0](0,0) = 1.02f;
-	d.particleF[0](1,1) = 0.95f;
-	Matrix3f originalF = d.particleF[0];
-	snowModel.updateDeformation(d);
+	particleF[0](0,0) = 1.02f;
+	particleF[0](1,1) = 0.95f;
+	Matrix3f originalF = particleF[0];
+	snowModel.updateParticleData( sim );
 	
 	// work out dedf with model:
-	Matrix3f dEdF;
-	snowModel.dEnergyDensitydF( dEdF, d, 0 );
+	snowModel.setParticles( sim.particleData );
+	Matrix3f dEdF = snowModel.dEnergyDensitydF( 0 );
 
 	// compare to finite difference version:
 	const float delta = 0.01f;
@@ -71,36 +99,43 @@ void testSnowConstitutiveModel()
 	{
 		for( int j=0; j < 3; ++j )
 		{
-			d.particleF[0] = originalF;
-			d.particleF[0](i,j) += delta;
-			snowModel.updateDeformation(d);
-			float ePlusDeltaE = snowModel.energyDensity( d, 0 );
+			particleF[0] = originalF;
+			particleF[0](i,j) += delta;
+			snowModel.updateParticleData( sim );
+			float ePlusDeltaE = snowModel.energyDensity( 0 );
 			
-			d.particleF[0] = originalF;
-			d.particleF[0](i,j) -= delta;
-			snowModel.updateDeformation(d);
-			float eMinusDeltaE = snowModel.energyDensity( d, 0 );
+			particleF[0] = originalF;
+			particleF[0](i,j) -= delta;
+			snowModel.updateParticleData( sim );
+			float eMinusDeltaE = snowModel.energyDensity( 0 );
 
 			dEdF_fd( i, j ) = ( ePlusDeltaE - eMinusDeltaE ) / ( 2 * delta );
 		}
 	}
-	assert( ( dEdF - dEdF_fd ).maxCoeff() - ( dEdF - dEdF_fd ).minCoeff() < 1.e-6 );
+	float diffMaxCoeff = fabs( ( dEdF - dEdF_fd ).maxCoeff() );
+	float diffMinCoeff = fabs( ( dEdF - dEdF_fd ).minCoeff() );
+	assert( diffMaxCoeff < 1.e-6 );
+	assert( diffMinCoeff < 1.e-6 );
 	
 	// now work out "force differential density" (maybe there's a better name for that...)
-	d.particleF[0] = originalF;
-	snowModel.updateDeformation(d);
+	particleF[0] = originalF;
+	snowModel.updateParticleData( sim );
 	
 	Matrix3f dF = Matrix3f::Random() * 0.001f;
-	Matrix3f dEdFDifferential;
-	snowModel.dEdFDifferential( dEdFDifferential, dF, d, 0 );
+	Matrix3f dEdFDifferential = snowModel.dEdFDifferential( dF, 0 );
 	
 	// compare with finite difference:
-	Matrix3f plusDelta;
-	d.particleF[0] += dF;
-	snowModel.updateDeformation(d);
-	snowModel.dEnergyDensitydF( plusDelta, d, 0 );
+	particleF[0] += dF;
+	snowModel.updateParticleData( sim );
+	Matrix3f plusDelta = snowModel.dEnergyDensitydF( 0 );
 	
-	assert( ( plusDelta - dEdF - dEdFDifferential ).maxCoeff() - ( plusDelta - dEdF - dEdFDifferential ).minCoeff() < 1.e-5 );
+	Matrix3f dEdFDifferential_fd = plusDelta - dEdF;
+	diffMaxCoeff = fabs( ( dEdFDifferential_fd - dEdFDifferential ).maxCoeff() );
+	diffMinCoeff = fabs( ( dEdFDifferential_fd - dEdFDifferential ).minCoeff() );
+	
+	assert( diffMaxCoeff < 1.e-5 );
+	assert( diffMinCoeff < 1.e-5 );
+
 }
 
 }

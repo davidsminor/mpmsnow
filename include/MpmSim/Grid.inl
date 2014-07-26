@@ -8,16 +8,26 @@ namespace MpmSim
 {
 
 template <class Splatter>
-void Grid::splat( const ParticleData& d, Eigen::VectorXf& result, const void* args ) const
+void Grid::splat( Splatter& s ) const
 {
 	for( int i=0; i < 8; ++i )
 	{
-		const ParticleData::PartitionList& partition = d.processingPartitions[ i&1 ][ (i&2) / 2][ (i&4) / 4];
-		Splatter s( *this, d, partition, result, args );
-		tbb::parallel_for( tbb::blocked_range<int>(0, (int)partition.size()), s );
+		s.setPartition( i&1, (i&2) / 2, (i&4) / 4 );
+		tbb::parallel_for( tbb::blocked_range<int>(0, (int)m_processingPartitions[i&1][(i&2) / 2][(i&4) / 4].size()), s );
 	}
 }
 
+
+template< class T >
+T* Grid::GridSplatter::particleVariable( const std::string& name )
+{
+	Sim::MaterialPointDataMap::iterator it = m_g.m_d.find( name );
+	if( it == m_g.m_d.end() )
+	{
+		return 0;
+	}
+	return dynamic_cast<T*>( it->second );
+}
 
 } //namespace MpmSim
 

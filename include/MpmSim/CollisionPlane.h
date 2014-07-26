@@ -20,12 +20,20 @@ public:
 	virtual void grad( const Eigen::Vector3f& x, Eigen::Vector3f& dPhi ) const;
 	
 	virtual void velocity( const Eigen::Vector3f& x, Eigen::Vector3f& v ) const;
+	
+	virtual float coulombFriction() const;
+
+	virtual bool sticky() const;
 
 	virtual void draw() const;
+	
+	void setCoeffs( const Eigen::Vector4f& c );
+	void setV( const Eigen::Vector3f& v );
 
 private:
 
 	Eigen::Vector4f m_coeffs;
+	Eigen::Vector3f m_v;
 
 };
 

@@ -24,7 +24,27 @@ void CollisionPlane::grad( const Eigen::Vector3f& x, Eigen::Vector3f& dPhi ) con
 
 void CollisionPlane::velocity( const Eigen::Vector3f& x, Eigen::Vector3f& v ) const
 {
-	v.setZero();
+	v = m_v;
+}
+
+float CollisionPlane::coulombFriction() const
+{
+	return 0.5f;
+}
+
+bool CollisionPlane::sticky() const
+{
+	return false;
+}
+
+void CollisionPlane::setCoeffs( const Eigen::Vector4f& c )
+{
+	m_coeffs = c;
+}
+
+void CollisionPlane::setV( const Eigen::Vector3f& v )
+{
+	m_v = v;
 }
 
 void CollisionPlane::draw() const

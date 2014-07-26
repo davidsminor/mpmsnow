@@ -370,7 +370,7 @@
 				Name="tests"
 				>
 				<File
-					RelativePath=".\include\tests\TestConjugateResiduals.cpp"
+					RelativePath=".\src\tests\TestConjugateResiduals.cpp"
 					>
 				</File>
 				<File
@@ -378,11 +378,7 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\tests\TestMultiGridSolver.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\src\tests\TestParticleData.cpp"
+					RelativePath=".\src\tests\TestImplicitUpdateMatrix.cpp"
 					>
 				</File>
 				<File
@@ -411,11 +407,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\tests\TestMultiGridSolver.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\tests\TestParticleData.h"
+				RelativePath=".\include\tests\TestImplicitUpdateMatrix.h"
 				>
 			</File>
 			<File

@@ -339,15 +339,19 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\MpmSim\ConjugateGradients.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\src\MpmSim\ConjugateResiduals.cpp"
 				>
 			</File>
 			<File
+				RelativePath=".\src\MpmSim\ConstitutiveModel.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\MpmSim\CubicBsplineShapeFunction.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\MpmSim\GravityField.cpp"
 				>
 			</File>
 			<File
@@ -356,10 +360,6 @@
 			</File>
 			<File
 				RelativePath=".\src\MpmSim\ImplicitUpdateMatrix.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\MpmSim\ParticleData.cpp"
 				>
 			</File>
 			<File
@@ -387,10 +387,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\MpmSim\ConjugateGradients.h"
-				>
-			</File>
-			<File
 				RelativePath=".\include\MpmSim\ConjugateResiduals.h"
 				>
 			</File>
@@ -400,6 +396,14 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\CubicBsplineShapeFunction.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSim\ForceField.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSim\GravityField.h"
 				>
 			</File>
 			<File
@@ -420,14 +424,6 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\MaterialPointData.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\MpmSim\ParticleData.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\MpmSim\Preconditioner.h"
 				>
 			</File>
 			<File

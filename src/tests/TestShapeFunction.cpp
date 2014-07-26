@@ -1,10 +1,10 @@
-
-#include "MpmSim/ParticleData.h"
+#include <iostream>
 #include "MpmSim/Grid.h"
 
 #include "tests/TestShapeFunction.h"
 
-using namespace MpmSim; 
+using namespace MpmSim;
+using namespace Eigen;
 
 static float evaluateShapeFunction( const ShapeFunction& shapeFunction, const Eigen::Vector3f& origin, float h, const Eigen::Vector3f& evalPos )
 {
@@ -14,40 +14,8 @@ static float evaluateShapeFunction( const ShapeFunction& shapeFunction, const Ei
 
 namespace MpmSimTest
 {
-
-class TestConstitutiveModel : public ConstitutiveModel
-{
-public:
-	
-	TestConstitutiveModel() {}
-
-	virtual void initParticles( ParticleData& p ) const {};
-
-	// update deformation at particle p:
-	virtual void updateDeformation( ParticleData& d ) const {};
-
-	// energy density for particle p:
-	virtual float energyDensity( const ParticleData& d, size_t p ) const
-	{
-		return 0;
-	}
-	
-	// derivative of energy density with respect to the deformation gradient at particle p:
-	virtual void dEnergyDensitydF( Eigen::Matrix3f& result, const ParticleData& d, size_t p ) const
-	{
-	}
-	
-	// energy differentials, using second derivatives of energy function
-	virtual void dEdFDifferential( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const
-	{
-	}
-
-};
-
 void testShapeFunction( const ShapeFunction& shapeFunction )
 {
-	assert( shapeFunction.supportRadius() == 2 );
-
 	assert( shapeFunction.w( (float)shapeFunction.supportRadius() ) == 0. );
 	assert( shapeFunction.w( -(float)shapeFunction.supportRadius() ) == 0.0f );
 
@@ -71,24 +39,36 @@ void testShapeFunction( const ShapeFunction& shapeFunction )
 		float dwFiniteDiff = ( shapeFunction.w( x + dx ) - shapeFunction.w( x - dx ) ) / ( 2 * dx );
 		assert( fabs( dwFiniteDiff - shapeFunction.dw( x ) ) < 1.e-4f );
 	}
-	
+
 	// test iterator for splatting to grid:
 	Eigen::Vector3f gridOrigin( -1.7638f, -2.85363f, 2.25722f );
 	Eigen::Vector3f particlePos( 0.15321f, 2.29587345f, -3.897576f );
 	Eigen::Vector3i gridPos;
 	const float gridH = 0.314857f;
 	
-	std::vector<Eigen::Vector3f> positions;
+	VectorData* positionData = new VectorData;
+	VectorData* velocityData = new VectorData;
+	ScalarData* massData = new ScalarData;
+
+	// make some initial particles:
+	std::vector<Vector3f>& positions = positionData->m_data;
+	std::vector<Vector3f>& velocities = velocityData->m_data;
+	std::vector<float>& masses = massData->m_data;
+	Sim::IndexList particleInds;
+	
+	Sim::MaterialPointDataMap d;
+	d["p"] = positionData;
+	d["v"] = velocityData;
+	d["m"] = massData;
+
 	positions.push_back( gridOrigin );
+	velocities.push_back( Eigen::Vector3f::Zero() );
+	masses.push_back( 1.0f );
+	particleInds.push_back( 0 );
 
-	std::vector<float> masses;
-	masses.push_back( 1 );
-
-	ParticleData d( positions, masses, gridH );
-	TestConstitutiveModel model;
-	std::vector<CollisionObject*> collisionObjects;
-	Grid g(d, collisionObjects, 0.01f, shapeFunction, model );
-	Grid::PointToGridIterator it( g );
+	
+	Grid g( d, particleInds, gridH, shapeFunction );
+	Grid::ShapeFunctionIterator& it = g.shapeFunctionIterator();
 	it.initialize( particlePos, true );
 	int pointsVisited = 0;
 	float totalWeight = 0;
@@ -111,9 +91,9 @@ void testShapeFunction( const ShapeFunction& shapeFunction )
 		if( gridPos[2] > maxGridPos[2] ) maxGridPos[2] = gridPos[2];
 		
 		Eigen::Vector3f worldPos;
-		worldPos[0] = gridPos[0] * gridH + gridOrigin[0];
-		worldPos[1] = gridPos[1] * gridH + gridOrigin[1];
-		worldPos[2] = gridPos[2] * gridH + gridOrigin[2];
+		worldPos[0] = gridPos[0] * gridH + g.minCoord()[0];
+		worldPos[1] = gridPos[1] * gridH + g.minCoord()[1];
+		worldPos[2] = gridPos[2] * gridH + g.minCoord()[2];
 
 		if( worldPos[0] < minPos[0] ) minPos[0] = worldPos[0];
 		if( worldPos[1] < minPos[1] ) minPos[1] = worldPos[1];
@@ -159,11 +139,11 @@ void testShapeFunction( const ShapeFunction& shapeFunction )
 	assert( fabs( totalWeight - 1 ) < 1.0e-6f );
 
 	// correct bounds?
-	Eigen::Vector3f gridRelativeParticle = ( particlePos - gridOrigin )/gridH;
+	Eigen::Vector3f gridRelativeParticle = ( particlePos - g.minCoord() )/gridH;
 	Eigen::Vector3f expectedMin(
-		gridOrigin[0] + ( floor( gridRelativeParticle[0] ) - 1 ) * gridH,
-		gridOrigin[1] + ( floor( gridRelativeParticle[1] ) - 1 ) * gridH,
-		gridOrigin[2] + ( floor( gridRelativeParticle[2] ) - 1 ) * gridH
+		g.minCoord()[0] + ( floor( gridRelativeParticle[0] ) - 1 ) * gridH,
+		g.minCoord()[1] + ( floor( gridRelativeParticle[1] ) - 1 ) * gridH,
+		g.minCoord()[2] + ( floor( gridRelativeParticle[2] ) - 1 ) * gridH
 	);
 	Eigen::Vector3f expectedMax = expectedMin + ( 2.0f * shapeFunction.supportRadius() - 1.0f ) * Eigen::Vector3f( gridH, gridH, gridH );
 	
@@ -181,8 +161,6 @@ void testShapeFunction( const ShapeFunction& shapeFunction )
 	Eigen::Vector3i expectedGridMax = expectedGridMin + ( 2 * shapeFunction.supportRadius() - 1 ) * Eigen::Vector3i( 1, 1, 1 );
 	
 	assert( minGridPos == expectedGridMin );
-	assert( maxGridPos == expectedGridMax );
-	
+	assert( maxGridPos == expectedGridMax );	
 }
-
 }

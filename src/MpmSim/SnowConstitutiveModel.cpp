@@ -23,12 +23,21 @@ SnowConstitutiveModel::SnowConstitutiveModel(
 	m_lambda = ( youngsModulus * poissonRatio / ( ( 1 + poissonRatio ) * ( 1 - 2 * poissonRatio ) ) );
 }
 
-void SnowConstitutiveModel::updateDeformation( ParticleData& d ) const
+void SnowConstitutiveModel::updateParticleData( Sim& sim ) const
 {
-	for( size_t p=0; p < d.particleX.size(); ++p )
+	std::vector<Eigen::Matrix3f>& particleF = sim.particleVariable<MatrixData>( "F" )->m_data;
+	std::vector<Eigen::Matrix3f>& particleFplastic = sim.particleVariable<MatrixData>( "Fp" )->m_data;
+	std::vector<Eigen::Matrix3f>& particleFinvTrans = sim.particleVariable<MatrixData>( "FinvTrans" )->m_data;
+	std::vector<Eigen::Matrix3f>& particleR = sim.particleVariable<MatrixData>( "R" )->m_data;
+	std::vector<Eigen::Matrix3f>& particleGinv = sim.particleVariable<MatrixData>( "Ginv" )->m_data;
+	
+	std::vector<float>& particleJ = sim.particleVariable<ScalarData>( "J" )->m_data;
+	std::vector<float>& particleMu = sim.particleVariable<ScalarData>( "mu" )->m_data;
+	std::vector<float>& particleLambda = sim.particleVariable<ScalarData>( "lambda" )->m_data;
+	
+	for( size_t p=0; p < particleF.size(); ++p )
 	{
-
-		JacobiSVD<Matrix3f> svd(d.particleF[p], ComputeFullU | ComputeFullV );
+		JacobiSVD<Matrix3f> svd(particleF[p], ComputeFullU | ComputeFullV );
 
 		Vector3f singularValues = svd.singularValues();
 
@@ -57,13 +66,13 @@ void SnowConstitutiveModel::updateDeformation( ParticleData& d ) const
 		
 		if( modifiedSVD )
 		{
-			Matrix3f FNplusOne = d.particleF[p] * d.particleFplastic[p];
-			d.particleFplastic[p] = svd.matrixV() * diagonalMatInv * svd.matrixU().transpose() * FNplusOne;
-			d.particleF[p] = svd.matrixU() * diagonalMat * svd.matrixV().transpose();
+			Matrix3f FNplusOne = particleF[p] * particleFplastic[p];
+			particleFplastic[p] = svd.matrixV() * diagonalMatInv * svd.matrixU().transpose() * FNplusOne;
+			particleF[p] = svd.matrixU() * diagonalMat * svd.matrixV().transpose();
 		}
 
-		d.particleFinvTrans[p] = svd.matrixU() * diagonalMatInv * svd.matrixV().transpose();
-		d.particleR[p] = svd.matrixU() * svd.matrixV().transpose();
+		particleFinvTrans[p] = svd.matrixU() * diagonalMatInv * svd.matrixV().transpose();
+		particleR[p] = svd.matrixU() * svd.matrixV().transpose();
 		
 		Matrix3f S = svd.matrixV() * diagonalMat * svd.matrixV().transpose();
 		Matrix3f G;
@@ -74,80 +83,116 @@ void SnowConstitutiveModel::updateDeformation( ParticleData& d ) const
 		G(0,1) = G(1,0) = S(1,2);
 		G(0,2) = G(2,0) = -S(0,2);
 		G(1,2) = G(2,1) = S(0,1);
-		d.particleGinv[p] = G.inverse();
+		particleGinv[p] = G.inverse();
 
-		d.particleJ[p] = diagonalMat(0,0) * diagonalMat(1,1) * diagonalMat(2,2);
+		particleJ[p] = diagonalMat(0,0) * diagonalMat(1,1) * diagonalMat(2,2);
 		
 		
 		// apply hardening:
-		float hardeningFactor = exp( m_hardening * ( 1 - d.particleFplastic[p].determinant() ) );
+		float hardeningFactor = exp( m_hardening * ( 1 - particleFplastic[p].determinant() ) );
 		
-		d.particleMu[p] = m_mu * hardeningFactor;
-		d.particleLambda[p] = m_lambda * hardeningFactor;
+		particleMu[p] = m_mu * hardeningFactor;
+		particleLambda[p] = m_lambda * hardeningFactor;
 		
-		if( d.particleJ[p] <= 0 )
+		if( particleJ[p] <= 0 )
 		{
 			std::cerr << "warning: inverted deformation gradient!" << std::endl;
 		}
 	}
 }
 
-void SnowConstitutiveModel::initParticles( ParticleData& d ) const
+void SnowConstitutiveModel::createParticleData( Sim::MaterialPointDataMap& p ) const
 {
-	size_t nParticles = d.particleX.size();
-	d.particleFinvTrans.resize( nParticles, Eigen::Matrix3f::Identity() );
-	d.particleJ.resize( nParticles, 1.0f );
-	d.particleFplastic.resize( nParticles, Eigen::Matrix3f::Identity() );
-	d.particleR.resize( nParticles, Eigen::Matrix3f::Identity() );
-	d.particleGinv.resize( nParticles, Eigen::Matrix3f::Identity() );
-	d.particleMu.resize( nParticles, m_mu );
-	d.particleLambda.resize( nParticles, m_lambda );
+	size_t nParticles = p["p"]->dataSize();
+	p["Fp"] = new MpmSim::MatrixData( nParticles, Eigen::Matrix3f::Identity() );
+	p["FinvTrans"] = new MpmSim::MatrixData( nParticles, Eigen::Matrix3f::Identity() );
+	p["R"] = new MpmSim::MatrixData( nParticles, Eigen::Matrix3f::Identity() );
+	p["Ginv"] = new MpmSim::MatrixData( nParticles, Eigen::Matrix3f::Identity() );
+	
+	p["J"] = new MpmSim::ScalarData( nParticles, 1.0f );
+	p["mu"] = new MpmSim::ScalarData( nParticles, m_mu );
+	p["lambda"] = new MpmSim::ScalarData( nParticles, m_lambda );
 }
 
-float SnowConstitutiveModel::energyDensity( const ParticleData& d, size_t p ) const
+void SnowConstitutiveModel::setParticles( const Sim::MaterialPointDataMap& p ) const
 {
-	Matrix3f rigidDeviation = d.particleF[p] - d.particleR[p];
-	float JminusOne = d.particleJ[p] - 1;
-	return ( d.particleMu[p] * matrixDoubleDot( rigidDeviation, rigidDeviation ) + 0.5f * d.particleLambda[p] * JminusOne * JminusOne );
-}
+	m_particleF = &matrixData( p, "F" );
+	m_particleFinvTrans = &matrixData( p, "FinvTrans" );
+	m_particleR = &matrixData( p, "R" );
+	m_particleGinv = &matrixData( p, "Ginv" );
 	
-void SnowConstitutiveModel::dEnergyDensitydF( Eigen::Matrix3f& result, const ParticleData& d, size_t p ) const
-{
-	result = 2 * d.particleMu[p] * ( d.particleF[p] - d.particleR[p] ) + d.particleLambda[p] * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
+	m_particleJ = &scalarData( p, "J" );
+	m_particleMu = &scalarData( p, "mu" );
+	m_particleLambda = &scalarData( p, "lambda" );
 }
 
-void SnowConstitutiveModel::dEdFDifferential( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const
+float SnowConstitutiveModel::energyDensity( size_t p ) const
 {
+	const std::vector<Eigen::Matrix3f>& particleF = *m_particleF;
+	const std::vector<Eigen::Matrix3f>& particleR = *m_particleR;
 	
+	const std::vector<float>& particleJ = *m_particleJ;
+	const std::vector<float>& particleMu = *m_particleMu;
+	const std::vector<float>& particleLambda = *m_particleLambda;
+	
+	Matrix3f rigidDeviation = particleF[p] - particleR[p];
+	float JminusOne = particleJ[p] - 1;
+	return ( particleMu[p] * matrixDoubleDot( rigidDeviation, rigidDeviation ) + 0.5f * particleLambda[p] * JminusOne * JminusOne );
+}
+
+Eigen::Matrix3f SnowConstitutiveModel::dEnergyDensitydF( size_t p ) const
+{
+	const std::vector<Eigen::Matrix3f>& particleF = *m_particleF;
+	const std::vector<Eigen::Matrix3f>& particleFinvTrans = *m_particleFinvTrans;
+	const std::vector<Eigen::Matrix3f>& particleR = *m_particleR;
+	
+	const std::vector<float>& particleJ = *m_particleJ;
+	const std::vector<float>& particleMu = *m_particleMu;
+	const std::vector<float>& particleLambda = *m_particleLambda;
+	
+	return 2 * particleMu[p] * ( particleF[p] - particleR[p] ) + particleLambda[p] * ( particleJ[p] - 1 ) * particleJ[p] * particleFinvTrans[p];
+}
+
+Eigen::Matrix3f SnowConstitutiveModel::dEdFDifferential( const Eigen::Matrix3f& dFp, size_t p ) const
+{
+	const std::vector<Eigen::Matrix3f>& particleF = *m_particleF;
+	const std::vector<Eigen::Matrix3f>& particleFinvTrans = *m_particleFinvTrans;
+	const std::vector<Eigen::Matrix3f>& particleR = *m_particleR;
+	const std::vector<Eigen::Matrix3f>& particleGinv = *m_particleGinv;
+	
+	const std::vector<float>& particleJ = *m_particleJ;
+	const std::vector<float>& particleMu = *m_particleMu;
+	const std::vector<float>& particleLambda = *m_particleLambda;
+	
+
 	// work out energy derivatives with respect to the deformation gradient at this particle:
 	// Ap = d2Psi / dF dF : dF (see the tech report). We've got dF, so just plug that into the
 	// formulae...
 	
 	// if you look in dEnergyDensitydF, you'll find it's computing this:
 	
-	// 2 * MU * ( d.particleF[p] - d.particleR[p] ) + LAMBDA * ( d.particleJ[p] - 1 ) * d.particleJ[p] * d.particleFinvTrans[p];
+	// 2 * MU * ( particleF[p] - particleR[p] ) + LAMBDA * ( particleJ[p] - 1 ) * particleJ[p] * particleFinvTrans[p];
 	
 	// what we're doing here is just assuming dFp is small and working out the corresponding variation in
 	// that expression...
 	
-	float J = d.particleJ[p];
+	float J = particleJ[p];
 
 	// work out a couple of basic differentials:
-	float dJ = J * matrixDoubleDot( d.particleFinvTrans[p], dFp );
-	Matrix3f dFInvTrans = - d.particleFinvTrans[p] * dFp.transpose() * d.particleFinvTrans[p];
+	float dJ = J * matrixDoubleDot( particleFinvTrans[p], dFp );
+	Matrix3f dFInvTrans = - particleFinvTrans[p] * dFp.transpose() * particleFinvTrans[p];
 	
-	Matrix3f dR = computeRdifferential( dFp, d.particleR[p], d.particleGinv[p] );
+	Matrix3f dR = computeRdifferential( dFp, particleR[p], particleGinv[p] );
 	
-	// start with differential of 2 * MU * ( F - R )...
-	result = 2 * d.particleMu[p] * ( dFp - dR );
-	
-	// add on differential of LAMBDA * ( J - 1 ) * J * F^-t
-	// = LAMBDA * ( d( J - 1 ) * J F^-T + ( J - 1 ) * d( J F^-t ) )
-	// = LAMBDA * ( dJ * J F^-T + ( J - 1 ) * ( dJ F^-t + J * d( F^-t ) )
-	result += d.particleLambda[p] * ( dJ * J * d.particleFinvTrans[p] + ( J - 1 ) * ( dJ * d.particleFinvTrans[p] + J * dFInvTrans ) );
-		
-}
+	return
+		// start with differential of 2 * MU * ( F - R )...
+			2 * particleMu[p] * ( dFp - dR )
+		// add on differential of LAMBDA * ( J - 1 ) * J * F^-t
+		// = LAMBDA * ( d( J - 1 ) * J F^-T + ( J - 1 ) * d( J F^-t ) )
+		// = LAMBDA * ( dJ * J F^-T + ( J - 1 ) * ( dJ F^-t + J * d( F^-t ) )
+			+ particleLambda[p] * ( dJ * J * particleFinvTrans[p] + ( J - 1 ) * ( dJ * particleFinvTrans[p] + J * dFInvTrans ) );
 
+}
 
 float SnowConstitutiveModel::matrixDoubleDot( const Matrix3f& a, const Matrix3f& b )
 {

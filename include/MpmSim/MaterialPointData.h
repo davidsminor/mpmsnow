@@ -10,14 +10,17 @@ namespace MpmSim
 class MaterialPointDataBase
 {
 public:
-	virtual std::string dataType() = 0;
+	virtual size_t dataSize() = 0;
 };
 
 template <typename T> 
 class MaterialPointData : public MaterialPointDataBase
 {
 public:
-	virtual std::string dataType() { return "idontknowwhatimdoing"; };
+	MaterialPointData() {}
+	MaterialPointData( size_t n ) : m_data(n) {}
+	MaterialPointData( size_t n, const T& value ) : m_data(n,value) {}
+	virtual size_t dataSize() { return m_data.size(); };
 	typedef std::vector<T> Data;
 	Data m_data;
 };

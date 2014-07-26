@@ -1,4 +1,8 @@
 #include "MpmSim/Sim.h"
+#include "MpmSim/CollisionObject.h"
+#include "MpmSim/ForceField.h"
+#include "MpmSim/ConstitutiveModel.h"
+#include "MpmSim/Grid.h"
 
 #include <iostream>
 #include <queue>
@@ -10,40 +14,118 @@ Sim::Sim(
 	const std::vector<float>& masses,
 	float gridSize,
 	const ShapeFunction& shapeFunction,
-	const ConstitutiveModel& model
+	const ConstitutiveModel& model,
+	const CollisionObjectSet& collisionObjects,
+	const ForceFieldSet& forceFields
 ) :
 	m_gridSize( gridSize ),
 	m_shapeFunction( shapeFunction ),
-	m_constitutiveModel( model )
+	m_constitutiveModel( model ),
+	m_collisionObjects( collisionObjects ),
+	m_forceFields( forceFields )
 {
 	VectorData* p = new VectorData;
 	p->m_data = x;
-	m_pointData["p"] = p;
+	particleData["p"] = p;
 	
-	VectorData* v = new VectorData;
-	v->m_data.resize( x.size(), Eigen::Vector3f::Zero() );
-	m_pointData["v"] = v;
+	VectorData* v = new VectorData( x.size(), Eigen::Vector3f::Zero() );
+	particleData["v"] = v;
 
-	MatrixData* f = new MatrixData;
-	f->m_data.resize( x.size(), Eigen::Matrix3f::Identity() );
-	m_pointData["F"] = f;
+	MatrixData* f = new MatrixData( x.size(), Eigen::Matrix3f::Identity() );
+	particleData["F"] = f;
 	
 	ScalarData* m = new ScalarData;
 	m->m_data = masses;
-	m_pointData["m"] = m;
+	particleData["m"] = m;
+
+	ScalarData* volume = new ScalarData( x.size(), 0.0f );
+	particleData["volume"] = volume;
+	
+	m_constitutiveModel.createParticleData( particleData );
+	m_constitutiveModel.setParticles( particleData );
+
+	calculateBodies();
+
+	for( std::vector< IndexList >::iterator it = m_bodies.begin(); it != m_bodies.end(); ++it )
+	{
+		IndexList& b = *it;
+		Grid g( particleData, b, gridSize, shapeFunction );
+		g.computeParticleVolumes();
+	}
 }
 
 Sim::~Sim()
 {
-	for( MaterialPointDataMap::iterator it = m_pointData.begin(); it != m_pointData.end(); ++it )
+	for( MaterialPointDataMap::iterator it = particleData.begin(); it != particleData.end(); ++it )
 	{
 		delete it->second;
 	}
 }
 
+
+void Sim::advance( float timeStep, const LinearSolver& solver, LinearSolver::Debug* d )
+{
+	std::vector<Eigen::Vector3f>& particleX = particleVariable<VectorData>( "p" )->m_data;
+	std::vector<Eigen::Vector3f>& particleV = particleVariable<VectorData>( "v" )->m_data;
+	std::vector<float>& particleMasses = particleVariable<ScalarData>( "m" )->m_data;
+	
+	// advance ballistic particle velocities:
+	IndexIterator ballisticEnd = m_ballisticParticles.end();
+	for( IndexIterator it = m_ballisticParticles.begin(); it != ballisticEnd; ++it )
+	{
+		int p = *it;
+		Eigen::Vector3f accn = Eigen::Vector3f::Zero();
+		for( size_t i=0; i < m_forceFields.fields.size(); ++i )
+		{
+			accn += m_forceFields.fields[i]->force( particleX[p], particleMasses[p] );
+		}
+		accn /= particleMasses[p];
+		particleV[p] += timeStep * accn;
+	}
+	// \todo: apply collisions. Or can I just apply them all at once at the end?
+	
+	// update velocities on particles in material point bodies:
+	BodyIterator bodyEnd = m_bodies.end();
+	for( BodyIterator bIt = m_bodies.begin(); bIt != bodyEnd; ++bIt )
+	{
+		// construct background grid for this body:
+		Grid g( particleData, *bIt, m_gridSize, m_shapeFunction );
+		
+		// update grid velocities using internal stresses...
+		g.updateGridVelocities(
+			timeStep,
+			m_constitutiveModel,
+			m_collisionObjects.objects,
+			m_forceFields.fields,
+			solver,
+			d
+		);
+		
+		// transfer the grid velocities back onto the particles:
+		g.updateParticleVelocities();
+		// \todo: apply collisions. Or can I just apply them all at once at the end?
+		
+		// update particle deformation gradients:
+		g.updateDeformationGradients( timeStep );
+		m_constitutiveModel.updateParticleData( *this );
+		
+	}
+	
+	// advance particle positions:
+	std::vector<Eigen::Vector3f>::iterator end = particleX.end();
+	std::vector<Eigen::Vector3f>::iterator it = particleX.begin();
+	std::vector<Eigen::Vector3f>::iterator vIt = particleV.begin();
+	for( ; it != end; ++it, ++vIt )
+	{
+		*it += *vIt * timeStep;
+	}
+
+	calculateBodies();
+}
+
 size_t Sim::numParticleVariables() const
 {
-	return m_pointData.size();
+	return particleData.size();
 }
 
 
@@ -114,38 +196,6 @@ static void minMax( float x, float& min, float& max )
 		max = x;
 	}
 }
-void Sim::Body::computeProcessingPartitions( const std::vector<Eigen::Vector3f>& particleX, float voxelSize )
-{
-	// sort the spatial index so particles in the same voxel are adjacent:
-	voxelSort( particleInds.begin(), particleInds.end(), voxelSize, particleX );
-	
-	for(int i=0;i<8;++i)
-	{
-		processingPartitions[ i&1 ][ (i&2) / 2][ (i&4) / 4].clear();
-	}
-
-	// now imagine chopping space up into little 2x2x2 voxel blocks. All
-	// the voxels in the (0,0,0) corners go in processingPartitions[0][0][0],
-	// all the voxels in the (1,0,0) corners go in processingPartitions[1][0][0],
-	// etc etc.
-	Eigen::Vector3i currentVoxel;
-	IndexIterator begin = particleInds.begin();
-	IndexIterator end = particleInds.end();
-	IndexIterator* partitionEnd = 0;
-	for( IndexIterator it = begin; it != end; ++it )
-	{
-		Eigen::Vector3f x = particleX[ *it ] / voxelSize;
-		Eigen::Vector3i voxel( (int)floor( x[0] ), (int)floor( x[1] ), (int)floor( x[2] ) );
-		if( voxel != currentVoxel || it == begin )
-		{
-			currentVoxel = voxel;
-			PartitionList& partition = processingPartitions[ voxel[0]&1 ][ voxel[1]&1 ][ voxel[2]&1 ];
-			partition.push_back( std::make_pair( it, it ) );
-			partitionEnd = &partition.back().second;
-		}
-		++*partitionEnd;
-	}
-}
 
 void Sim::calculateBodies()
 {
@@ -179,9 +229,9 @@ void Sim::calculateBodies()
 		}
 		
 		m_bodies.resize( m_bodies.size() + 1 );
-		Body& b = m_bodies.back();
+		IndexList& b = m_bodies.back();
 		std::queue<int> flood;
-		b.particleInds.push_back( i );
+		b.push_back( (int)i );
 		for( size_t j=0; j < neighbourInds.size(); ++j )
 		{
 			flood.push(neighbourInds[j]);
@@ -195,7 +245,7 @@ void Sim::calculateBodies()
 				continue;
 			}
 
-			b.particleInds.push_back( current );
+			b.push_back( current );
 			processed[current] = true;
 			n.neighbours( particleX[current], neighbourInds );
 			for( size_t j=0; j < neighbourInds.size(); ++j )
@@ -204,9 +254,8 @@ void Sim::calculateBodies()
 			}
 		}
 
-		// partition the particles in this body in an 8 color checkerboard
-		// pattern so they can be processed in paralell
-		b.computeProcessingPartitions( particleX, 2 * m_shapeFunction.supportRadius() * m_gridSize );
+		// sort the spatial index so particles in the same voxel are adjacent:
+		voxelSort( b.begin(), b.end(), 2 * m_shapeFunction.supportRadius() * m_gridSize, particleX );
 	}
 }
 
@@ -373,6 +422,32 @@ void Sim::NeighbourQuery::neighbours( const Eigen::Vector3f& p, std::vector<int>
 	}
 }
 
+Sim::CollisionObjectSet::~CollisionObjectSet()
+{
+	for( size_t i=0; i < objects.size(); ++i )
+	{
+		delete objects[i];
+	}
+}
+
+void Sim::CollisionObjectSet::add( CollisionObject* o )
+{
+	objects.push_back( o );
+}
+
+Sim::ForceFieldSet::~ForceFieldSet()
+{
+	for( size_t i=0; i < fields.size(); ++i )
+	{
+		delete fields[i];
+	}
+}
+
+void Sim::ForceFieldSet::add( ForceField* f )
+{
+	fields.push_back( f );
+}
+
 size_t Sim::numBodies() const
 {
 	return m_bodies.size();
@@ -385,22 +460,7 @@ const Sim::IndexList& Sim::body( size_t n ) const
 	{
 		throw std::runtime_error( "Sim::body(): index exceeds number of bodies" );
 	}
-	return m_bodies[n].particleInds;
-}
-
-const Sim::PartitionList& Sim::bodyPartitionList( size_t n, unsigned i, unsigned j, unsigned k ) const
-{
-	if( n >= m_bodies.size() )
-	{
-		throw std::runtime_error( "Sim::bodyPartitionList(): index exceeds number of bodies" );
-	}
-
-	if( i > 1 || j > 1 || k > 1 )
-	{
-		throw std::runtime_error( "Sim::bodyPartitionList(): partition index out of range" );
-	}
-
-	return m_bodies[n].processingPartitions[i][j][k];
+	return m_bodies[n];
 }
 
 // particle indices for the ballistic particles:
@@ -408,3 +468,4 @@ const Sim::IndexList& Sim::ballisticParticles() const
 {
 	return m_ballisticParticles;
 }
+

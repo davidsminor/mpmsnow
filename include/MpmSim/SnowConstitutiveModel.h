@@ -17,19 +17,22 @@ public:
 			float compressiveStrength,
 			float tensileStrength );
 
-	virtual void initParticles( ParticleData& p ) const;
+	virtual void createParticleData( Sim::MaterialPointDataMap& p ) const;
 
 	// update deformation at particle p:
-	virtual void updateDeformation( ParticleData& d ) const;
+	virtual void updateParticleData( Sim& sim ) const;
+	
+	// prepare to call the following 3 methods:
+	virtual void setParticles( const Sim::MaterialPointDataMap& p ) const;
 
 	// energy density for particle p:
-	virtual float energyDensity( const ParticleData& d, size_t p ) const;
+	virtual float energyDensity( size_t p ) const;
 	
-	// matrix of derivatives of energy density with respect to components of the deformation gradient at particle p:
-	virtual void dEnergyDensitydF( Eigen::Matrix3f& result, const ParticleData& d, size_t p ) const;
+	// matrix of derivatives of energy density with respect to components of the deformation gradient:
+	virtual Eigen::Matrix3f dEnergyDensitydF( size_t p ) const;
 	
 	// computes the change in dEnergyDensitydF when you change F by dFp:
-	virtual void dEdFDifferential( Eigen::Matrix3f& result, const Eigen::Matrix3f& dFp, const ParticleData& d, size_t p ) const;
+	virtual Eigen::Matrix3f dEdFDifferential( const Eigen::Matrix3f& dFp, size_t p ) const;
 
 private:
 
@@ -45,6 +48,15 @@ private:
 	float m_mu;
 	float m_lambda;
 
+	mutable const std::vector<Eigen::Matrix3f>* m_particleF;
+	mutable const std::vector<Eigen::Matrix3f>* m_particleR;
+	mutable const std::vector<Eigen::Matrix3f>* m_particleFinvTrans;
+	mutable const std::vector<Eigen::Matrix3f>* m_particleGinv;
+	
+	mutable const std::vector<float>* m_particleJ;
+	mutable const std::vector<float>* m_particleMu;
+	mutable const std::vector<float>* m_particleLambda;
+	
 };
 
 } //namespace MpmSim

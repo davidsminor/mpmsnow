@@ -7,8 +7,8 @@ namespace MpmSim
 template< class T >
 T* Sim::particleVariable( const std::string& name )
 {
-	MaterialPointDataMap::iterator it = m_pointData.find( name );
-	if( it == m_pointData.end() )
+	MaterialPointDataMap::iterator it = particleData.find( name );
+	if( it == particleData.end() )
 	{
 		return 0;
 	}

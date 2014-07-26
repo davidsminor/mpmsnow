@@ -2,6 +2,7 @@
 #define MPMSIM_CONJUGATERESIDUALS_H
 
 #include "LinearSolver.h"
+#include <vector>
 
 namespace MpmSim
 {
