@@ -20,10 +20,10 @@ public:
 	virtual void createParticleData( Sim::MaterialPointDataMap& p ) const;
 
 	// update deformation at particle p:
-	virtual void updateParticleData( Sim& sim ) const;
+	virtual void updateParticleData( Sim::MaterialPointDataMap& p ) const;
 	
 	// prepare to call the following 3 methods:
-	virtual void setParticles( const Sim::MaterialPointDataMap& p ) const;
+	virtual void setParticles( Sim::MaterialPointDataMap& p ) const;
 
 	// energy density for particle p:
 	virtual float energyDensity( size_t p ) const;

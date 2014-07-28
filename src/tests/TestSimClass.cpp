@@ -21,10 +21,10 @@ public:
 	virtual void createParticleData( Sim::MaterialPointDataMap& p ) const
 	{}
 	
-	virtual void updateParticleData( Sim& sim ) const
+	virtual void updateParticleData( Sim::MaterialPointDataMap&  ) const
 	{}
 
-	virtual void setParticles( const Sim::MaterialPointDataMap& p ) const
+	virtual void setParticles( Sim::MaterialPointDataMap& p ) const
 	{}
 	
 	virtual float energyDensity( size_t p ) const
@@ -41,6 +41,7 @@ public:
 
 void testNeighbourQuery()
 {
+	std::cerr << "testNeighbourQuery()" << std::endl;
 	srand(20);
 	std::vector<Eigen::Vector3f> particleX;
 	for( int i=0; i < 1000; ++i )
@@ -83,6 +84,7 @@ void testNeighbourQuery()
 
 void testInitialization()
 {
+	std::cerr << "testInitialization()" << std::endl;
 
 	std::vector<Vector3f> positions;
 	std::vector<float> masses;

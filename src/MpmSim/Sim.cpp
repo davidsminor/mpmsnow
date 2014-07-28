@@ -107,7 +107,7 @@ void Sim::advance( float timeStep, const LinearSolver& solver, LinearSolver::Deb
 		
 		// update particle deformation gradients:
 		g.updateDeformationGradients( timeStep );
-		m_constitutiveModel.updateParticleData( *this );
+		m_constitutiveModel.updateParticleData( particleData );
 		
 	}
 	

@@ -16,6 +16,7 @@ namespace MpmSimTest
 {
 void testShapeFunction( const ShapeFunction& shapeFunction )
 {
+	std::cerr << "testShapeFunction()" << std::endl;
 	assert( shapeFunction.w( (float)shapeFunction.supportRadius() ) == 0. );
 	assert( shapeFunction.w( -(float)shapeFunction.supportRadius() ) == 0.0f );
 

@@ -1,7 +1,7 @@
 #include "MpmSim/Grid.h"
 #include "MpmSim/ForceField.h"
 #include "MpmSim/ImplicitUpdateMatrix.h"
-
+#include <iostream>
 using namespace MpmSim;
 using namespace Eigen;
 
@@ -149,15 +149,15 @@ public:
 
 		for( Sim::ConstIndexIterator it = begin; it != end; ++it )
 		{
-			Eigen::Matrix3f dEdF = m_constitutiveModel.dEnergyDensitydF( *it );
 			int p = *it;
+			Eigen::Matrix3f forceMatrix = m_particleVolumes[p] * m_constitutiveModel.dEnergyDensitydF( p ) * m_particleF[p].transpose();
 			shIt.initialize( m_particleX[p], true );
 			do
 			{
 				shIt.gridPos( particleCell );
 				shIt.dw( weightGrad );
 				int idx = m_g.coordsToIndex( particleCell[0], particleCell[1], particleCell[2] );
-				forces.segment<3>( 3 * idx ) -= m_particleVolumes[p] * dEdF * m_particleF[p].transpose() * weightGrad;
+				forces.segment<3>( 3 * idx ) -= forceMatrix * weightGrad;
 			} while( shIt.next() );
 		}
 	}	
@@ -204,7 +204,7 @@ public:
 			int p = *it;
 
 			// work out deformation gradient differential for this particle when grid nodes are
-			// moved by their respective v * Dt
+			// all moved by their respective dx
 			Matrix3f dFp = Matrix3f::Zero();
 			shIt.initialize( m_particleX[p], true );
 			do
@@ -215,10 +215,11 @@ public:
 				dFp += m_dx.segment<3>( 3 * idx ) * weightGrad.transpose() * m_particleF[p];
 			} while( shIt.next() );
 			
-			Matrix3f forceMatrix;
-			//g.constitutiveModel().dEdFDifferential( forceMatrix, dFp, d, p );
-			forceMatrix = m_particleVolumes[p] * forceMatrix * m_particleF[p].transpose();
-
+			Matrix3f forceMatrix =
+				m_particleVolumes[p] *
+				m_constitutiveModel.dEdFDifferential( dFp, p ) *
+				m_particleF[p].transpose();
+			
 			shIt.initialize( m_particleX[p], true );
 			do
 			{
@@ -312,7 +313,7 @@ Grid::Grid(
 	VelocitySplatter sV( *this, velocities );
 	splat( sV );
 	
-	m_prevGridVelocities = velocities;
+	prevVelocities = velocities;
 }
 
 const Eigen::Vector3f& Grid::minCoord() const
@@ -330,6 +331,11 @@ const Eigen::Vector3i& Grid::n() const
 	return m_n;
 }
 
+
+float Grid::gridSize() const
+{
+	return m_gridSize;
+}
 
 void Grid::computeParticleVolumes() const
 {
@@ -434,6 +440,7 @@ void Grid::calculateForceDifferentials(
 ) const
 {
 	// TODO: this doesn't deal with force fields which vary in space
+	df.resize( velocities.size() );
 	df.setZero();
 	ForceDifferentialSplatter s( *this, df, constitutiveModel, dx );
 	splat( s );
@@ -511,21 +518,22 @@ int Grid::collide(
 	return collisionObject;
 }
 
-void Grid::updateGridVelocities(
+void Grid::calculateExplicitMomenta(
+	VectorXf& explicitMomenta,
+	std::vector<char>& nodeCollided,
 	float timeStep,
 	const ConstitutiveModel& constitutiveModel,
 	const std::vector<const CollisionObject*>& collisionObjects,
-	const std::vector<const ForceField*>& fields,
-	const LinearSolver& implicitSolver,
-	LinearSolver::Debug* d )
+	const std::vector<const ForceField*>& fields
+)
 {
 	// work out forces on grid points:
 	VectorXf forces( velocities.size() );
 	calculateForces( forces, constitutiveModel, fields );
 	
 	// work out explicit velocity update, and convert it to momenta:
-	VectorXf explicitMomenta( velocities.size() );
-	m_nodeCollided.resize( masses.size() );
+	explicitMomenta.resize( velocities.size() );
+	nodeCollided.resize( masses.size() );
 	for( int i=0; i < m_n[0]; ++i )
 	{
 		for( int j=0; j < m_n[1]; ++j )
@@ -536,17 +544,41 @@ void Grid::updateGridVelocities(
 
 				Vector3f force = forces.segment<3>( 3 * idx );
 				Vector3f velocity = velocities.segment<3>( 3 * idx );
-				Vector3f explicitVelocity = velocity + timeStep * force / masses[idx];
-				
+				Vector3f explicitVelocity = velocity;
+				if( masses[idx] > 0 )
+				{
+					explicitVelocity += timeStep * force / masses[idx];
+				}
+
 				// which collision objects affect this node? -1 means none, -2 means more than one, >= 0
 				// is the object index:
 				Vector3f x( m_gridSize * i + m_min[0], m_gridSize * j + m_min[1], m_gridSize * k + m_min[2] );
-				m_nodeCollided[idx] = collide( explicitVelocity, x, collisionObjects );
+				nodeCollided[idx] = collide( explicitVelocity, x, collisionObjects );
 				explicitMomenta.segment<3>( 3 * idx ) = explicitVelocity * masses[idx];
 			}
 		}
 	}
 	
+}
+
+void Grid::updateGridVelocities(
+	float timeStep,
+	const ConstitutiveModel& constitutiveModel,
+	const std::vector<const CollisionObject*>& collisionObjects,
+	const std::vector<const ForceField*>& fields,
+	const LinearSolver& implicitSolver,
+	LinearSolver::Debug* d )
+{
+	VectorXf explicitMomenta;
+	calculateExplicitMomenta(
+		explicitMomenta,
+		m_nodeCollided,
+		timeStep,
+		constitutiveModel,
+		collisionObjects,
+		fields
+	);
+
 	ImplicitUpdateMatrix implicitMatrix( m_d, *this, constitutiveModel, collisionObjects, fields, timeStep );
 	
 	// So we want to solve 
@@ -584,7 +616,8 @@ void Grid::updateGridVelocities(
 	
 	// m * v^(n+1) - P * dt * DF * dt * P * v^(n+1) = explicitMomenta + ( M + P * dt * DF * dt ) * vcPerp
 	
-	// so, lets work vcPerp:
+	// so, lets work out vcPerp:
+
 	VectorXf vcPerp( velocities.size() );
 	for( int i=0; i < m_n[0]; ++i )
 	{
@@ -624,7 +657,7 @@ void Grid::updateGridVelocities(
 	// work out some force differentials for the extra explicit momentum term:
 	VectorXf df( velocities.size() );
 	calculateForceDifferentials( df, vcPerp, constitutiveModel, fields );
-	implicitMatrix.collisionProject( df );
+	implicitMatrix.subspaceProject( df );
 	
 	// so add the extra term onto the explicit momenta:
 	for( int idx=0; idx<masses.size(); ++idx )
@@ -633,7 +666,7 @@ void Grid::updateGridVelocities(
 			masses[idx] * vcPerp.segment<3>( 3 * idx ) +
 			timeStep * timeStep * df.segment<3>( 3 * idx );
 	}
-	
+
 	// finally solve the linear system:
 	implicitSolver(
 		implicitMatrix,
@@ -694,7 +727,7 @@ void Grid::updateParticleVelocities()
 			shIt.gridPos( particleCell );
 			int idx = coordsToIndex( particleCell[0], particleCell[1], particleCell[2] );
 			float w = shIt.w();
-			vFlip += w * ( velocities.segment<3>( 3 * idx ) - m_prevGridVelocities.segment<3>( 3 * idx ) );
+			vFlip += w * ( velocities.segment<3>( 3 * idx ) - prevVelocities.segment<3>( 3 * idx ) );
 			vPic += w * velocities.segment<3>( 3 * idx );
 		} while( shIt.next() );
 		particleV[p] = alpha * vFlip + ( 1.0f - alpha ) * vPic;

@@ -2,11 +2,12 @@
 
 #include "tests/TestImplicitUpdateMatrix.h"
 
-
+#include <iostream>
 
 
 static void testCollisionProjection()
 {
+	std::cerr << "testCollisionProjection()" << std::endl;
 
 }
 

@@ -20,7 +20,7 @@ ImplicitUpdateMatrix::ImplicitUpdateMatrix(
 {
 }
 
-void ImplicitUpdateMatrix::collisionProject( Eigen::VectorXf& toProject ) const
+void ImplicitUpdateMatrix::subspaceProject( Eigen::VectorXf& toProject ) const
 {
 	for( int i=0; i < m_g.m_n[0]; ++i )
 	{
@@ -69,7 +69,7 @@ void ImplicitUpdateMatrix::multVector( const Eigen::VectorXf& vNPlusOne, Eigen::
 	
 	// apply collisions to input:
 	result = vNPlusOne;
-	collisionProject( result );
+	subspaceProject( result );
 
 	// work out force differentials when you perturb the grid positions by vTransformed * m_timeStep:
 	VectorXf df( result.size() );
@@ -82,6 +82,6 @@ void ImplicitUpdateMatrix::multVector( const Eigen::VectorXf& vNPlusOne, Eigen::
 	}
 
 	// apply collisions to output:
-	collisionProject( result );
+	subspaceProject( result );
 }
 

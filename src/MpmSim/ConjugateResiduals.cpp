@@ -71,6 +71,7 @@ void ConjugateResiduals::operator()
 
 		// update residual:
 		r -= alpha * Ap;
+		A.subspaceProject( r );
 
 		float rNorm2 = r.squaredNorm();
 		std::cerr << i << ": " << Ar.norm() << "," << sqrt( rNorm2 ) << " / " << sqrt( threshold ) << "  " << alpha << std::endl;

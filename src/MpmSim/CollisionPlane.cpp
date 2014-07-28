@@ -10,6 +10,7 @@ using namespace MpmSim;
 
 CollisionPlane::CollisionPlane( const Eigen::Vector4f& c ) : m_coeffs( c )
 {
+	m_v.setZero();
 }
 
 float CollisionPlane::phi( const Eigen::Vector3f& x ) const

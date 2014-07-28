@@ -1,6 +1,10 @@
+#include <Eigen/Geometry>
+
 #include "tests/TestGrid.h"
 
 #include "MpmSim/Grid.h"
+#include "MpmSim/CollisionPlane.h"
+#include "MpmSim/ConjugateResiduals.h"
 #include "MpmSim/CubicBsplineShapeFunction.h"
 #include "MpmSim/SnowConstitutiveModel.h"
 
@@ -14,6 +18,7 @@ namespace MpmSimTest
 
 static void testProcessingPartitions()
 {
+	std::cerr << "testProcessingPartitions()" << std::endl;
 	VectorData* positionData = new VectorData;
 	VectorData* velocityData = new VectorData;
 	ScalarData* massData = new ScalarData;
@@ -129,6 +134,7 @@ static void testProcessingPartitions()
 static void testSplatting()
 {
 
+	std::cerr << "testSplatting()" << std::endl;
 	VectorData* positionData = new VectorData;
 	VectorData* velocityData = new VectorData;
 	ScalarData* massData = new ScalarData;
@@ -230,6 +236,7 @@ static void testSplatting()
 
 static void testDeformationGradients()
 {
+	std::cerr << "testDeformationGradients()" << std::endl;
 	// unit cube full of particles centered at the origin:
 	Sim::MaterialPointDataMap particleData;
 
@@ -309,6 +316,7 @@ static void testDeformationGradients()
 
 static void testForces()
 {
+	std::cerr << "testForces()" << std::endl;
 	// create a single particle:
 	Sim::MaterialPointDataMap particleData;
 
@@ -317,20 +325,26 @@ static void testForces()
 	
 	VectorData* v = new VectorData( 1, Eigen::Vector3f::Zero() );
 	particleData["v"] = v;
+	
+	// initialize deformation gradient with an arbitrary rotation:
+	Matrix3f rotato = Matrix3f::Identity();
+	rotato = AngleAxisf(float( 0.25*M_PI ), Vector3f::UnitX())
+	  * AngleAxisf(float( 0.5*M_PI ),  Vector3f::UnitY())
+	  * AngleAxisf(float( 0.33*M_PI ), Vector3f::UnitZ());
 
-	MatrixData* f = new MatrixData( 1, Eigen::Matrix3f::Identity() );
+	MatrixData* f = new MatrixData( 1, rotato );
 	particleData["F"] = f;
 	
 	ScalarData* m = new ScalarData( 1, 1 );
 	particleData["m"] = m;
 
-	ScalarData* volume = new ScalarData( 1, 1.0f );
+	ScalarData* volume = new ScalarData( 1, 0.5f );
 	particleData["volume"] = volume;
 	
 	const float gridSize = 1.0f;
 	CubicBsplineShapeFunction shapeFunction;
 	SnowConstitutiveModel constitutiveModel(
-		1.4e5f, // young's modulus
+		1.4e3f, // young's modulus
 		0.2f, // poisson ratio
 		0, // hardening
 		100000.0f, // compressive strength
@@ -339,7 +353,8 @@ static void testForces()
 
 	constitutiveModel.createParticleData( particleData );
 	constitutiveModel.setParticles( particleData );
-	
+	constitutiveModel.updateParticleData( particleData );
+
 	Sim::IndexList inds;
 	inds.push_back(0);
 	Grid g( particleData, inds, gridSize, shapeFunction );
@@ -348,13 +363,15 @@ static void testForces()
 	Sim::ForceFieldSet forceFields;
 	Eigen::VectorXf forces( g.velocities.size() );
 	g.calculateForces( forces, constitutiveModel, forceFields.fields );
-	assert( forces.minCoeff() == forces.maxCoeff() );
-	assert( forces.maxCoeff() == 0 );
+	float minF = fabs( forces.minCoeff() );
+	float maxF = fabs( forces.maxCoeff() );
+	assert( minF < 1.e-4 && maxF < 1.e-4 );
 	
 	
 	// fiddle with F for one of the particles to get it out of equilibrium:
 	std::vector<Eigen::Matrix3f>& F = dynamic_cast<MatrixData*>( particleData["F"] )->m_data;
-	F[0] += 0.1f * Eigen::Matrix3f::Random();
+	F[0] += 0.01f * Eigen::Matrix3f::Random();
+	constitutiveModel.updateParticleData( particleData );
 	
 	// recompute forces on grid nodes:
 	g.calculateForces( forces, constitutiveModel, forceFields.fields );
@@ -365,77 +382,130 @@ static void testForces()
 	
 	Eigen::Matrix3f Forig = F[0];
 	
+	Eigen::VectorXf forcesPerturbed( g.velocities.size() );
+	Eigen::VectorXf forcesPerturbedNegative( g.velocities.size() );
+	
 	// now work out the forces on the grid nodes by finite differences!
-
-	// initial energy of the particle:
 	float e0 = constitutiveModel.energyDensity( 0 ) * volume->m_data[0];
-	const float dx = 0.1f;
+	const float dx = 0.01f;
 	for( int i=0; i <g.velocities.size(); ++i )
 	{
 		if( forces[i] == 0 )
 		{
 			continue;
 		}
+		
+		F[0] = Forig;
+		constitutiveModel.updateParticleData( particleData );
+		VectorXf df(g.velocities.size());
+		g.velocities[i] = dx;
+		g.calculateForceDifferentials(
+			df,
+			g.velocities,
+			constitutiveModel,
+			forceFields.fields );
 
-		// use the deformation gradient update move one of the nodes
+		// use the deformation gradient update to move one of the nodes
 		// a small distance along one of the axes, so it squishes the
-		// particle around a bit:
+		// particle around a bit and work out the energy in this perturbed
+		// configuration:
 		g.velocities[i] = dx;
 		F[0] = Forig;
 		g.updateDeformationGradients( 1.0f );
-		
-		// work out the energy in this perturbed configuration:
+		constitutiveModel.updateParticleData( particleData );
 		float ePlus = constitutiveModel.energyDensity( 0 ) * volume->m_data[0];
+		g.calculateForces( forcesPerturbed, constitutiveModel, forceFields.fields );
 		
 		// now deform it the other way and work out the energy:
 		g.velocities[i] = -dx;
 		F[0] = Forig;
 		g.updateDeformationGradients( 1.0f );
-		
+		constitutiveModel.updateParticleData( particleData );
 		float eMinus = constitutiveModel.energyDensity( 0 ) * volume->m_data[0];
+		g.calculateForces( forcesPerturbedNegative, constitutiveModel, forceFields.fields );
 		
 		// x component of force on this node is -dE/dx, same for y and z. Make fd and analytic values
 		// agree within a percent:
 		assert( fabs( ( forces[i] + ( ePlus - eMinus ) / ( 2 * dx ) ) / forces[i] ) < 0.01f );
 		
+		// I wish I knew why this stuff converged so badly... looks like I can only get the force
+		// differentials to agree with the finite difference approximation to within 1.25% or something.
+		std::cerr << ( 0.5f * ( forcesPerturbed - forcesPerturbedNegative ) - df ).norm() / df.norm() << " " << df.norm() << std::endl;
+		assert( ( 0.5f * ( forcesPerturbed - forcesPerturbedNegative ) - df ).norm() / df.norm() < 0.02f );
+
 		// put things back in their place
 		g.velocities[i] = 0;
 	}
-	
 }
 
-/*
+
 void testImplicitUpdate()
 {
-	// create some particles:
-	std::vector<Vector3f> positions;
-	std::vector<float> masses;
-	positions.push_back( Vector3f( 0.1f,0.2f,0.f ) );
-	masses.push_back( 1.0f );
+	std::cerr << "testImplicitUpdate()" << std::endl;
+
+	// create some particules:
+	Sim::MaterialPointDataMap particleData;
+
+	VectorData* p = new VectorData;
+	particleData["p"] = p;
+	
+	VectorData* v = new VectorData;
+	particleData["v"] = v;
+
+	MatrixData* fData = new MatrixData;
+	particleData["F"] = fData;
+	
+	ScalarData* m = new ScalarData;
+	particleData["m"] = m;
+
+	ScalarData* volume = new ScalarData;
+	particleData["volume"] = volume;
+
+	std::vector<Vector3f>& velocities = v->m_data;
+	std::vector<Vector3f>& positions = p->m_data;
+	std::vector<Matrix3f>& F = fData->m_data;
+	std::vector<float>& masses = m->m_data;
+	std::vector<float>& volumes = volume->m_data;
+	
+	Matrix3f distortion = Matrix3f::Random() * 0.01f;
+	
+	const float gridSize = 0.5f;
+	Sim::IndexList inds;
 	for( int i=0; i < 4; ++i )
 	{
 		for( int j=0; j < 4; ++j )
 		{
 			for( int k=0; k < 4; ++k )
 			{
-				positions.push_back( Vector3f( float( i ) / 3 - 0.5f, float( j ) / 3 - 0.5f, float( k ) / 3 - 0.5f ) );
+				inds.push_back( (int)positions.size() );
+				positions.push_back(
+					Vector3f(
+						float( i -0.5f ) * gridSize,
+						float( j - 0.5f ) * gridSize,
+						float( k - 0.5f ) * gridSize
+					)
+				);
+				
 				masses.push_back( 1.0f );
+				volumes.push_back( 1.0f );
+				
+				velocities.push_back(
+					Vector3f(
+						0.01f*sin( 2 * positions.back()[0] ),
+						0.01f*sin( 2 * positions.back()[1] ),
+						0.01f*sin( 2 * positions.back()[2] )
+					)
+				);
+				
+				F.push_back(
+					Matrix3f::Identity() + distortion * cos( 2 * positions.back()[0] )
+				);
+				
 			}
 		}
 	}
-
+	
 	// create particle data:
-	const float gridSize = 0.5f;
-	ParticleData d( positions, masses, gridSize );
-	
-	// give it a sinusoidal velocity field and displace it a bit:
-	for( size_t p=0; p < d.particleX.size(); ++p )
-	{
-		d.particleV[p][0] = 0.01f*sin( 6 * d.particleX[p][0] );
-		d.particleV[p][1] = 0.01f*sin( 6 * d.particleX[p][1] );
-		d.particleV[p][2] = 0.01f*sin( 6 * d.particleX[p][2] );
-	}
-	
 	CubicBsplineShapeFunction shapeFunction;
 	SnowConstitutiveModel snowModel(
 		1.4e5f, // young's modulus
@@ -444,60 +514,187 @@ void testImplicitUpdate()
 		100000.0f, // compressive strength
 		100000.0f	// tensile strength
 	);
-	snowModel.initParticles( d );
+	float voxelSize( 2 * shapeFunction.supportRadius() * gridSize );
+	Sim::voxelSort(
+		inds.begin(),
+		inds.end(),
+		voxelSize,
+		positions );
 	
-	const float timeStep = 0.005f;
-	std::vector<CollisionObject*> collisionObjects;
-	Grid g( d, collisionObjects, timeStep, shapeFunction, snowModel );
+	snowModel.createParticleData( particleData );
+	snowModel.setParticles( particleData );
+	Grid g( particleData, inds, gridSize, shapeFunction );
+	g.computeParticleVolumes();
+	
+	float timeStep = 0.002f;
+	std::vector<const CollisionObject*> collisionObjects;
+	CollisionPlane plane1( Eigen::Vector4f( -1,-1,-1,-1 ) );
+	//plane.setV( Eigen::Vector3f( -.1f, -.2f, -.3f ) );
+	collisionObjects.push_back( &plane1 );
 
-	g.computeDensities();
-	d.particleVolumes.resize( d.particleX.size() );
-	for( size_t p = 0; p < d.particleDensities.size(); ++p )
-	{
-		d.particleVolumes[p] = d.particleM[p] / d.particleDensities[p];
-	}
-	
-	// save grid velocities:
-	VectorXf initialGridVelocities( g.getVelocities().size() );
-	for( int i=0; i < g.getVelocities().size(); ++i )
-	{
-		initialGridVelocities[i] = g.getVelocities()[i];
-	}
+	CollisionPlane plane2( Eigen::Vector4f( -1,0,0,-1.5 ) );
+	//plane.setV( Eigen::Vector3f( -.1f, -.2f, -.3f ) );
+	collisionObjects.push_back( &plane2 );
 
-	// do an implicit update:
-	g.updateGridVelocities( ConjugateResiduals( 500, 1.e-7f ) );
+	
+	std::vector<const ForceField*> fields;
+	ConjugateResiduals solver( 400, 0 );
+	
+	VectorXf explicitMomenta;
+	std::vector<char> nodeCollided;
+	g.calculateExplicitMomenta(
+		explicitMomenta,
+		nodeCollided,
+		timeStep,
+		snowModel,
+		collisionObjects,
+		fields
+	);
 
-	// transfer the grid velocities back onto the particles:
-	g.updateParticleVelocities();
+	g.updateGridVelocities(
+		timeStep, 
+		snowModel,
+		collisionObjects,
+		fields,
+		solver
+	);
 	
-	// update particle deformation gradients:
-	g.updateDeformationGradients();
-	
-	// calculate da forces brah, and do a backwards explicit update!
-	VectorXf forces = VectorXf::Zero( initialGridVelocities.size() );
-	g.calculateForces( d, forces );
-	
-	const VectorXf& gridVelocities = g.getVelocities();
-	const VectorXf& gridMasses = g.masses();
-	for( int i=0; i < gridMasses.size(); ++i )
+	// check nothing's moving in or out of the collision objects:
+	for( int i=0; i < g.n()[0]; ++i )
 	{
-		if( gridMasses[i] > 0 )
+		for( int j=0; j < g.n()[1]; ++j )
 		{
-			std::cerr << initialGridVelocities.segment<3>( 3*i ).transpose() << " ==  ";
-			std::cerr << ( gridVelocities.segment<3>( 3*i ) - ( timeStep / gridMasses[i] ) * forces.segment<3>( 3*i ) ).transpose() << "?" << std::endl;
+			for( int k=0; k < g.n()[2]; ++k )
+			{
+				int idx = g.coordsToIndex( i, j, k );
+				Vector3f velocity = g.velocities.segment<3>( 3 * idx );
+				Eigen::Vector3f explicitMomentum = explicitMomenta.segment<3>( 3*idx );
+				
+				if( nodeCollided[idx] >= 0 )
+				{
+					const CollisionObject* obj = collisionObjects[ nodeCollided[idx] ];
+					Vector3f x(
+						g.gridSize() * i + g.minCoord()[0],
+						g.gridSize() * j + g.minCoord()[1],
+						g.gridSize() * k + g.minCoord()[2]
+					);
+					
+					// express velocity and momentum relative to this object:
+					Vector3f vObj;
+					obj->velocity( x, vObj );
+					velocity -= vObj;
+					explicitMomentum -= vObj * g.masses[idx];
+					
+					// find object normal:
+					Vector3f n;
+					obj->grad( x, n );
+					n.normalize();
+					assert( fabs( n.dot( explicitMomentum ) ) < 1.e-5 );
+					float nDotV = fabs( n.dot( velocity ) );
+					assert( nDotV < 1.e-5 );
+				}
+				else if( nodeCollided[idx] == -2 )
+				{
+					assert( velocity.norm() == 0 );
+					assert( explicitMomentum.norm() == 0 );
+				}
+			}
 		}
 	}
-	std::cerr << "dun" << std::endl;
+
+	
+	// so.... did it work?
+	
+	// ok - so it should have solved this equation:
+	// M * g.velocities - dt * dt * P * DF * P * g.velocities = explicitMomenta
+	// (here, P means we project out the collided velocity components)
+
+	VectorXf df( g.velocities.size() );
+	g.calculateForceDifferentials( df, g.velocities, snowModel, fields );
+	
+	for( int i=0; i < g.n()[0]; ++i )
+	{
+		for( int j=0; j < g.n()[1]; ++j )
+		{
+			for( int k=0; k < g.n()[2]; ++k )
+			{
+				int idx = g.coordsToIndex( i, j, k );
+				Vector3f velocity = g.velocities.segment<3>( 3 * idx );
+				if( nodeCollided[idx] >= 0 )
+				{
+					const CollisionObject* obj = collisionObjects[ nodeCollided[idx] ];
+					
+					// find object normal:
+					Vector3f x(
+						g.gridSize() * i + g.minCoord()[0],
+						g.gridSize() * j + g.minCoord()[1],
+						g.gridSize() * k + g.minCoord()[2]
+					);
+					Vector3f n;
+					obj->grad( x, n );
+					n.normalize();
+					float nDotP = n.dot( velocity );
+					
+					// project out component perpendicular to the object
+					velocity -= nDotP * n;
+				}
+				else if( nodeCollided[idx] == -2 )
+				{
+					velocity.setZero();
+				}
+
+				Eigen::Vector3f momentum = g.masses[ idx ] * velocity - timeStep * timeStep * df.segment<3>( 3 * idx );
+				
+				Eigen::Vector3f expected = explicitMomenta.segment<3>( 3*idx );
+
+				if( nodeCollided[idx] >= 0 )
+				{
+					const CollisionObject* obj = collisionObjects[ nodeCollided[idx] ];
+					
+					// find object normal:
+					Vector3f x(
+						g.gridSize() * i + g.minCoord()[0],
+						g.gridSize() * j + g.minCoord()[1],
+						g.gridSize() * k + g.minCoord()[2]
+					);
+					Vector3f n;
+					obj->grad( x, n );
+					n.normalize();
+					float nDotP = n.dot( momentum );
+					// project out component perpendicular to the object
+					momentum -= nDotP * n;
+				}
+				else if( nodeCollided[idx] == -2 )
+				{
+					momentum.setZero();
+				}
+				
+				if( fabs( expected[0] ) > 1.e-4 )
+				{
+					assert( fabs( ( expected[0] - momentum[0] ) / expected[0] ) < 0.005f );
+				}
+				if( fabs( expected[1] ) > 1.e-4 )
+				{
+					assert( fabs( ( expected[1] - momentum[1] ) / expected[1] ) < 0.005f );
+				}
+				if( fabs( expected[2] ) > 1.e-4 )
+				{
+					assert( fabs( ( expected[2] - momentum[2] ) / expected[2] ) < 0.005f );
+				}
+			}
+		}
+	}
+
 }
-*/
+
 
 void testGrid()
 {
-	testProcessingPartitions();
-	testSplatting();
-	testDeformationGradients();
-	testForces();
-	//testImplicitUpdate();
+	//testProcessingPartitions();
+	//testSplatting();
+	//testDeformationGradients();
+	//testForces();
+	testImplicitUpdate();
 }
 
 }

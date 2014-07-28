@@ -23,17 +23,17 @@ SnowConstitutiveModel::SnowConstitutiveModel(
 	m_lambda = ( youngsModulus * poissonRatio / ( ( 1 + poissonRatio ) * ( 1 - 2 * poissonRatio ) ) );
 }
 
-void SnowConstitutiveModel::updateParticleData( Sim& sim ) const
+void SnowConstitutiveModel::updateParticleData( Sim::MaterialPointDataMap& p ) const
 {
-	std::vector<Eigen::Matrix3f>& particleF = sim.particleVariable<MatrixData>( "F" )->m_data;
-	std::vector<Eigen::Matrix3f>& particleFplastic = sim.particleVariable<MatrixData>( "Fp" )->m_data;
-	std::vector<Eigen::Matrix3f>& particleFinvTrans = sim.particleVariable<MatrixData>( "FinvTrans" )->m_data;
-	std::vector<Eigen::Matrix3f>& particleR = sim.particleVariable<MatrixData>( "R" )->m_data;
-	std::vector<Eigen::Matrix3f>& particleGinv = sim.particleVariable<MatrixData>( "Ginv" )->m_data;
+	std::vector<Eigen::Matrix3f>& particleF = matrixData( p, "F" );
+	std::vector<Eigen::Matrix3f>& particleFplastic = matrixData( p, "Fp" );
+	std::vector<Eigen::Matrix3f>& particleFinvTrans = matrixData( p, "FinvTrans" );
+	std::vector<Eigen::Matrix3f>& particleR = matrixData( p, "R" );
+	std::vector<Eigen::Matrix3f>& particleGinv = matrixData( p, "Ginv" );
 	
-	std::vector<float>& particleJ = sim.particleVariable<ScalarData>( "J" )->m_data;
-	std::vector<float>& particleMu = sim.particleVariable<ScalarData>( "mu" )->m_data;
-	std::vector<float>& particleLambda = sim.particleVariable<ScalarData>( "lambda" )->m_data;
+	std::vector<float>& particleJ = scalarData( p, "J" );
+	std::vector<float>& particleMu = scalarData( p, "mu" );
+	std::vector<float>& particleLambda = scalarData( p, "lambda" );
 	
 	for( size_t p=0; p < particleF.size(); ++p )
 	{
@@ -114,7 +114,7 @@ void SnowConstitutiveModel::createParticleData( Sim::MaterialPointDataMap& p ) c
 	p["lambda"] = new MpmSim::ScalarData( nParticles, m_lambda );
 }
 
-void SnowConstitutiveModel::setParticles( const Sim::MaterialPointDataMap& p ) const
+void SnowConstitutiveModel::setParticles( Sim::MaterialPointDataMap& p ) const
 {
 	m_particleF = &matrixData( p, "F" );
 	m_particleFinvTrans = &matrixData( p, "FinvTrans" );
@@ -137,7 +137,9 @@ float SnowConstitutiveModel::energyDensity( size_t p ) const
 	
 	Matrix3f rigidDeviation = particleF[p] - particleR[p];
 	float JminusOne = particleJ[p] - 1;
-	return ( particleMu[p] * matrixDoubleDot( rigidDeviation, rigidDeviation ) + 0.5f * particleLambda[p] * JminusOne * JminusOne );
+	float doubledot = matrixDoubleDot( rigidDeviation, rigidDeviation );
+	float ret = ( particleMu[p] * doubledot + 0.5f * particleLambda[p] * JminusOne * JminusOne );
+	return ret;
 }
 
 Eigen::Matrix3f SnowConstitutiveModel::dEnergyDensitydF( size_t p ) const
@@ -149,8 +151,12 @@ Eigen::Matrix3f SnowConstitutiveModel::dEnergyDensitydF( size_t p ) const
 	const std::vector<float>& particleJ = *m_particleJ;
 	const std::vector<float>& particleMu = *m_particleMu;
 	const std::vector<float>& particleLambda = *m_particleLambda;
+
+	Matrix3f rigidDeviation = particleF[p] - particleR[p];
+	float jjminusone = ( particleJ[p] - 1 ) * particleJ[p];
+	Matrix3f ret = 2 * particleMu[p] * (rigidDeviation ) + particleLambda[p] * ( particleJ[p] - 1 ) * particleJ[p] * particleFinvTrans[p];
 	
-	return 2 * particleMu[p] * ( particleF[p] - particleR[p] ) + particleLambda[p] * ( particleJ[p] - 1 ) * particleJ[p] * particleFinvTrans[p];
+	return ret;
 }
 
 Eigen::Matrix3f SnowConstitutiveModel::dEdFDifferential( const Eigen::Matrix3f& dFp, size_t p ) const

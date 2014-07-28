@@ -21,6 +21,9 @@ public:
 	{
 		result = m_mat * x;
 	}
+	virtual void subspaceProject( Eigen::VectorXf& x ) const
+	{
+	}
 
 private:
 
@@ -33,6 +36,7 @@ namespace MpmSimTest
 
 void testConjugateResiduals()
 {
+	std::cerr << "testConjugateResicuals()" << std::endl;
 	const int matrixSize = 6;
 
 	// create random symmetric indefinite matrix:

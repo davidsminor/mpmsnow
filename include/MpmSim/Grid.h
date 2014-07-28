@@ -51,6 +51,15 @@ public:
 	typedef std::vector< std::pair<Sim::ConstIndexIterator, Sim::ConstIndexIterator> > PartitionList;
 	const PartitionList& partition( int i, int j, int k ) const;
 	
+	void calculateExplicitMomenta(
+		Eigen::VectorXf& explicitMomenta,
+		std::vector<char>& nodeCollided,
+		float timeStep,
+		const ConstitutiveModel& constitutiveModel,
+		const std::vector<const CollisionObject*>& collisionObjects,
+		const std::vector<const ForceField*>& fields
+	);
+
 	void calculateForces(
 		Eigen::VectorXf& forces, 
 		const ConstitutiveModel& constitutiveModel,
@@ -104,6 +113,7 @@ public:
 	
 	Eigen::VectorXf masses;
 	Eigen::VectorXf velocities;
+	Eigen::VectorXf prevVelocities;
 	
 	// class for splatting quantities like mass onto the grid in paralell:
 	class GridSplatter
@@ -143,6 +153,7 @@ public:
 	const Eigen::Vector3f& minCoord() const;
 	const Eigen::Vector3f& maxCoord() const;
 	const Eigen::Vector3i& n() const;
+	float gridSize() const;
 	
 	int collide(
 		Eigen::Vector3f& v,
@@ -170,7 +181,6 @@ private:
 	PartitionList m_processingPartitions[2][2][2];
 
 	friend class ImplicitUpdateMatrix;
-	Eigen::VectorXf m_prevGridVelocities;
 	std::vector<char> m_nodeCollided;
 	
 	static inline void minMax( float x, float& min, float& max );
