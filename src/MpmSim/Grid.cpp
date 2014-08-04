@@ -454,11 +454,22 @@ int Grid::collide(
 )
 {
 	int collisionObject(-1);
+	bool intersectedAlready(false);
 	for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
 	{
 		float phi = collisionObjects[objIdx]->phi( x );
 		if( phi <= 0 )
 		{
+			if( intersectedAlready )
+			{
+				// colliding with more than one object: set
+				// velocity to zero and bail
+				collisionObject = -2;
+				v.setZero();
+				break;
+			}
+			intersectedAlready = true;
+
 			// intersecting the object
 			Vector3f vObj;
 			collisionObjects[objIdx]->velocity( x, vObj );
@@ -474,15 +485,6 @@ int Grid::collide(
 			if( nDotV < 0 )
 			{
 				// trying to move into the object:
-				if( collisionObject > -1 )
-				{
-					// colliding with more than one object: set
-					// velocity to zero and bail
-					collisionObject = -2;
-					v.setZero();
-					break;
-				}
-				
 				collisionObject = (int)objIdx;
 
 				if( collisionObjects[objIdx]->sticky() )

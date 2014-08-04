@@ -146,10 +146,16 @@ void testInitialization()
 	assert( sim.body( 1 ).size() == 16 * 16 * 16 );
 }
 
+void testTimestepAdvance()
+{
+
+}
+
 void testSimClass()
 {
 	testNeighbourQuery();
 	testInitialization();
+	testTimestepAdvance();
 }
 
 }

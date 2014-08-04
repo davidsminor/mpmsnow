@@ -199,8 +199,6 @@ void display()
 	// draw explicit velocities:
 	glBegin( GL_LINES );
 	
-	glColor3f(0,1,0);
-
 	x = (g_gridMin[0]);
 	for( int i=0; i < g_gridSize[0]; ++i, x += g_gridH )
 	{
@@ -211,7 +209,9 @@ void display()
 			for( int k=0; k < g_gridSize[2]; ++k, z += g_gridH )
 			{
 				int offset = 3 * (i + g_gridSize[1] * ( j + g_gridSize[2] * k ));
+				glColor3f(0,1,0);
 				glVertex3f( x,y,z );
+				glColor3f(0,0,0);
 				glVertex3f(
 					x + g_vscale * g_explicitVelocities[offset],
 					y + g_vscale * g_explicitVelocities[offset+1],
@@ -226,7 +226,6 @@ void display()
 	// draw velocities:
 	glBegin( GL_LINES );
 	
-	glColor3f(1,1,1);
 
 	x = (g_gridMin[0]);
 	for( int i=0; i < g_gridSize[0]; ++i, x += g_gridH )
@@ -238,7 +237,9 @@ void display()
 			for( int k=0; k < g_gridSize[2]; ++k, z += g_gridH )
 			{
 				int offset = 3 * (i + g_gridSize[1] * ( j + g_gridSize[2] * k ));
+				glColor3f(1,1,1);
 				glVertex3f( x,y,z );
+				glColor3f(0,0,0);
 				glVertex3f(
 					x + g_vscale * g_iterates[g_frame][offset],
 					y + g_vscale * g_iterates[g_frame][offset+1],
@@ -272,6 +273,7 @@ void keyboard(unsigned char key, int /*x*/, int /*y*/)
 		{
 			g_frame = g_iterates.size() - 1;
 		}
+		std::cerr << g_frame << std::endl;
 		glutPostRedisplay();
 		break;
 	case 'a':
@@ -280,6 +282,7 @@ void keyboard(unsigned char key, int /*x*/, int /*y*/)
 		{
 			g_frame = 0;
 		}
+		std::cerr << g_frame << std::endl;
 		glutPostRedisplay();
 		break;
 	case 'q':

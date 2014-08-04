@@ -525,7 +525,7 @@ void testImplicitUpdate()
 	std::vector<float>& masses = m->m_data;
 	std::vector<float>& volumes = volume->m_data;
 	
-	Matrix3f distortion = Matrix3f::Random() * 0.01f;
+	Matrix3f distortion = Matrix3f::Random() * 0.001f;
 	
 	const float gridSize = 0.5f;
 	Sim::IndexList inds;
@@ -549,14 +549,14 @@ void testImplicitUpdate()
 				
 				velocities.push_back(
 					Vector3f(
-						0.1f,// + 0.01f*sin( 2 * positions.back()[0] ),
-						0.1f,// + 0.01f*sin( 2 * positions.back()[1] ),
-						0.1f// + 0.01f*sin( 2 * positions.back()[2] )
+						0.1f + 0.01f*sin( 2 * positions.back()[0] ),
+						0.1f + 0.01f*sin( 2 * positions.back()[1] ),
+						0.1f + 0.01f*sin( 2 * positions.back()[2] )
 					)
 				);
 				
 				F.push_back(
-					Matrix3f::Identity()// + distortion * cos( 2 * positions.back()[0] )
+					Matrix3f::Identity() + distortion * cos( 2 * positions.back()[0] )
 				);
 				
 			}
@@ -590,9 +590,9 @@ void testImplicitUpdate()
 	plane1.setV( Eigen::Vector3f( -.1f, -.2f, -.3f ) );
 	collisionObjects.push_back( &plane1 );
 
-	//CollisionPlane plane2( Eigen::Vector4f( -1,0,0,-1.5 ) );
-	//plane.setV( Eigen::Vector3f( -.1f, -.2f, -.3f ) );
-	//collisionObjects.push_back( &plane2 );
+	CollisionPlane plane2( Eigen::Vector4f( -1,0,0,1.5 ) );
+	plane2.setV( Eigen::Vector3f( -.2f, -.1f, -.4f ) );
+	collisionObjects.push_back( &plane2 );
 
 	
 	std::vector<const ForceField*> fields;
@@ -608,7 +608,7 @@ void testImplicitUpdate()
 		collisionObjects,
 		fields
 	);
-	
+
 	{
 		ImplicitUpdateRecord d( g, explicitMomenta, collisionObjects, nodeCollided, "debug.dat" );
 		g.updateGridVelocities(
@@ -621,9 +621,11 @@ void testImplicitUpdate()
 		);
 	}
 
-	system( "C:\\Users\\david\\Documents\\GitHub\\mpmsnow\\Debug\\viewer.exe" );
+	//system( "C:\\Users\\david\\Documents\\GitHub\\mpmsnow\\Debug\\viewer.exe" );
 
 	// check nothing's moving in or out of the collision objects:
+	VectorXf vc( g.velocities.size() );
+	g.collisionVelocities( vc, collisionObjects, nodeCollided );
 	for( int i=0; i < g.n()[0]; ++i )
 	{
 		for( int j=0; j < g.n()[1]; ++j )
@@ -632,22 +634,22 @@ void testImplicitUpdate()
 			{
 				int idx = g.coordsToIndex( i, j, k );
 				Vector3f velocity = g.velocities.segment<3>( 3 * idx );
-				Eigen::Vector3f explicitMomentum = explicitMomenta.segment<3>( 3*idx );
-				
-				if( nodeCollided[idx] >= 0 )
+				Vector3f x(
+					g.gridSize() * i + g.minCoord()[0],
+					g.gridSize() * j + g.minCoord()[1],
+					g.gridSize() * k + g.minCoord()[2]
+				);
+
+				int objIdx = nodeCollided[idx];
+				if( objIdx >= 0 )
 				{
-					const CollisionObject* obj = collisionObjects[ nodeCollided[idx] ];
-					Vector3f x(
-						g.gridSize() * i + g.minCoord()[0],
-						g.gridSize() * j + g.minCoord()[1],
-						g.gridSize() * k + g.minCoord()[2]
-					);
+					const CollisionObject* obj = collisionObjects[ objIdx ];
 					
 					// express velocity and momentum relative to this object:
 					Vector3f vObj;
 					obj->velocity( x, vObj );
+					assert( vc.segment<3>( 3 * idx ) == vObj );
 					velocity -= vObj;
-					explicitMomentum -= vObj * g.masses[idx];
 					
 					// find object normal:
 					Vector3f n;
@@ -656,24 +658,20 @@ void testImplicitUpdate()
 					float nDotV = fabs( n.dot( velocity ) );
 					assert( nDotV < 1.e-5 );
 				}
-				else if( nodeCollided[idx] == -2 )
+				else if( objIdx == -2 )
 				{
 					assert( velocity.norm() == 0 );
-					assert( explicitMomentum.norm() == 0 );
+					assert( vc.segment<3>( 3 * idx ).norm() == 0 );
 				}
 			}
 		}
 	}
-
 	
 	// so.... did it work?
 	
 	// ok - so it should have solved this equation:
-	// M * g.velocities - dt * dt * P * DF * P * g.velocities = explicitMomenta
+	// P * ( M * ( g.velocities - vc ) - DF * g.velocities * dt * dt ) = explicitMomenta
 	// (here, P means we project out the collided velocity components)
-
-	VectorXf df( g.velocities.size() );
-	g.calculateForceDifferentials( df, g.velocities, snowModel, fields );
 	
 	for( int i=0; i < g.n()[0]; ++i )
 	{
@@ -682,7 +680,8 @@ void testImplicitUpdate()
 			for( int k=0; k < g.n()[2]; ++k )
 			{
 				int idx = g.coordsToIndex( i, j, k );
-				Vector3f velocity = g.velocities.segment<3>( 3 * idx );
+				
+				// apply P to velocities:
 				if( nodeCollided[idx] >= 0 )
 				{
 					const CollisionObject* obj = collisionObjects[ nodeCollided[idx] ];
@@ -693,61 +692,79 @@ void testImplicitUpdate()
 						g.gridSize() * j + g.minCoord()[1],
 						g.gridSize() * k + g.minCoord()[2]
 					);
-					Vector3f n;
-					obj->grad( x, n );
-					n.normalize();
-					float nDotP = n.dot( velocity );
 					
-					// project out component perpendicular to the object
-					velocity -= nDotP * n;
+					Vector3f vObj;
+					obj->velocity( x, vObj );
+					assert( vc.segment<3>( 3 * idx ) == vObj );	
 				}
-				else if( nodeCollided[idx] == -2 )
+				else
 				{
-					velocity.setZero();
-				}
-
-				Eigen::Vector3f momentum = g.masses[ idx ] * velocity - timeStep * timeStep * df.segment<3>( 3 * idx );
-				
-				Eigen::Vector3f expected = explicitMomenta.segment<3>( 3*idx );
-
-				if( nodeCollided[idx] >= 0 )
-				{
-					const CollisionObject* obj = collisionObjects[ nodeCollided[idx] ];
-					
-					// find object normal:
-					Vector3f x(
-						g.gridSize() * i + g.minCoord()[0],
-						g.gridSize() * j + g.minCoord()[1],
-						g.gridSize() * k + g.minCoord()[2]
-					);
-					Vector3f n;
-					obj->grad( x, n );
-					n.normalize();
-					float nDotP = n.dot( momentum );
-					// project out component perpendicular to the object
-					momentum -= nDotP * n;
-				}
-				else if( nodeCollided[idx] == -2 )
-				{
-					momentum.setZero();
-				}
-				
-				if( fabs( expected[0] ) > 1.e-4 )
-				{
-					assert( fabs( ( expected[0] - momentum[0] ) / expected[0] ) < 0.005f );
-				}
-				if( fabs( expected[1] ) > 1.e-4 )
-				{
-					assert( fabs( ( expected[1] - momentum[1] ) / expected[1] ) < 0.005f );
-				}
-				if( fabs( expected[2] ) > 1.e-4 )
-				{
-					assert( fabs( ( expected[2] - momentum[2] ) / expected[2] ) < 0.005f );
+					assert( vc.segment<3>( 3 * idx ).norm() == 0 );
 				}
 			}
 		}
 	}
+	
+	// work out DF * g.velocities:
+	VectorXf df( g.velocities.size() );
+	g.calculateForceDifferentials( df, g.velocities, snowModel, fields );
 
+	//  M * ( g.velocities - vc ) - DF * g.velocities * dt * dt 
+	VectorXf lhs( g.velocities.size() );
+	for( int idx=0; idx < g.masses.size(); ++idx )
+	{
+		lhs.segment<3>( 3 * idx ) =
+			g.masses[idx] * ( g.velocities.segment<3>( 3 * idx ) - vc.segment<3>( 3 * idx ) ) - df.segment<3>( 3 * idx ) * timeStep * timeStep;
+	}
+	
+	// run the projection again:
+	for( int i=0; i < g.n()[0]; ++i )
+	{
+		for( int j=0; j < g.n()[1]; ++j )
+		{
+			for( int k=0; k < g.n()[2]; ++k )
+			{
+				int idx = g.coordsToIndex( i, j, k );
+				
+				// apply P:
+				if( nodeCollided[idx] >= 0 )
+				{
+					const CollisionObject* obj = collisionObjects[ nodeCollided[idx] ];
+					
+					// find object normal:
+					Vector3f x(
+						g.gridSize() * i + g.minCoord()[0],
+						g.gridSize() * j + g.minCoord()[1],
+						g.gridSize() * k + g.minCoord()[2]
+					);
+					
+					Vector3f momentum = lhs.segment<3>( 3 * idx );
+					Vector3f n;
+					obj->grad( x, n );
+					n.normalize();
+					float nDotP = n.dot( momentum );
+					
+					// project out component perpendicular to the object
+					lhs.segment<3>( 3 * idx ) = momentum - nDotP * n;
+				}
+				else if( nodeCollided[idx] == -2 )
+				{
+					lhs.segment<3>( 3 * idx ).setZero();
+				}
+			}
+		}
+	}
+	
+	float maxNorm(0);
+	for( int idx=0; idx < g.masses.size(); ++idx )
+	{
+		float norm = ( lhs.segment<3>( 3 * idx ) - explicitMomenta.segment<3>( 3 * idx ) ).norm();
+		if( norm > maxNorm )
+		{
+			maxNorm = norm;
+		}
+	}
+	assert( maxNorm < 1.e-6 );
 }
 
 

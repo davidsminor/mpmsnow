@@ -29,19 +29,20 @@ void ImplicitUpdateMatrix::subspaceProject( Eigen::VectorXf& toProject ) const
 			for( int k=0; k < m_g.m_n[2]; ++k )
 			{
 				int idx = m_g.coordsToIndex( i, j, k );
-				if( m_g.m_nodeCollided[idx] == -1 )
+				int objIdx = m_g.m_nodeCollided[idx];
+				if( objIdx == -1 )
 				{
 					// no collision
 					continue;
 				}
-				else if( m_g.m_nodeCollided[idx] == -2 )
+				else if( objIdx == -2 )
 				{
 					// more than one collision: set to zero
 					toProject.segment<3>( 3 * idx ).setZero();
 				}
 				else
 				{
-					const CollisionObject* obj = m_collisionObjects[ m_g.m_nodeCollided[idx] ];
+					const CollisionObject* obj = m_collisionObjects[ objIdx ];
 					Vector3f v = toProject.segment<3>( 3 * idx );
 					
 					// find object normal:
