@@ -510,8 +510,8 @@ int Grid::collide(
 				}
 			}
 			
-			// add object velocity back on:
-			v += vObj;
+			// skip adding object velocity back on:
+			//v += vObj;
 		}
 	}
 	
@@ -561,6 +561,39 @@ void Grid::calculateExplicitMomenta(
 	
 }
 
+void Grid::collisionVelocities(
+	Eigen::VectorXf& vc,
+	const std::vector<const CollisionObject*>& collisionObjects,
+	const std::vector<char>& nodeCollided
+) const
+{
+	vc.resize( 3 * m_n[0] * m_n[1] * m_n[2] );
+	for( int i=0; i < m_n[0]; ++i )
+	{
+		for( int j=0; j < m_n[1]; ++j )
+		{
+			for( int k=0; k < m_n[2]; ++k )
+			{
+				int idx = coordsToIndex( i, j, k );
+				if( nodeCollided[idx] < 0 )
+				{
+					vc.segment<3>( 3 * idx ).setZero();
+				}
+				else
+				{
+					Vector3f x( m_gridSize * i + m_min[0], m_gridSize * j + m_min[1], m_gridSize * k + m_min[2] );
+					const CollisionObject* obj = collisionObjects[ nodeCollided[idx] ];
+					
+					Vector3f vObj;
+					obj->velocity( x, vObj );
+					vc.segment<3>( 3 * idx ) = vObj;
+				}
+			}
+		}
+	}
+
+}
+
 void Grid::updateGridVelocities(
 	float timeStep,
 	const ConstitutiveModel& constitutiveModel,
@@ -581,98 +614,53 @@ void Grid::updateGridVelocities(
 
 	ImplicitUpdateMatrix implicitMatrix( m_d, *this, constitutiveModel, collisionObjects, fields, timeStep );
 	
-	// So we want to solve 
-	// m * v^(n+1) - dP = explicitMomenta
+	// what's the forward update gonna look like?
+	// v^(n) = collide ( v^(n+1) - M^-1 f^(n+1) dt - vc ) + vc
+	// vr^(n) = collide ( vr^(n+1) - M^-1 f^(n+1) dt )
+	// vr^(n) = collide ( vr^(n+1) - M^-1 F( x^n+1 ) dt )
+	// vr^(n) = collide ( vr^(n+1) - M^-1 F( x^n + v^(n+1) dt ) dt )
+	// vr^(n) = collide ( vr^(n+1) - M^-1 * F( x^n ) dt - M^-1 * DF * v^(n+1) * dt * dt )
+	
+	// We gotta solve this for vr^(n+1), then add of vc to get v^(n+1).
+	// collide( v ) isn't linear though. What we'll do, (and I should really work out if this
+	// is actually justified shouldn't I...) is just brainlessly take shit over the other side:
 
-	// how do we work out dP?? Well, if the collision objects are stationary, then we
-	// - project out the collided degrees of freedom in v^(n+1)
-	// - find the change in the node positions using dt * v^(n+1)
-	// - apply the force differential matrix DF to find the extra forces on the nodes due to those position tweaks
-	// - multiply that by the time step to find the change in momentum
-	// - project out collided degrees of freedom in the result:
+	// collide ( vr^(n) + M^-1 * F( x^n ) dt ) = P * ( vr^(n+1) - M^-1 * DF * v^(n+1) * dt * dt )
+	// collide ( vr^(n) + M^-1 * F( x^n ) dt ) = P * ( vr^(n+1) - M^-1 * DF * ( vr^(n+1) + vc ) * dt * dt )
+	// M * collide ( vr^(n) + M^-1 * F( x^n ) dt ) = P * ( M * vr^(n+1) - DF * ( vr^(n+1) + vc ) * dt * dt )
+	// ... = P * ( M * vr^(n+1) - DF * vr^(n+1) * dt * dt - DF * vc * dt * dt )
+	// ... = P * ( M * vr^(n+1) - DF * vr^(n+1) * dt * dt ) - P * DF * vc * dt * dt
 
-	// dP = P * dt * DF * dt * P * v^(n+1)
+	// P * ( M - DF * dt * dt ) * vr^(n+1) = M * collide ( vr^(n) + M^-1 * F( x^n ) dt ) + P * DF * vc * dt * dt
+	// implicitMatrix * vr^(n+1) = explicitMomenta + P * DF * vc * dt * dt
+	
+	// todo: I guess we need to get the semi implicit stuff working too
 
-	// this leads to the following equation:
-	// ( m - P * dt * DF * dt * P ) * v^(n+1) = explicitMomenta
-	
-	// ImplicitUpdateMatrix is implemented to apply the matrix on the left hand side of the equation,
-	// so the equation we solve using the implicitSolver object is as follows:
-	// implicitMatrix * v^(n+1) = explicitMomenta
-	
-	// if the collision objects are moving, then we've got to project out collided degrees of freedom
-	// on the relative velocities, vc, instead, so things get a bit more complicated:
-	
-	// dP = p_project( dt * DF * dt * v_project( v^(n+1) ) )
-	// dP = p_project( dt * DF * dt * ( P( v^(n+1) - vc) + vc ) )
-	// dP = P * ( dt * DF * dt * ( P( v^(n+1) - vc) + vc ) - M vc ) + M vc
-	
-	// expanding this out, we get:
-	// dP =	  P * dt * DF * dt * P * v^(n+1)
-	//	    + ( M + P * dt * DF * dt ) * vcPerp
-	
-	// where P is the collision projection matrix and vcPerp = ( I - P ) * vc.
-	// Assembling the equation we want to solve, that's:
-	
-	// m * v^(n+1) - P * dt * DF * dt * P * v^(n+1) = explicitMomenta + ( M + P * dt * DF * dt ) * vcPerp
-	
-	// so, lets work out vcPerp:
+	// so, lets work out vc:
+	VectorXf vc;
+	collisionVelocities( vc, collisionObjects, m_nodeCollided );
 
-	VectorXf vcPerp( velocities.size() );
-	for( int i=0; i < m_n[0]; ++i )
-	{
-		for( int j=0; j < m_n[1]; ++j )
-		{
-			for( int k=0; k < m_n[2]; ++k )
-			{
-				int idx = coordsToIndex( i, j, k );
-				if( m_nodeCollided[idx] < 0 )
-				{
-					vcPerp.segment<3>( 3 * idx ).setZero();
-				}
-				else
-				{
-					Vector3f x( m_gridSize * i + m_min[0], m_gridSize * j + m_min[1], m_gridSize * k + m_min[2] );
-					const CollisionObject* obj = collisionObjects[ m_nodeCollided[idx] ];
-					
-					Vector3f vObj;
-					obj->velocity( x, vObj );
-					if( obj->sticky() )
-					{
-						vcPerp.segment<3>( 3 * idx ) = vObj;
-					}
-					else
-					{
-						Vector3f n;
-						obj->grad( x, n );
-						n.normalize();
-						vcPerp.segment<3>( 3 * idx ) = vObj - n * ( n.dot( vObj ) );
-
-					}
-				}
-			}
-		}
-	}
-	
-	// work out some force differentials for the extra explicit momentum term:
+	// work out the P * DF * vc * dt * dt term and add it onto explicitMomenta:
 	VectorXf df( velocities.size() );
-	calculateForceDifferentials( df, vcPerp, constitutiveModel, fields );
+	calculateForceDifferentials( df, vc, constitutiveModel, fields );
 	implicitMatrix.subspaceProject( df );
-	
-	// so add the extra term onto the explicit momenta:
+
+	// so subtract the extra term onto the explicit momenta:
 	for( int idx=0; idx<masses.size(); ++idx )
 	{
 		explicitMomenta.segment<3>( 3 * idx ) +=
-			masses[idx] * vcPerp.segment<3>( 3 * idx ) +
 			timeStep * timeStep * df.segment<3>( 3 * idx );
 	}
-
-	// finally solve the linear system:
+	
+	// solve the linear system for the relative velocities:
 	implicitSolver(
 		implicitMatrix,
 		explicitMomenta,
 		velocities,
 		d );
+	
+	// work out absolute velocities:
+	velocities += vc;
 	
 }
 

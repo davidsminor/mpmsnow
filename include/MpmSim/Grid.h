@@ -60,6 +60,12 @@ public:
 		const std::vector<const ForceField*>& fields
 	);
 
+	void collisionVelocities(
+		Eigen::VectorXf& vc,
+		const std::vector<const CollisionObject*>& collisionObjects,
+		const std::vector<char>& nodeCollided
+	) const;
+	
 	void calculateForces(
 		Eigen::VectorXf& forces, 
 		const ConstitutiveModel& constitutiveModel,

@@ -3,6 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual C++ Express 2008
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "unitTests", "unitTests.vcproj", "{15D1996C-A5F3-46E3-93FD-11255B14D5A8}"
 	ProjectSection(ProjectDependencies) = postProject
+		{D535F240-B353-49F7-B4AA-98D753BCB381} = {D535F240-B353-49F7-B4AA-98D753BCB381}
 		{4AB397A0-5938-47D3-9FBB-B15A8D2AAF7C} = {4AB397A0-5938-47D3-9FBB-B15A8D2AAF7C}
 	EndProjectSection
 EndProject
@@ -17,6 +18,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "houdiniPlugin", "houdiniPlu
 	ProjectSection(ProjectDependencies) = postProject
 		{4AB397A0-5938-47D3-9FBB-B15A8D2AAF7C} = {4AB397A0-5938-47D3-9FBB-B15A8D2AAF7C}
 	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "viewer", "solverviewer.vcproj", "{D535F240-B353-49F7-B4AA-98D753BCB381}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -40,6 +43,10 @@ Global
 		{B917BE05-B5B0-435F-A303-C6FA52D31567}.Debug|Win32.Build.0 = Debug|Win32
 		{B917BE05-B5B0-435F-A303-C6FA52D31567}.Release|Win32.ActiveCfg = Release|Win32
 		{B917BE05-B5B0-435F-A303-C6FA52D31567}.Release|Win32.Build.0 = Release|Win32
+		{D535F240-B353-49F7-B4AA-98D753BCB381}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D535F240-B353-49F7-B4AA-98D753BCB381}.Debug|Win32.Build.0 = Debug|Win32
+		{D535F240-B353-49F7-B4AA-98D753BCB381}.Release|Win32.ActiveCfg = Release|Win32
+		{D535F240-B353-49F7-B4AA-98D753BCB381}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -9,6 +9,7 @@
 #include "MpmSim/SnowConstitutiveModel.h"
 
 #include <iostream>
+#include <fstream>
 
 using namespace MpmSim;
 using namespace Eigen;
@@ -438,6 +439,63 @@ static void testForces()
 	}
 }
 
+class ImplicitUpdateRecord : public LinearSolver::Debug
+{
+public:
+
+	ImplicitUpdateRecord(
+		const Grid& g,
+		const Eigen::VectorXf& explicitMomenta,
+		const std::vector<const CollisionObject*>& collisionObjects,
+		const std::vector<char>& nodeCollided,
+		const std::string& fileName
+	) :
+		outFile( fileName.c_str(), std::ofstream::binary )
+	{
+		g.collisionVelocities( vc, collisionObjects, nodeCollided );
+
+		Eigen::VectorXf explicitVelocities( explicitMomenta.size() );
+		for( int i=0; i < g.masses.size(); ++i )
+		{
+			if( g.masses[i] != 0 )
+			{
+				explicitVelocities.segment<3>( 3 * i ) = explicitMomenta.segment<3>( 3 * i ) / g.masses[i];
+			}
+			else
+			{
+				explicitVelocities.segment<3>( 3 * i ).setZero();
+			}
+		}
+		explicitVelocities += vc;
+
+		float gridH = g.gridSize();
+		outFile.write( (const char*)&gridH, sizeof( float ) );
+
+		outFile.write( (const char*)&(g.minCoord()[0]), sizeof( float ) );
+		outFile.write( (const char*)&(g.minCoord()[1]), sizeof( float ) );
+		outFile.write( (const char*)&(g.minCoord()[2]), sizeof( float ) );
+
+		outFile.write( (const char*)&(g.n()[0]), sizeof( int ) );
+		outFile.write( (const char*)&(g.n()[1]), sizeof( int ) );
+		outFile.write( (const char*)&(g.n()[2]), sizeof( int ) );
+
+		outFile.write( (const char*)&(g.masses[0]), g.n()[0] * g.n()[1] * g.n()[2] * sizeof( float ) );
+		
+		outFile.write( (const char*)&(explicitVelocities[0]), 3 * g.n()[0] * g.n()[1] * g.n()[2] * sizeof( float ) );
+	}
+	
+	virtual void operator()( Eigen::VectorXf& x )
+	{
+		Eigen::VectorXf iterate = x + vc;
+		outFile.write( (const char*)&(iterate[0]), iterate.size() * sizeof( float ) );
+	}
+	
+	Eigen::VectorXf vc;
+	std::ofstream outFile;
+	std::vector< Eigen::VectorXf > record;
+
+};
+
 
 void testImplicitUpdate()
 {
@@ -491,14 +549,14 @@ void testImplicitUpdate()
 				
 				velocities.push_back(
 					Vector3f(
-						0.01f*sin( 2 * positions.back()[0] ),
-						0.01f*sin( 2 * positions.back()[1] ),
-						0.01f*sin( 2 * positions.back()[2] )
+						0.1f,// + 0.01f*sin( 2 * positions.back()[0] ),
+						0.1f,// + 0.01f*sin( 2 * positions.back()[1] ),
+						0.1f// + 0.01f*sin( 2 * positions.back()[2] )
 					)
 				);
 				
 				F.push_back(
-					Matrix3f::Identity() + distortion * cos( 2 * positions.back()[0] )
+					Matrix3f::Identity()// + distortion * cos( 2 * positions.back()[0] )
 				);
 				
 			}
@@ -528,13 +586,13 @@ void testImplicitUpdate()
 	
 	float timeStep = 0.002f;
 	std::vector<const CollisionObject*> collisionObjects;
-	CollisionPlane plane1( Eigen::Vector4f( -1,-1,-1,-1 ) );
-	//plane.setV( Eigen::Vector3f( -.1f, -.2f, -.3f ) );
+	CollisionPlane plane1( Eigen::Vector4f( -1,-1,-1,1 ) );
+	plane1.setV( Eigen::Vector3f( -.1f, -.2f, -.3f ) );
 	collisionObjects.push_back( &plane1 );
 
-	CollisionPlane plane2( Eigen::Vector4f( -1,0,0,-1.5 ) );
+	//CollisionPlane plane2( Eigen::Vector4f( -1,0,0,-1.5 ) );
 	//plane.setV( Eigen::Vector3f( -.1f, -.2f, -.3f ) );
-	collisionObjects.push_back( &plane2 );
+	//collisionObjects.push_back( &plane2 );
 
 	
 	std::vector<const ForceField*> fields;
@@ -550,15 +608,21 @@ void testImplicitUpdate()
 		collisionObjects,
 		fields
 	);
-
-	g.updateGridVelocities(
-		timeStep, 
-		snowModel,
-		collisionObjects,
-		fields,
-		solver
-	);
 	
+	{
+		ImplicitUpdateRecord d( g, explicitMomenta, collisionObjects, nodeCollided, "debug.dat" );
+		g.updateGridVelocities(
+			timeStep, 
+			snowModel,
+			collisionObjects,
+			fields,
+			solver,
+			&d
+		);
+	}
+
+	system( "C:\\Users\\david\\Documents\\GitHub\\mpmsnow\\Debug\\viewer.exe" );
+
 	// check nothing's moving in or out of the collision objects:
 	for( int i=0; i < g.n()[0]; ++i )
 	{
@@ -589,7 +653,6 @@ void testImplicitUpdate()
 					Vector3f n;
 					obj->grad( x, n );
 					n.normalize();
-					assert( fabs( n.dot( explicitMomentum ) ) < 1.e-5 );
 					float nDotV = fabs( n.dot( velocity ) );
 					assert( nDotV < 1.e-5 );
 				}
