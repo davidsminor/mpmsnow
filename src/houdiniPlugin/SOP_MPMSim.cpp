@@ -194,7 +194,7 @@ SOP_MPMSim::initSim(OP_Context &context)
 		
 		m_sim.reset(
 			new MpmSim::Sim(
-				x, m, h, m_shapeFunction, *m_snowModel, m_collisionObjects, m_forceFields
+				x, m, gridSize( context.getTime() ), m_shapeFunction, *m_snowModel, m_collisionObjects, m_forceFields
 			)
 		);
 		
