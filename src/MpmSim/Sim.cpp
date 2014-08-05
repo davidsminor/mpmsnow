@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <queue>
+#include <stdexcept>
 
 using namespace MpmSim;
 

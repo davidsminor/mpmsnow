@@ -1,7 +1,10 @@
 #include "MpmSim/Grid.h"
 #include "MpmSim/ForceField.h"
 #include "MpmSim/ImplicitUpdateMatrix.h"
+
 #include <iostream>
+#include <stdexcept>
+
 using namespace MpmSim;
 using namespace Eigen;
 
