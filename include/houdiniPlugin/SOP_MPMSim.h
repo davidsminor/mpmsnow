@@ -5,8 +5,11 @@
 #include <GEO/GEO_PrimVDB.h>
 #include <GU/GU_Detail.h>
 
-#include "MpmSim/ParticleData.h"
+#include "MpmSim/Sim.h"
+#include "MpmSim/GravityField.h"
+#include "MpmSim/CubicBsplineShapeFunction.h"
 #include "MpmSim/SnowConstitutiveModel.h"
+#include "MpmSim/ConjugateResiduals.h"
 
 class SOP_MPMSim : public SOP_Node
 {
@@ -45,10 +48,15 @@ private:
 	
 	fpreal m_prevCookTime;
 
-	OP_ERROR createParticles(OP_Context &context);
-	std::auto_ptr< MpmSim::ParticleData > m_particleData;
-	std::auto_ptr< MpmSim::SnowConstitutiveModel > m_snowModel;
+	OP_ERROR initSim(OP_Context &context);
 
+	MpmSim::CubicBsplineShapeFunction m_shapeFunction;
+	MpmSim::Sim::CollisionObjectSet m_collisionObjects;
+	MpmSim::Sim::ForceFieldSet m_forceFields;
+
+	std::auto_ptr<MpmSim::SnowConstitutiveModel> m_snowModel;
+	std::auto_ptr<MpmSim::Sim> m_sim;
+	
 	/// This variable is used together with the call to the "checkInputChanged"
 	/// routine to notify the handles (if any) if the input has changed.
 	GU_DetailGroupPair	 myDetailGroupPair;

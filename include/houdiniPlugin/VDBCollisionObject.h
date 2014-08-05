@@ -21,6 +21,12 @@ public:
 	
 	virtual void velocity( const Eigen::Vector3f& x, Eigen::Vector3f& v ) const;
 
+	// coulomb friction:
+	virtual float coulombFriction() const;
+	
+	// is this sticky?
+	virtual bool sticky() const;
+
 	virtual void draw() const;
 
 private:

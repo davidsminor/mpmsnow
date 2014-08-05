@@ -36,6 +36,16 @@ void VDBCollisionObject::velocity( const Eigen::Vector3f& x, Eigen::Vector3f& v 
 	}
 }
 
+float VDBCollisionObject::coulombFriction() const
+{
+	return 0.5f;
+}
+
+bool VDBCollisionObject::sticky() const
+{
+	return false;
+}
+
 void VDBCollisionObject::draw() const
 {
 }

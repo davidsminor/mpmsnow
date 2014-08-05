@@ -17,10 +17,7 @@
 #include "houdiniPlugin/SOP_MPMSim.h"
 #include "houdiniPlugin/VDBCollisionObject.h"
 
-#include "MpmSim/Grid.h"
-#include "MpmSim/CubicBsplineShapeFunction.h"
-#include "MpmSim/ConjugateResiduals.h"
-
+#include "MpmSim/SnowConstitutiveModel.h"
 
 
 void
@@ -137,7 +134,7 @@ void SOP_MPMSim::findVDBs( const GU_Detail *detail, const GEO_PrimVDB *&pVdb, co
 }
 
 OP_ERROR
-SOP_MPMSim::createParticles(OP_Context &context)
+SOP_MPMSim::initSim(OP_Context &context)
 {
 	// cook first input with supplied context
 	if (lockInput(0, context) >= UT_ERROR_ABORT)
@@ -154,6 +151,18 @@ SOP_MPMSim::createParticles(OP_Context &context)
 	
 	if( pVdb )
 	{
+		fpreal startTime = context.getTime();
+		m_snowModel.reset( new MpmSim::SnowConstitutiveModel(
+				youngsModulus( startTime ),
+				poissonRatio( startTime ),
+				hardening( startTime ),
+				compressiveStrength( startTime ),
+				tensileStrength( startTime )
+		) );
+
+		m_forceFields = MpmSim::Sim::ForceFieldSet();
+		m_forceFields.fields.push_back( new MpmSim::GravityField( Eigen::Vector3f( 0,-9.8f,0 ) ) );
+		
 		float h = gridSize( context.getTime() ) / 2;
 		UT_BoundingBox bbox;
 		pVdb->getBBox( &bbox );
@@ -182,29 +191,24 @@ SOP_MPMSim::createParticles(OP_Context &context)
 				}
 			}
 		}
-
-		m_particleData.reset( new MpmSim::ParticleData( x, m, 2 * h ) );
-		m_snowModel->initParticles( *( m_particleData.get() ) );
+		
+		m_sim.reset(
+			new MpmSim::Sim(
+				x, m, h, m_shapeFunction, *m_snowModel, m_collisionObjects, m_forceFields
+			)
+		);
+		
 		if( vVdb )
 		{
 			
-			const std::vector<Eigen::Vector3f>& x = m_particleData->particleX;
-			std::vector<Eigen::Vector3f>& v = m_particleData->particleV;
+			const std::vector<Eigen::Vector3f>& x = m_sim->particleVariable<MpmSim::VectorData>( "p" )->m_data;
+			std::vector<Eigen::Vector3f>& v = m_sim->particleVariable<MpmSim::VectorData>( "v" )->m_data;
 			for( size_t i=0; i < x.size(); ++i )
 			{
 				UT_Vector3D vdbValue = vVdb->getValueV3( UT_Vector3( x[i][0], x[i][1], x[i][2] ) );
 				v[i][0] = vdbValue.x();
 				v[i][1] = vdbValue.y();
 				v[i][2] = vdbValue.z();
-			}
-		}
-		else
-		{
-			const std::vector<Eigen::Vector3f>& x = m_particleData->particleX;
-			std::vector<Eigen::Vector3f>& v = m_particleData->particleV;
-			for( size_t i=0; i < x.size(); ++i )
-			{
-				v[i].setZero();
 			}
 		}
 		unlockInput(0);
@@ -235,28 +239,18 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 	
 	if( startTime == t )
 	{
-		std::cerr << "wipe out particles" << std::endl;
-		m_particleData.reset(0);
+		std::cerr << "wipe out sim" << std::endl;
+		m_sim.reset(0);
 	}
 	
-	if( !m_particleData.get() )
+	if( !m_sim.get() )
 	{
-		m_snowModel.reset(
-			new MpmSim::SnowConstitutiveModel(
-				youngsModulus( startTime ),
-				poissonRatio( startTime ),
-				hardening( startTime ),
-				compressiveStrength( startTime ),
-				tensileStrength( startTime )
-			)
-		);
-		
-		std::cerr << "construct particles" << std::endl;
+		std::cerr << "create sim" << std::endl;
 		OP_Context particlesContext = context;
 		particlesContext.setTime( startTime );
-		if( createParticles( particlesContext ) >= UT_ERROR_ABORT )
+		if( initSim( particlesContext ) >= UT_ERROR_ABORT )
 		{
-			std::cerr << "create particles failed" << std::endl;
+			std::cerr << "create sim failed" << std::endl;
 			unlockInputs();
 			return error();
 		}
@@ -283,7 +277,7 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 	std::cerr << "clear gdp" << std::endl;
 	gdp->clearAndDestroy();
 
-	if( !m_particleData.get() )
+	if( !m_sim.get() )
 	{
 		std::cerr << "no particles" << std::endl;
 		opError(OP_BAD_OPINPUT_READ, "no particles!");
@@ -295,13 +289,12 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 	{
 		UT_Interrupt *boss = UTgetInterrupt();
 		if (boss->opStart("Advancing Sim..."))
-        	{
+        {
 			int steps = subSteps(t);
 			float dt = float(t - m_prevCookTime) / steps;
 			float h = (float)gridSize(t);
 			
-			std::vector< MpmSimHoudini::VDBCollisionObject > vdbCollisions;
-			std::vector< MpmSim::CollisionObject* > collisionObjects;
+			m_collisionObjects = MpmSim::Sim::CollisionObjectSet();
 			
 			const GU_Detail *collisionsGdp = inputGeo(1);
 			
@@ -321,57 +314,23 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 			if( vVdb )
 			{
 				std::cerr << "found collision vdb with velocity" << std::endl;
-				vdbCollisions.push_back( MpmSimHoudini::VDBCollisionObject( pVdb, vVdb ) );
+				m_collisionObjects.objects.push_back( new MpmSimHoudini::VDBCollisionObject( pVdb, vVdb ) );
 			}
 			else
 			{
-				vdbCollisions.push_back( MpmSimHoudini::VDBCollisionObject( pVdb ) );
+				m_collisionObjects.objects.push_back( new MpmSimHoudini::VDBCollisionObject( pVdb ) );
 				std::cerr << "found static collision vdb" << std::endl;
 			}
 			
-			std::cerr << vdbCollisions.size() << " vdb collisions!" << std::endl;
-			for( size_t i=0; i < vdbCollisions.size(); ++i )
-			{
-				collisionObjects.push_back( &vdbCollisions[i] );
-			}
+			std::cerr << m_collisionObjects.objects.size() << " vdb collisions!" << std::endl;
 			
 			for( int i=0; i < steps; ++i )
 			{
 				std::cerr << "update particles " << dt << " " << h << " (" << i+1 << " of " << steps << ")" << std::endl;
-
-				std::cerr << "construct grid" << std::endl;
 				try
 				{
-					MpmSim::CubicBsplineShapeFunction shapeFunction;
-					MpmSim::Grid g(
-						*(m_particleData.get()),
-						dt,	// time step
-						shapeFunction,
-						*( m_snowModel.get() )
-					);
-
-					if( m_particleData->particleVolumes.empty() )
-					{
-						std::cerr << "compute particle volumes" << std::endl;
-						g.computeDensities( *(m_particleData.get()) );
-						m_particleData->particleVolumes.resize( m_particleData->particleX.size() );
-						for( size_t i = 0; i < m_particleData->particleDensities.size(); ++i )
-						{
-							m_particleData->particleVolumes[i] = m_particleData->particleM[i] / m_particleData->particleDensities[i];
-						}
-					}
-
-					// update grid velocities using internal stresses...
-					g.updateGridVelocities( *(m_particleData.get()), collisionObjects, MpmSim::ConjugateResiduals( maxIterations(t), tolerance(t) ) );
-
-					// transfer the grid velocities back onto the particles:
-					g.updateParticleVelocities( *(m_particleData.get()), collisionObjects );
-
-					// update particle deformation gradients:
-					g.updateDeformationGradients( *(m_particleData.get()) );
-
-					// update positions...
-					m_particleData->advance( dt );
+					MpmSim::ConjugateResiduals solver( maxIterations(t), tolerance(t) );
+					m_sim->advance( dt, solver );
 					if( boss->opInterrupt() )
 					{
 						break;
@@ -386,7 +345,7 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 		}
 	}
 
-	std::vector<Eigen::Vector3f>& x = m_particleData->particleX;
+	const std::vector<Eigen::Vector3f>& x = m_sim->particleVariable<MpmSim::VectorData>( "p" )->m_data;
 	
 	std::cerr << "create " << x.size() << " particles" << std::endl;
 	
