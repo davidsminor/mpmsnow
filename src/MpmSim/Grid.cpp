@@ -676,9 +676,12 @@ void Grid::updateDeformationGradients( float timeStep )
 	Vector3f weightGrad;
 	Vector3i particleCell;
 	Matrix3f delV;
-
-	for( size_t p = 0; p < particleX.size(); ++p )
+	
+	Sim::ConstIndexIterator it = m_particleInds.begin();
+	Sim::ConstIndexIterator end = m_particleInds.end();
+	for( ; it != end; ++it )
 	{
+		int p = *it;
 		delV.setZero();
 		shIt.initialize( particleX[p], true );
 		do
@@ -706,8 +709,12 @@ void Grid::updateParticleVelocities()
 
 	// blend FLIP and PIC, as pure FLIP allows spurious particle motion
 	// inside the cells:
-	for( size_t p = 0; p < particleX.size(); ++p )
+	Sim::ConstIndexIterator it = m_particleInds.begin();
+	Sim::ConstIndexIterator end = m_particleInds.end();
+	for( ; it != end; ++it )
 	{
+		int p = *it;
+
 		Vector3f vFlip = particleV[p];
 		Vector3f vPic = Vector3f::Zero();
 		shIt.initialize( particleX[p] );
