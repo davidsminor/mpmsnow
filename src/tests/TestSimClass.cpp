@@ -1,9 +1,11 @@
 #include "tests/TestSimClass.h"
 
 #include "MpmSim/Sim.h"
+#include "MpmSim/GravityField.h"
 #include "MpmSim/CubicBsplineShapeFunction.h"
 #include "MpmSim/ConstitutiveModel.h"
 #include "MpmSim/SnowConstitutiveModel.h"
+#include "MpmSim/ConjugateResiduals.h"
 
 #include <iostream>
 
@@ -148,13 +150,68 @@ void testInitialization()
 
 void testTimestepAdvance()
 {
+	std::cerr << "testTimestepAdvance()" << std::endl;
 
+	std::vector<Vector3f> positions;
+	std::vector<float> masses;
+	const float gridSize = 0.1f;
+	
+	// create two cube shaped clusters of particles.
+	// particle spacing = 1/2 of a cell:
+	for( int i=0; i < 4; ++i )
+	{
+		for( int j=0; j < 4; ++j )
+		{
+			for( int k=0; k < 4; ++k )
+			{
+				positions.push_back( Vector3f( 0.5f * gridSize * (i+0.5f), 0.5f * gridSize * (j+0.5f), 0.5f * gridSize * (k+0.5f) ) );
+				masses.push_back( 1.0f );
+
+				positions.push_back( Vector3f( 0.5f * gridSize * (i+0.5f) + 6, 0.5f * gridSize * (j+0.5f), 0.5f * gridSize * (k+0.5f) ) );
+				masses.push_back( 1.0f );
+
+			}
+		}
+	}
+
+	// create a bunch of ballistic particles:
+	for( int i=0; i < 4; ++i )
+	{
+		for( int j=0; j < 4; ++j )
+		{
+			for( int k=0; k < 4; ++k )
+			{
+				positions.push_back( Vector3f( 1.1f * gridSize * i + 20, 1.1f * gridSize * j, 1.1f * gridSize * k ) );
+				masses.push_back( 1.0f );
+
+			}
+		}
+	}
+	
+	CubicBsplineShapeFunction shapeFunction;
+	SnowConstitutiveModel constitutiveModel(
+		1.4e5f, // young's modulus
+		0.2f, // poisson ratio
+		0, // hardening
+		100000.0f, // compressive strength
+		100000.0f	// tensile strength
+	);
+	Sim::CollisionObjectSet collisionObjects;
+	Sim::ForceFieldSet forceFields;
+	forceFields.fields.push_back( new GravityField( Eigen::Vector3f( 0, -9.8f, 0 ) ) );
+	Sim sim( positions, masses, gridSize, shapeFunction, constitutiveModel, collisionObjects, forceFields );
+	
+	ConjugateResiduals solver( 40, 0 );
+	sim.advance( 0.01f, solver );
+	sim.advance( 0.01f, solver );
+	sim.advance( 0.01f, solver );
+	std::cerr << std::endl;
 }
 
 void testSimClass()
 {
-	testNeighbourQuery();
-	testInitialization();
+	//testNeighbourQuery();
+	//testInitialization();
 	testTimestepAdvance();
 }
 
