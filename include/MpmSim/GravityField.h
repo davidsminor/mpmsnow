@@ -6,7 +6,7 @@
 namespace MpmSim
 {
 
-class GravityField
+class GravityField : public ForceField
 {
 public:
 
