@@ -70,6 +70,7 @@ void Sim::advance( float timeStep, const LinearSolver& solver, LinearSolver::Deb
 	std::vector<float>& particleMasses = particleVariable<ScalarData>( "m" )->m_data;
 	
 	// advance ballistic particle velocities:
+	std::cerr << m_ballisticParticles.size() << " ballistic" << std::endl;
 	IndexIterator ballisticEnd = m_ballisticParticles.end();
 	for( IndexIterator it = m_ballisticParticles.begin(); it != ballisticEnd; ++it )
 	{
@@ -86,6 +87,7 @@ void Sim::advance( float timeStep, const LinearSolver& solver, LinearSolver::Deb
 	
 	// update velocities on particles in material point bodies:
 	BodyIterator bodyEnd = m_bodies.end();
+	std::cerr << m_bodies.size() << " bodies" << std::endl;
 	for( BodyIterator bIt = m_bodies.begin(); bIt != bodyEnd; ++bIt )
 	{
 		// construct background grid for this body:
