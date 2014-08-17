@@ -210,8 +210,9 @@ void testTimestepAdvance()
 
 void testSimClass()
 {
-	//testNeighbourQuery();
-	//testInitialization();
+	std::cerr << "testSimClass()" << std::endl;
+	testNeighbourQuery();
+	testInitialization();
 	testTimestepAdvance();
 }
 

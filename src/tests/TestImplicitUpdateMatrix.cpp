@@ -13,5 +13,6 @@ static void testCollisionProjection()
 
 void testImplicitUpdateMatrix()
 {
+	std::cerr << "testImplicitUpdateMatrix()" << std::endl;
 	testCollisionProjection();
 }

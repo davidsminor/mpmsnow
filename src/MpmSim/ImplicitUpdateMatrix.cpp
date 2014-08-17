@@ -62,6 +62,11 @@ void ImplicitUpdateMatrix::subspaceProject( Eigen::VectorXf& toProject ) const
 	}
 }
 
+void ImplicitUpdateMatrix::multInverseVector( const Eigen::VectorXf& x, Eigen::VectorXf& result ) const
+{
+	// not implemented
+}
+
 void ImplicitUpdateMatrix::multVector( const Eigen::VectorXf& vNPlusOne, Eigen::VectorXf& result ) const
 {
 	// This method computes the forward momenta in this frame in terms of the velocities

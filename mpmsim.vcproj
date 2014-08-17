@@ -363,6 +363,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\MpmSim\MassMatrix.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\MpmSim\ShapeFunction.cpp"
 				>
 			</File>
@@ -420,6 +424,10 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\LinearSolver.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSim\MassMatrix.h"
 				>
 			</File>
 			<File

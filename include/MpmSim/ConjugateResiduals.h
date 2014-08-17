@@ -11,7 +11,7 @@ class ConjugateResiduals : public LinearSolver
 {
 public:
 	
-	ConjugateResiduals( int iters, float tol_error, bool log=false );
+	ConjugateResiduals( int iters, float tol_error, const ProceduralMatrix* preconditioner = 0, bool log=false );
 
 	virtual void operator()(
 		const ProceduralMatrix& mat,
@@ -26,6 +26,7 @@ private:
 
 	int m_iters;
 	float m_tolError;
+	const ProceduralMatrix* m_preconditioner;
 	bool m_log;
 
 };

@@ -13,13 +13,17 @@ using namespace Eigen;
 class DenseMatrix : public ProceduralMatrix
 {
 public:
-	DenseMatrix( const Eigen::MatrixXf& mat ) : m_mat( mat )
+	DenseMatrix( const Eigen::MatrixXf& mat ) : m_mat( mat ), m_inv( m_mat.inverse() )
 	{
 	}
 
 	virtual void multVector( const Eigen::VectorXf& x, Eigen::VectorXf& result ) const
 	{
 		result = m_mat * x;
+	}
+	virtual void multInverseVector( const Eigen::VectorXf& x, Eigen::VectorXf& result ) const
+	{
+		result = m_inv * x;
 	}
 	virtual void subspaceProject( Eigen::VectorXf& x ) const
 	{
@@ -28,15 +32,16 @@ public:
 private:
 
 	const Eigen::MatrixXf& m_mat;
+	Eigen::MatrixXf m_inv;
 
 };
 
 namespace MpmSimTest
 {
 
-void testConjugateResiduals()
+void testSolve()
 {
-	std::cerr << "testConjugateResicuals()" << std::endl;
+	std::cerr << "testSolve()" << std::endl;
 	const int matrixSize = 6;
 
 	// create random symmetric indefinite matrix:
@@ -45,14 +50,17 @@ void testConjugateResiduals()
 	A += At;
 	
 	// solver should converge in "matrixSize" steps. "true" is for turning on logging:
-	ConjugateResiduals solver( matrixSize, 0, true );
+	ConjugateResiduals solver( matrixSize, 0, 0, true );
 	VectorXf v = Eigen::VectorXf::Random(matrixSize);
 	VectorXf result(matrixSize);
+	result.setZero();
 	
 	// test on symmetric indefinite matrix:
 	solver( DenseMatrix( A ), v, result );
-	
+	std::cerr << A * result << std::endl << std::endl;
+	std::cerr << v << std::endl << std::endl;
 	// did that work? (Should the accuracy really suck as much as this? 1.e-3? Really?)
+	std::cerr << ( A * result - v ).norm() << std::endl;
 	assert( ( A * result - v ).norm() < 1.e-3 );
 
 	// test residuals always decrease in norm:
@@ -88,7 +96,22 @@ void testConjugateResiduals()
 			}
 		}
 	}
-	
+
+}
+
+void testPreconditioner()
+{
+	std::cerr << "testPreconditioner()" << std::endl;
+	const bool iKnowWhatImDoing( false );
+	assert( iKnowWhatImDoing );
+}
+
+
+void testConjugateResiduals()
+{
+	std::cerr << "testConjugateResiduals()" << std::endl;
+	testSolve();
+	//testPreconditioner();
 }
 
 }

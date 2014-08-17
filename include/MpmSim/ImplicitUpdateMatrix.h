@@ -25,6 +25,7 @@ public:
 	);
 	
 	virtual void multVector( const Eigen::VectorXf& x, Eigen::VectorXf& result ) const;
+	virtual void multInverseVector( const Eigen::VectorXf& x, Eigen::VectorXf& result ) const;
 	
 	void subspaceProject( Eigen::VectorXf& x ) const;
 	
