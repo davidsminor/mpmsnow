@@ -2,14 +2,6 @@
 #include <windows.h>
 #endif
 
-#ifdef HAVE_CORTEX
-#include "IECore/SceneCache.h"
-#include "IECore/PointsPrimitive.h"
-#include <boost/format.hpp>
-#endif
-
-
-
 #include <algorithm>
 #include <vector>
 #include <iostream>
@@ -17,13 +9,11 @@
 #include <GL/gl.h>
 #include <GL/glut.h>
 
-#include "MpmSim/Grid.h"
-
-#include "MpmSim/CubicBsplineShapeFunction.h"
-
-#include "MpmSim/SnowConstitutiveModel.h"
-
+#include "MpmSim/Sim.h"
 #include "MpmSim/CollisionPlane.h"
+#include "MpmSim/GravityField.h"
+#include "MpmSim/CubicBsplineShapeFunction.h"
+#include "MpmSim/SnowConstitutiveModel.h"
 #include "MpmSim/ConjugateResiduals.h"
 
 using namespace Eigen;
@@ -53,9 +43,9 @@ int mouse_buttons = 0;
 const float g_timeStep = 0.01f;
 const float g_gridSize = 0.05f;
 
-std::auto_ptr< ParticleData > g_particles;
+std::auto_ptr< Sim > g_sim;
 
-CubicBsplineShapeFunction g_cubicBsplineShapeFunction;
+CubicBsplineShapeFunction g_shapeFunction;
 SnowConstitutiveModel g_snowModel(
 		1.4e5f, // young's modulus
 		0.2f, // poisson ratio
@@ -64,31 +54,11 @@ SnowConstitutiveModel g_snowModel(
 		7.5e-3f	// tensile strength
 );
 
-
-GLuint g_matrixTexture;
-
 // collision objects:
-// ground plane at y = 0
-CollisionPlane g_groundPlane( Vector4f( 0.7, 1, 0, 0 ) );
-std::vector< CollisionObject* > g_collisionObjects;
-
-#define LAT_DIVISIONS 4
-#define LONG_DIVISIONS 6
-std::vector< Vector3f > g_spherePoints;
+Sim::CollisionObjectSet g_collisionObjects;
+Sim::ForceFieldSet g_fields;
 
 int g_time(0);
-
-
-
-#ifdef HAVE_CORTEX
-
-IECore::SceneInterfacePtr g_sc;
-IECore::SceneInterfacePtr g_particleScene;
-
-#endif
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
@@ -97,96 +67,39 @@ IECore::SceneInterfacePtr g_particleScene;
 
 int main(int argc, char** argv)
 {
+	// collisions and fields:
+	Eigen::Vector4f plane( .5f, 1, 0, 0.5f );
+	Eigen::Vector3f gravity( 0, -9.8, 0 );
+	g_collisionObjects.objects.push_back( new CollisionPlane( plane, 0.7f, true ) );
+	g_fields.fields.push_back( new GravityField( gravity ) );
+	
 	// initial configuration:
-	Vector3f rotVector( 1, 9, 3 );
-	rotVector.normalize();
-	srand( 10 );
-
-	float particleSpacing( g_gridSize );
-	float particleVolume = particleSpacing * particleSpacing * particleSpacing;
-	const int particlesPerCell = 5;
-	const float initialDensity = 100;
+	float particleSpacing = 0.5f * g_gridSize;
+	float initialDensity = 400;
 
 	std::vector<Eigen::Vector3f> x;
 	std::vector<float> m;
-	for( int i=-5; i <= 5; ++i )
+	for( int i=0; i < 20; ++i )
 	{
-		for( int j=-5; j <= 5; ++j )
+		for( int j=0; j < 20; ++j )
 		{
-			for( int n=0; n < particlesPerCell; ++n )
+
+			float xr = particleSpacing * ( i - 10 + 0.5f );
+			float yr = particleSpacing * ( j - 10 + 0.5f );
+			Vector3f pos( xr, yr, 0 );
+			if( pos.norm() < 0.2f )
 			{
-				float xr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-				float yr = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-				Vector3f pos( particleSpacing * float( i + xr ), 1 + particleSpacing * float( j + yr ), 0 );
-				
 				x.push_back( pos );
-				m.push_back( initialDensity * particleVolume / particlesPerCell );
-				
+				m.push_back( initialDensity * particleSpacing * particleSpacing * particleSpacing );
 			}
 		}
 	}
+	g_sim.reset(
+		new MpmSim::Sim(
+			x, m, g_gridSize, g_shapeFunction, g_snowModel, g_collisionObjects, g_fields
+		)
+	);
 
-	g_particles.reset( new ParticleData( x, m, g_gridSize ) );
-
-#ifdef HAVE_CORTEX
-	g_sc = new IECore::SceneCache( "./points.scc", IECore::IndexedIO::Write );
-	g_particleScene = g_sc->createChild("particles");
-
-	IECore::IntVectorDataPtr indsToInstanceInds = new IECore::IntVectorData;
-	indsToInstanceInds->writable().resize( g_particles->particleX.size(), 0 );
-	
-	g_particleScene->writeAttribute( "particlescene:indsToInstanceInds", indsToInstanceInds, 0 );
-	
-	IECore::StringVectorDataPtr linkFileNames = new IECore::StringVectorData;
-	IECore::StringVectorDataPtr linkRoots = new IECore::StringVectorData;
-	IECore::StringVectorDataPtr linkTags = new IECore::StringVectorData;
-	
-	linkFileNames->writable().push_back( "/data/jobs/FSQ/sequences/rnd/shots/cortex8/.jabuka/assets/daveytesty/ass/ass/modelGeothingy/versions/0001/sceneCache/sceneCache.scc" );
-	linkRoots->writable().push_back( "/" );
-	linkTags->writable().push_back( "" );
-	
-	g_particleScene->writeAttribute( "particlescene:linkFileNames", linkFileNames, 0 );
-	g_particleScene->writeAttribute( "particlescene:linkRoots", linkRoots, 0 );
-	g_particleScene->writeAttribute( "particlescene:linkTags", linkTags, 0 );
-	
- #endif
-	
-	g_snowModel.initParticles( *g_particles );
-	
-	// set up collision objects:
-	g_collisionObjects.push_back( &g_groundPlane );
-	
-	// make a little sphere to draw particles with:
-	for( int i=0; i<LONG_DIVISIONS; ++i )
-	{
-		float latAngle = 3.1415926f / LAT_DIVISIONS;
-		float longAngle0 = i * 2 * 3.1415926f / LONG_DIVISIONS;
-		float longAngle1 = ( i + 1 ) * 2 * 3.1415926f / LONG_DIVISIONS;
-		g_spherePoints.push_back( Vector3f( sin( latAngle ) * cos( longAngle0 ), cos( latAngle ), sin( latAngle ) * sin( longAngle0 ) ) );
-		g_spherePoints.push_back( Vector3f( 0,1,0 ) );
-		g_spherePoints.push_back( Vector3f( sin( latAngle ) * cos( longAngle1 ), cos( latAngle ), sin( latAngle ) * sin( longAngle1 ) ) );
-		
-		
-		latAngle = 3.1415926f - latAngle;
-		g_spherePoints.push_back( Vector3f( 0,-1,0 ) );
-		g_spherePoints.push_back( Vector3f( sin( latAngle ) * cos( longAngle0 ), cos( latAngle ), sin( latAngle ) * sin( longAngle0 ) ) );
-		g_spherePoints.push_back( Vector3f( sin( latAngle ) * cos( longAngle1 ), cos( latAngle ), sin( latAngle ) * sin( longAngle1 ) ) );
-		
-		for( int j=1; j < LAT_DIVISIONS-1; ++j )
-		{
-			float latAngle0 = j * 3.1415926f / LAT_DIVISIONS;
-			float latAngle1 = ( j + 1 ) * 3.1415926f / LAT_DIVISIONS;
-
-			g_spherePoints.push_back( Vector3f( sin( latAngle0 ) * cos( longAngle0 ), cos( latAngle0 ), sin( latAngle0 ) * sin( longAngle0 ) ) );
-			g_spherePoints.push_back( Vector3f( sin( latAngle0 ) * cos( longAngle1 ), cos( latAngle0 ), sin( latAngle0 ) * sin( longAngle1 ) ) );
-			g_spherePoints.push_back( Vector3f( sin( latAngle1 ) * cos( longAngle1 ), cos( latAngle1 ), sin( latAngle1 ) * sin( longAngle1 ) ) );
-		
-			g_spherePoints.push_back( Vector3f( sin( latAngle1 ) * cos( longAngle1 ), cos( latAngle1 ), sin( latAngle1 ) * sin( longAngle1 ) ) );
-			g_spherePoints.push_back( Vector3f( sin( latAngle1 ) * cos( longAngle0 ), cos( latAngle1 ), sin( latAngle1 ) * sin( longAngle0 ) ) );
-			g_spherePoints.push_back( Vector3f( sin( latAngle0 ) * cos( longAngle0 ), cos( latAngle0 ), sin( latAngle0 ) * sin( longAngle0 ) ) );
-		}
-	}
-	
 	initGL( &argc, argv );
 	
 	// start rendering mainloop
@@ -224,7 +137,7 @@ bool initGL(int *argc, char **argv)
 	return true;
 }
 
-
+/*
 class GridDrawWotsit : public LinearSolver::Debug
 {
 public:
@@ -319,87 +232,56 @@ public:
 	}
 
 };
-
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 //! Display callback
 ////////////////////////////////////////////////////////////////////////////////
 void display()
 {
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	
 	glOrtho( g_x - g_r, g_x + g_r, g_y - g_r, g_y + g_r, -1, 1);
 	
-	// instantiate grid and rasterize!
-	Grid g(
-		*g_particles,
-		g_collisionObjects,
-		g_timeStep,	// time step
-		g_cubicBsplineShapeFunction,
-		g_snowModel,
-		2
-	);
+	MpmSim::ConjugateResiduals solver( 60, 0.01f );
+	g_sim->advance( g_timeStep, solver );
+	glDisable( GL_DEPTH_TEST );
 
-	if( g_particles->particleVolumes.empty() )
+	const std::vector<Eigen::Vector3f>& particleX = g_sim->particleVariable<MpmSim::VectorData>( "p" )->m_data;
+	const std::vector<Eigen::Matrix3f>& F = g_sim->particleVariable<MpmSim::MatrixData>( "F" )->m_data;
+	const std::vector<float>& volume = g_sim->particleVariable<MpmSim::ScalarData>( "volume" )->m_data;
+	
+	for( size_t p = 0; p < particleX.size(); ++p )
 	{
-		g.computeDensities();
-		g_particles->particleVolumes.resize( g_particles->particleX.size() );
-		for( size_t i = 0; i < g_particles->particleDensities.size(); ++i )
-		{
-			g_particles->particleVolumes[i] = g_particles->particleM[i] / g_particles->particleDensities[i];
-		}
+		float r = 2 * pow( volume[p], 1.0f/3 ) / ( 4 * 3.1415926 / 3 );
+		Eigen::Vector3f x = F[p] * Eigen::Vector3f(1,0,0);
+		Eigen::Vector3f y = F[p] * Eigen::Vector3f(0,1,0);
+		Eigen::Vector3f z = F[p] * Eigen::Vector3f(0,0,1);
+		float thingy = 50 * ( F[p].determinant() - 1 );
+		
+		glBegin( GL_QUADS );
+		glColor3f( 1 - thingy, 0, 1 + thingy );
+		glVertex3f( particleX[p][0] + 0.5f * r * ( x[0] + y[0] ), particleX[p][1] + 0.5f * r * ( x[1] + y[1] ), 0 );
+		glVertex3f( particleX[p][0] + 0.5f * r * ( -x[0] + y[0] ), particleX[p][1] + 0.5f * r * ( -x[1] + y[1] ), 0 );
+		glVertex3f( particleX[p][0] + 0.5f * r * ( -x[0] - y[0] ), particleX[p][1] + 0.5f * r * ( -x[1] - y[1] ), 0 );
+		glVertex3f( particleX[p][0] + 0.5f * r * ( x[0] - y[0] ), particleX[p][1] + 0.5f * r * ( x[1] - y[1] ), 0 );
+		glEnd();
+		
+		glBegin( GL_LINE_LOOP );
+		glColor3f( 1,1,1 );
+		glVertex3f( particleX[p][0] + 0.5f * r * ( x[0] + y[0] ), particleX[p][1] + 0.5f * r * ( x[1] + y[1] ), 0 );
+		glVertex3f( particleX[p][0] + 0.5f * r * ( -x[0] + y[0] ), particleX[p][1] + 0.5f * r * ( -x[1] + y[1] ), 0 );
+		glVertex3f( particleX[p][0] + 0.5f * r * ( -x[0] - y[0] ), particleX[p][1] + 0.5f * r * ( -x[1] - y[1] ), 0 );
+		glVertex3f( particleX[p][0] + 0.5f * r * ( x[0] - y[0] ), particleX[p][1] + 0.5f * r * ( x[1] - y[1] ), 0 );
+		glEnd();
+
 	}
 	
-	//g.draw();
-	GridDrawWotsit drawyThingy( g, *g_particles, g_timeStep, g_collisionObjects );
-	
-	// update grid velocities using internal stresses...
-	g.updateGridVelocities( ConjugateResiduals( 120, 1.e-4 ), &drawyThingy );
-	
-	// transfer the grid velocities back onto the particles:
-	g.updateParticleVelocities();
-	
-	// update particle deformation gradients:
-	g.updateDeformationGradients();
+	glutSwapBuffers();
 
-	// update positions...
-	g_particles->advance( g_timeStep );
-	++g_time;
-
-	
-#ifdef HAVE_CORTEX
-	
-	IECore::V3fVectorDataPtr pData = new IECore::V3fVectorData;
-	IECore::IntVectorDataPtr idData = new IECore::IntVectorData;
-	IECore::FloatVectorDataPtr widthData = new IECore::FloatVectorData;
-	IECore::V3fVectorDataPtr basis1Data = new IECore::V3fVectorData;
-	IECore::V3fVectorDataPtr basis2Data = new IECore::V3fVectorData;
-	IECore::V3fVectorDataPtr basis3Data = new IECore::V3fVectorData;
-	
-	for( size_t p=0; p < g_particles->particleX.size(); ++p )
-	{
-		float particleWidth = 2 * pow( g_particles->particleVolumes[p], 1.0f/3 ) / ( 4 * 3.1415926 / 3 );
-		widthData->writable().push_back( particleWidth );
-		
-		basis1Data->writable().push_back( Imath::V3f( particleWidth, 0, 0 ) );
-		basis2Data->writable().push_back( Imath::V3f( 0, particleWidth, 0 ) );
-		basis3Data->writable().push_back( Imath::V3f( 0, 0, particleWidth ) );
-		
-		pData->writable().push_back( Imath::V3f( g_particles->particleX[p][0], g_particles->particleX[p][1], g_particles->particleX[p][2] ) );
-		idData->writable().push_back( p );
-	}
-	IECore::PointsPrimitivePtr pts = new IECore::PointsPrimitive( pData );
-	pts->variables["width"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, widthData );
-	pts->variables["id"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, idData );
-	pts->variables["basis1"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, basis1Data );
-	pts->variables["basis2"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, basis2Data );
-	pts->variables["basis3"] = IECore::PrimitiveVariable( IECore::PrimitiveVariable::Vertex, basis3Data );
-	g_particleScene->writeObject( pts, (float)g_time / 24 );
-	
-#endif
 	glutPostRedisplay();
 }
 

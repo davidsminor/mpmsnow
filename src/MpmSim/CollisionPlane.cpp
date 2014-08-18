@@ -8,7 +8,14 @@
 using namespace Eigen;
 using namespace MpmSim;
 
-CollisionPlane::CollisionPlane( const Eigen::Vector4f& c ) : m_coeffs( c )
+CollisionPlane::CollisionPlane(
+	const Eigen::Vector4f& c,
+	float coulombFriction,
+	bool sticky
+) :
+	m_coeffs( c ),
+	m_coulombFriction( coulombFriction ),
+	m_sticky( sticky )
 {
 	m_v.setZero();
 }
@@ -30,12 +37,12 @@ void CollisionPlane::velocity( const Eigen::Vector3f& x, Eigen::Vector3f& v ) co
 
 float CollisionPlane::coulombFriction() const
 {
-	return 0.5f;
+	return m_coulombFriction;
 }
 
 bool CollisionPlane::sticky() const
 {
-	return false;
+	return m_sticky;
 }
 
 void CollisionPlane::setCoeffs( const Eigen::Vector4f& c )

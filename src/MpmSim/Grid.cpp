@@ -449,86 +449,12 @@ void Grid::calculateForceDifferentials(
 	splat( s );
 }
 
-
-int Grid::collide(
-	Eigen::Vector3f& v,
-	const Eigen::Vector3f& x,
-	const std::vector<const CollisionObject*>& collisionObjects
-)
-{
-	int collisionObject(-1);
-	bool intersectedAlready(false);
-	for( size_t objIdx = 0; objIdx < collisionObjects.size(); ++objIdx )
-	{
-		float phi = collisionObjects[objIdx]->phi( x );
-		if( phi <= 0 )
-		{
-			if( intersectedAlready )
-			{
-				// colliding with more than one object: set
-				// velocity to zero and bail
-				collisionObject = -2;
-				v.setZero();
-				break;
-			}
-			intersectedAlready = true;
-
-			// intersecting the object
-			Vector3f vObj;
-			collisionObjects[objIdx]->velocity( x, vObj );
-			
-			Vector3f n;
-			collisionObjects[objIdx]->grad( x, n );
-			n.normalize();
-			
-			// subtract off object velocity:
-			v -= vObj;
-			
-			float nDotV = n.dot( v );
-			if( nDotV < 0 )
-			{
-				// trying to move into the object:
-				collisionObject = (int)objIdx;
-
-				if( collisionObjects[objIdx]->sticky() )
-				{
-					v.setZero();
-				}
-				else
-				{
-					
-					// velocity perpendicular to the object
-					Vector3f vPerp = nDotV * n;
-					
-					// remaining component is velocity paralell to the object:
-					Vector3f vTangent = v - vPerp;
-					float vtNorm = vTangent.norm();
-					float coulombFriction = collisionObjects[objIdx]->coulombFriction();
-					if( vtNorm >= -nDotV * coulombFriction )
-					{
-						v = vTangent * ( 1 + coulombFriction * nDotV / vTangent.norm() );
-					}
-					else
-					{
-						v.setZero();
-					}
-				}
-			}
-			
-			// skip adding object velocity back on:
-			//v += vObj;
-		}
-	}
-	
-	return collisionObject;
-}
-
 void Grid::calculateExplicitMomenta(
 	VectorXf& explicitMomenta,
 	std::vector<char>& nodeCollided,
 	float timeStep,
 	const ConstitutiveModel& constitutiveModel,
-	const std::vector<const CollisionObject*>& collisionObjects,
+	const Sim::CollisionObjectSet& collisionObjects,
 	const std::vector<const ForceField*>& fields
 )
 {
@@ -558,7 +484,7 @@ void Grid::calculateExplicitMomenta(
 				// which collision objects affect this node? -1 means none, -2 means more than one, >= 0
 				// is the object index:
 				Vector3f x( m_gridSize * i + m_min[0], m_gridSize * j + m_min[1], m_gridSize * k + m_min[2] );
-				nodeCollided[idx] = collide( explicitVelocity, x, collisionObjects );
+				nodeCollided[idx] = collisionObjects.collide( explicitVelocity, x );
 				explicitMomenta.segment<3>( 3 * idx ) = explicitVelocity * masses[idx];
 			}
 		}
@@ -602,7 +528,7 @@ void Grid::collisionVelocities(
 void Grid::updateGridVelocities(
 	float timeStep,
 	const ConstitutiveModel& constitutiveModel,
-	const std::vector<const CollisionObject*>& collisionObjects,
+	const Sim::CollisionObjectSet& collisionObjects,
 	const std::vector<const ForceField*>& fields,
 	const LinearSolver& implicitSolver,
 	LinearSolver::Debug* d )
@@ -617,7 +543,7 @@ void Grid::updateGridVelocities(
 		fields
 	);
 
-	ImplicitUpdateMatrix implicitMatrix( m_d, *this, constitutiveModel, collisionObjects, fields, timeStep );
+	ImplicitUpdateMatrix implicitMatrix( m_d, *this, constitutiveModel, collisionObjects.objects, fields, timeStep );
 	
 	// what's the forward update gonna look like?
 	// v^(n) = collide ( v^(n+1) - M^-1 f^(n+1) dt - vc ) + vc
@@ -643,7 +569,7 @@ void Grid::updateGridVelocities(
 
 	// so, lets work out vc:
 	VectorXf vc;
-	collisionVelocities( vc, collisionObjects, m_nodeCollided );
+	collisionVelocities( vc, collisionObjects.objects, m_nodeCollided );
 
 	// work out the P * DF * vc * dt * dt term and add it onto explicitMomenta:
 	VectorXf df( velocities.size() );
@@ -731,8 +657,6 @@ void Grid::updateParticleVelocities()
 			vPic += w * velocities.segment<3>( 3 * idx );
 		} while( shIt.next() );
 		particleV[p] = alpha * vFlip + ( 1.0f - alpha ) * vPic;
-		
-		//collide( particleV[p], particleX[p], m_collisionObjects );
 	}
 }
 

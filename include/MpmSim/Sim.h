@@ -29,6 +29,11 @@ public:
 		~CollisionObjectSet();
 		void add( CollisionObject* o );
 		std::vector<const CollisionObject*> objects;
+		int collide(
+			Eigen::Vector3f& v,
+			const Eigen::Vector3f& x,
+			bool addCollisionVelocity = false
+		) const;
 	};
 
 	class ForceFieldSet
@@ -47,7 +52,8 @@ public:
 		const ShapeFunction& shapeFunction,
 		const ConstitutiveModel& model,
 		const CollisionObjectSet& collisionObjects,
-		const ForceFieldSet& forceFields
+		const ForceFieldSet& forceFields,
+		int dimension=3
 	);
 	
 	~Sim();
@@ -149,6 +155,8 @@ private:
 	// force fields:
 	const ForceFieldSet& m_forceFields;
 
+	// dimension:
+	int m_dimension;
 };
 
 } // namespace MpmSim

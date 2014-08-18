@@ -36,7 +36,7 @@ public:
 	void updateGridVelocities(
 		float timeStep, 
 		const ConstitutiveModel& constitutiveModel,
-		const std::vector<const CollisionObject*>& collisionObjects,
+		const Sim::CollisionObjectSet& collisionObjects,
 		const std::vector<const ForceField*>& fields,
 		const LinearSolver& implicitSolver,
 		LinearSolver::Debug* d = 0
@@ -56,7 +56,7 @@ public:
 		std::vector<char>& nodeCollided,
 		float timeStep,
 		const ConstitutiveModel& constitutiveModel,
-		const std::vector<const CollisionObject*>& collisionObjects,
+		const Sim::CollisionObjectSet& collisionObjects,
 		const std::vector<const ForceField*>& fields
 	);
 
@@ -160,12 +160,6 @@ public:
 	const Eigen::Vector3f& maxCoord() const;
 	const Eigen::Vector3i& n() const;
 	float gridSize() const;
-	
-	int collide(
-		Eigen::Vector3f& v,
-		const Eigen::Vector3f& x,
-		const std::vector<const CollisionObject*>& collisionObjects
-	);
 	
 	Sim::MaterialPointDataMap& m_d;
 

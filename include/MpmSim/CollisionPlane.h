@@ -13,8 +13,8 @@ public:
 	
 	// takes a 4 component coefficient vector. Plane equation is:
 	// phi = c[0] * x[0] + c[1] * x[1] + c[2] * x[2] + c[3]
-	CollisionPlane( const Eigen::Vector4f& c );
-
+	CollisionPlane( const Eigen::Vector4f& c, float coulombFriction = 0.5f, bool sticky = false );
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	virtual float phi( const Eigen::Vector3f& x ) const;
 
 	virtual void grad( const Eigen::Vector3f& x, Eigen::Vector3f& dPhi ) const;
@@ -34,6 +34,8 @@ private:
 
 	Eigen::Vector4f m_coeffs;
 	Eigen::Vector3f m_v;
+	float m_coulombFriction;
+	bool m_sticky;
 
 };
 
