@@ -282,6 +282,7 @@ Grid::Grid(
 	for( int j=m_dimension; j < 3; ++j )
 	{
 		m_min[j] = m_max[j] = 0;
+		m_n[j] = 1;
 	}
 	
 	long long ncells = (long long)m_n[0] * (long long)m_n[1] * (long long)m_n[2];
