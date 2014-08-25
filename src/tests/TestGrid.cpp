@@ -586,18 +586,17 @@ void testImplicitUpdate()
 	g.computeParticleVolumes();
 	
 	float timeStep = 0.002f;
-	std::vector<const CollisionObject*> collisionObjects;
-	CollisionPlane plane1( Eigen::Vector4f( -1,-1,-1,1 ) );
-	plane1.setV( Eigen::Vector3f( -.1f, -.2f, -.3f ) );
-	collisionObjects.push_back( &plane1 );
+	Sim::CollisionObjectSet collisionObjects;
+	CollisionPlane* plane1 = new CollisionPlane( Eigen::Vector4f( -1,-1,-1,1 ) );
+	plane1->setV( Eigen::Vector3f( -.1f, -.2f, -.3f ) );
+	collisionObjects.objects.push_back( plane1 );
 
-	CollisionPlane plane2( Eigen::Vector4f( -1,0,0,1.5 ) );
-	plane2.setV( Eigen::Vector3f( -.2f, -.1f, -.4f ) );
-	collisionObjects.push_back( &plane2 );
+	CollisionPlane* plane2 = new CollisionPlane( Eigen::Vector4f( -1,0,0,1.5 ) );
+	plane2->setV( Eigen::Vector3f( -.2f, -.1f, -.4f ) );
+	collisionObjects.objects.push_back( plane2 );
 
-	MassMatrix preconditioner( g );	
 	std::vector<const ForceField*> fields;
-	ConjugateResiduals solver( 400, 0 );//, &preconditioner );
+	ConjugateResiduals solver( 400, 0 );
 	
 	VectorXf explicitMomenta;
 	std::vector<char> nodeCollided;
@@ -611,7 +610,7 @@ void testImplicitUpdate()
 	);
 
 	{
-		ImplicitUpdateRecord d( g, explicitMomenta, collisionObjects, nodeCollided, "debug.dat" );
+		ImplicitUpdateRecord d( g, explicitMomenta, collisionObjects.objects, nodeCollided, "debug.dat" );
 		g.updateGridVelocities(
 			timeStep, 
 			snowModel,
@@ -626,7 +625,7 @@ void testImplicitUpdate()
 
 	// check nothing's moving in or out of the collision objects:
 	VectorXf vc( g.velocities.size() );
-	g.collisionVelocities( vc, collisionObjects, nodeCollided );
+	g.collisionVelocities( vc, collisionObjects.objects, nodeCollided );
 	for( int i=0; i < g.n()[0]; ++i )
 	{
 		for( int j=0; j < g.n()[1]; ++j )
@@ -644,7 +643,7 @@ void testImplicitUpdate()
 				int objIdx = nodeCollided[idx];
 				if( objIdx >= 0 )
 				{
-					const CollisionObject* obj = collisionObjects[ objIdx ];
+					const CollisionObject* obj = collisionObjects.objects[ objIdx ];
 					
 					// express velocity and momentum relative to this object:
 					Vector3f vObj;
@@ -685,7 +684,7 @@ void testImplicitUpdate()
 				// apply P to velocities:
 				if( nodeCollided[idx] >= 0 )
 				{
-					const CollisionObject* obj = collisionObjects[ nodeCollided[idx] ];
+					const CollisionObject* obj = collisionObjects.objects[ nodeCollided[idx] ];
 					
 					// find object normal:
 					Vector3f x(
@@ -730,7 +729,7 @@ void testImplicitUpdate()
 				// apply P:
 				if( nodeCollided[idx] >= 0 )
 				{
-					const CollisionObject* obj = collisionObjects[ nodeCollided[idx] ];
+					const CollisionObject* obj = collisionObjects.objects[ nodeCollided[idx] ];
 					
 					// find object normal:
 					Vector3f x(

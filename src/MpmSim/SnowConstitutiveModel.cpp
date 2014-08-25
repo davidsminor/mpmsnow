@@ -211,8 +211,8 @@ float SnowConstitutiveModel::matrixDoubleDot( const Matrix3f& a, const Matrix3f&
 Matrix3f SnowConstitutiveModel::computeRdifferential( const Matrix3f& dF, const Matrix3f& R, const Matrix3f& Ginv )
 {
 	// \todo: compute w without computing the whole of M
-	Matrix3f M = R.transpose() * dF - dF.transpose() * R;
-	Vector3f w( M(0,1), M(0,2), M(1,2) );
+	Matrix3f M = R.transpose() * dF;
+	Vector3f w( M(0,1) - M(1,0), M(0,2) - M(2,0), M(1,2) - M(2,1) );
 	
 	w = Ginv * w;
 	
