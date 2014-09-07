@@ -32,6 +32,7 @@ public:
 		int collide(
 			Eigen::Vector3f& v,
 			const Eigen::Vector3f& x,
+			const Eigen::Vector3f& frameVelocity,
 			bool addCollisionVelocity = false
 		) const;
 	};

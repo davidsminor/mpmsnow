@@ -108,7 +108,7 @@ public:
 				float gridCellMass = masses[idx];
 				if( gridCellMass > 0 )
 				{
-					gridVelocities.segment<3>( 3 * idx ) += shIt.w() * ( m_particleM[p] / gridCellMass ) * m_particleV[p];
+					gridVelocities.segment<3>( 3 * idx ) += shIt.w() * ( m_particleM[p] / gridCellMass ) * ( m_particleV[p] - m_g.m_frameVelocity );
 				}
 			} while( shIt.next() );
 		}
@@ -251,12 +251,14 @@ Grid::Grid(
 		const Sim::IndexList& particleInds,
 		float gridSize,
 		const ShapeFunction& shapeFunction,
+		Eigen::Vector3f frameVelocity,
 		int dimension
 ) :
 	m_d( d ),
 	m_particleInds( particleInds ),
 	m_gridSize( gridSize ),
 	m_shapeFunction( shapeFunction ),
+	m_frameVelocity( frameVelocity ),
 	m_dimension( dimension )
 {
 	// work out the physical size of the grid:
@@ -485,7 +487,7 @@ void Grid::calculateExplicitMomenta(
 				// which collision objects affect this node? -1 means none, -2 means more than one, >= 0
 				// is the object index:
 				Vector3f x( m_gridSize * i + m_min[0], m_gridSize * j + m_min[1], m_gridSize * k + m_min[2] );
-				nodeCollided[idx] = collisionObjects.collide( explicitVelocity, x );
+				nodeCollided[idx] = collisionObjects.collide( explicitVelocity, x, m_frameVelocity );
 				explicitMomenta.segment<3>( 3 * idx ) = explicitVelocity * masses[idx];
 			}
 		}
@@ -518,7 +520,8 @@ void Grid::collisionVelocities(
 					
 					Vector3f vObj;
 					obj->velocity( x, vObj );
-					vc.segment<3>( 3 * idx ) = vObj;
+					// express collision velocity relative to moving frame:
+					vc.segment<3>( 3 * idx ) = vObj - m_frameVelocity;
 				}
 			}
 		}
@@ -583,6 +586,10 @@ void Grid::updateGridVelocities(
 		explicitMomenta.segment<3>( 3 * idx ) +=
 			timeStep * timeStep * df.segment<3>( 3 * idx );
 	}
+
+	// \todo: I've had some vague thoughts about advancing the sim
+	// assuming it's a rigid body and using that as an initial guess
+	// for the solver - maybe that'll help?
 	
 	// solve the linear system for the relative velocities:
 	implicitSolver(
@@ -655,7 +662,7 @@ void Grid::updateParticleVelocities()
 			int idx = coordsToIndex( particleCell[0], particleCell[1], particleCell[2] );
 			float w = shIt.w();
 			vFlip += w * ( velocities.segment<3>( 3 * idx ) - prevVelocities.segment<3>( 3 * idx ) );
-			vPic += w * velocities.segment<3>( 3 * idx );
+			vPic += w * ( velocities.segment<3>( 3 * idx ) + m_frameVelocity );
 		} while( shIt.next() );
 		particleV[p] = alpha * vFlip + ( 1.0f - alpha ) * vPic;
 	}

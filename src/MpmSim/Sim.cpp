@@ -14,6 +14,7 @@ using namespace MpmSim;
 int Sim::CollisionObjectSet::collide(
 	Eigen::Vector3f& v,
 	const Eigen::Vector3f& x,
+	const Eigen::Vector3f& frameVelocity,
 	bool addCollisionVelocity
 ) const
 {
@@ -38,12 +39,15 @@ int Sim::CollisionObjectSet::collide(
 			Eigen::Vector3f vObj;
 			objects[objIdx]->velocity( x, vObj );
 			
+			// express object velocity relative to moving frame:
+			vObj -= frameVelocity;
+
+			// subtract off object velocity:
+			v -= vObj;
+			
 			Eigen::Vector3f n;
 			objects[objIdx]->grad( x, n );
 			n.normalize();
-			
-			// subtract off object velocity:
-			v -= vObj;
 			
 			float nDotV = n.dot( v );
 			if( nDotV < 0 )
@@ -130,7 +134,7 @@ Sim::Sim(
 	for( std::vector< IndexList >::iterator it = m_bodies.begin(); it != m_bodies.end(); ++it )
 	{
 		IndexList& b = *it;
-		Grid g( particleData, b, gridSize, shapeFunction, m_dimension );
+		Grid g( particleData, b, gridSize, shapeFunction, Eigen::Vector3f::Zero(),m_dimension );
 		g.computeParticleVolumes();
 	}
 }
@@ -171,8 +175,21 @@ void Sim::advance( float timeStep, const LinearSolver& solver, LinearSolver::Deb
 	std::cerr << m_bodies.size() << " bodies" << std::endl;
 	for( BodyIterator bIt = m_bodies.begin(); bIt != bodyEnd; ++bIt )
 	{
-		// construct background grid for this body:
-		Grid g( particleData, *bIt, m_gridSize, m_shapeFunction, m_dimension );
+		// find centre of mass velocity, so we can make a comoving grid:
+		// \todo: angular velocity sounds worthwhile (possibly more so than linear)
+		// although more fiddly
+		Eigen::Vector3f centreOfMassVelocity = Eigen::Vector3f::Zero();
+		
+		float mass = 0;
+		for( IndexIterator it = bIt->begin(); it != bIt->end(); ++it )
+		{
+			centreOfMassVelocity += particleV[*it] * particleMasses[*it];
+			mass += particleMasses[*it];
+		}
+		centreOfMassVelocity /= mass;
+		
+		// construct comoving background grid for this body:
+		Grid g( particleData, *bIt, m_gridSize, m_shapeFunction, centreOfMassVelocity, m_dimension );
 		
 		// update grid velocities using internal stresses...
 		g.updateGridVelocities(
@@ -201,7 +218,7 @@ void Sim::advance( float timeStep, const LinearSolver& solver, LinearSolver::Deb
 	for( ; it != end; ++it, ++vIt )
 	{
 		// resolve object collisions:
-		m_collisionObjects.collide( *vIt, *it, true );
+		m_collisionObjects.collide( *vIt, *it, Eigen::Vector3f::Zero(), true );
 		*it += *vIt * timeStep;
 	}
 

@@ -767,15 +767,129 @@ void testImplicitUpdate()
 	assert( maxNorm < 1.e-6 );
 }
 
+void testMovingGrid()
+{
+	std::cerr << "testMovingGrid" << std::endl;
+	
+	// create some particules:
+	Sim::MaterialPointDataMap particleData;
+
+	VectorData* p = new VectorData;
+	particleData["p"] = p;
+	
+	VectorData* v = new VectorData;
+	particleData["v"] = v;
+
+	MatrixData* fData = new MatrixData;
+	particleData["F"] = fData;
+	
+	ScalarData* m = new ScalarData;
+	particleData["m"] = m;
+
+	ScalarData* volume = new ScalarData;
+	particleData["volume"] = volume;
+
+
+	std::vector<Vector3f>& velocities = v->m_data;
+	std::vector<Vector3f>& positions = p->m_data;
+	std::vector<Matrix3f>& F = fData->m_data;
+	std::vector<float>& masses = m->m_data;
+	std::vector<float>& volumes = volume->m_data;
+	
+	const float gridSize = 0.5f;
+	Sim::IndexList inds;
+	for( int i=0; i < 4; ++i )
+	{
+		for( int j=0; j < 4; ++j )
+		{
+			for( int k=0; k < 4; ++k )
+			{
+				inds.push_back( (int)positions.size() );
+				positions.push_back(
+					Vector3f(
+						float( i -0.5f ) * gridSize,
+						float( j - 0.5f ) * gridSize,
+						float( k - 0.5f ) * gridSize
+					)
+				);
+				
+				masses.push_back( 1.0f );
+				volumes.push_back( 1.0f );
+				velocities.push_back( Vector3f( 0, -1, 0 ) );
+				F.push_back( Matrix3f::Identity() );
+				
+			}
+		}
+	}
+	
+	// create particle data:
+	CubicBsplineShapeFunction shapeFunction;
+	SnowConstitutiveModel snowModel(
+		1.4e5f, // young's modulus
+		0.2f, // poisson ratio
+		0, // hardening
+		100000.0f, // compressive strength
+		100000.0f	// tensile strength
+	);
+	float voxelSize( 2 * shapeFunction.supportRadius() * gridSize );
+	Sim::voxelSort(
+		inds.begin(),
+		inds.end(),
+		voxelSize,
+		positions );
+	
+	snowModel.createParticleData( particleData );
+	snowModel.setParticles( particleData );
+	Grid g( particleData, inds, gridSize, shapeFunction, Vector3f( 0, -1, 0 ) );
+	g.computeParticleVolumes();
+	
+	float timeStep = 0.002f;
+	Sim::CollisionObjectSet collisionObjects;
+	CollisionPlane* plane1 = new CollisionPlane( Eigen::Vector4f( 0,1,0,1 ) );
+	collisionObjects.objects.push_back( plane1 );
+	
+	std::vector<const ForceField*> fields;
+	ConjugateResiduals solver( 400, 0 );
+	
+	VectorXf explicitMomenta;
+	std::vector<char> nodeCollided;
+	g.calculateExplicitMomenta(
+		explicitMomenta,
+		nodeCollided,
+		timeStep,
+		snowModel,
+		collisionObjects,
+		fields
+	);
+	
+	// ok, at the moment I'm just doing something and eyeballing the result - how about
+	// I do a proper unit test for this some time?
+	{
+		ImplicitUpdateRecord d( g, explicitMomenta, collisionObjects.objects, nodeCollided, "debug.dat" );
+		g.updateGridVelocities(
+			timeStep, 
+			snowModel,
+			collisionObjects,
+			fields,
+			solver,
+			&d
+		);
+	}
+	system( "C:\\Users\\david\\Documents\\GitHub\\mpmsnow\\Debug\\viewer.exe" );
+
+
+}
+
 
 void testGrid()
 {
 	std::cerr << "testGrid()" << std::endl;
-	testProcessingPartitions();
-	testSplatting();
-	testDeformationGradients();
-	testForces();
-	testImplicitUpdate();
+	//testProcessingPartitions();
+	//testSplatting();
+	//testDeformationGradients();
+	//testForces();
+	//testImplicitUpdate();
+	testMovingGrid();
 }
 
 }

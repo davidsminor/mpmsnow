@@ -23,6 +23,7 @@ public:
 		const Sim::IndexList& particleInds,
 		float gridSize,
 		const ShapeFunction& shapeFunction,
+		Eigen::Vector3f frameVelocity = Eigen::Vector3f::Zero(),
 		int dimension = 3
 	);
 	
@@ -161,7 +162,8 @@ public:
 	const Eigen::Vector3i& n() const;
 	float gridSize() const;
 	
-	Sim::MaterialPointDataMap& m_d;
+	Sim::MaterialPointDataMap& m_d;	
+	Eigen::Vector3f m_frameVelocity;
 
 private:
 
