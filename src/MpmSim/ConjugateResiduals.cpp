@@ -91,6 +91,11 @@ void ConjugateResiduals::operator()
 		x = x + alpha * p;
 		A.subspaceProject( x );
 		
+		if( d )
+		{
+			(*d)( x );
+		}
+		
 		if( (i % recompute_r) && (i > 0) )
 		{
 			// r <- r - alpha * y
