@@ -546,6 +546,56 @@ void Grid::updateGridVelocities(
 		collisionObjects,
 		fields
 	);
+	
+	// so, lets work out vc:
+	VectorXf vc;
+	collisionVelocities( vc, collisionObjects.objects, m_nodeCollided );
+	
+	// work out new centre of mass velocity, and set all velocities to that
+	// to provide an initial guess for the solver:
+	float totalMass = 0;
+	float collidedMass = 0;
+	Eigen::Vector3f totalMomentum = Eigen::Vector3f::Zero();
+	Eigen::Vector3f collidedMomentum = Eigen::Vector3f::Zero();
+	for( int idx=0; idx<masses.size(); ++idx )
+	{
+		totalMass += masses[idx];
+		totalMomentum += explicitMomenta.segment<3>( 3*idx );
+		if( m_nodeCollided[idx] >= 0 )
+		{
+			collidedMass += masses[idx];
+			collidedMomentum += masses[idx] * vc.segment<3>( 3*idx );
+		}
+	}
+	Eigen::Vector3f initialGuessVelocity;
+	if( totalMass == 0 )
+	{
+		initialGuessVelocity.setZero();
+	}
+	else if( collidedMass == 0 )
+	{
+		// use centre of mass velocity as an initial guess:
+		initialGuessVelocity = totalMomentum / totalMass;
+	}
+	else
+	{
+		// use velocity of collision objects as an initial guess:
+		initialGuessVelocity = collidedMomentum / collidedMass;
+	}
+
+	for( int idx=0; idx<masses.size(); ++idx )
+	{
+		velocities.segment<3>( 3*idx ) = initialGuessVelocity;
+	}
+
+	// looks like this works pretty well for when things are in freefall actually, although
+	// it still kind of sucks for resting contact. Maybe the solver's termination criterion
+	// is wrong? Perhaps I can make a little class to make that configurable?
+	// It'd probably help to include angular velocity too innit.
+
+	// My understanding of why it works is that the low frequency modes are the ones the
+	// solver finds most difficult to resolve, and this gets the lowest frequency mode
+	// right first time
 
 	ImplicitUpdateMatrix implicitMatrix( m_d, *this, constitutiveModel, collisionObjects.objects, fields, timeStep );
 	
@@ -571,10 +621,6 @@ void Grid::updateGridVelocities(
 	
 	// todo: I guess we need to get the semi implicit stuff working too
 
-	// so, lets work out vc:
-	VectorXf vc;
-	collisionVelocities( vc, collisionObjects.objects, m_nodeCollided );
-
 	// work out the P * DF * vc * dt * dt term and add it onto explicitMomenta:
 	VectorXf df( velocities.size() );
 	calculateForceDifferentials( df, vc, constitutiveModel, fields );
@@ -586,19 +632,16 @@ void Grid::updateGridVelocities(
 		explicitMomenta.segment<3>( 3 * idx ) +=
 			timeStep * timeStep * df.segment<3>( 3 * idx );
 	}
-
-	// \todo: I've had some vague thoughts about advancing the sim
-	// assuming it's a rigid body and using that as an initial guess
-	// for the solver - maybe that'll help?
 	
-	// solve the linear system for the relative velocities:
+	
+	// solve the linear system for the velocities relative to the collision objects:
 	implicitSolver(
 		implicitMatrix,
 		explicitMomenta,
 		velocities,
 		d );
 	
-	// work out absolute velocities:
+	// work out velocities relative to the grid:
 	velocities += vc;
 	
 }
