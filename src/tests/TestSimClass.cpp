@@ -198,14 +198,27 @@ void testTimestepAdvance()
 	);
 	Sim::CollisionObjectSet collisionObjects;
 	Sim::ForceFieldSet forceFields;
-	forceFields.fields.push_back( new GravityField( Eigen::Vector3f( 0, -9.8f, 0 ) ) );
+	forceFields.fields.push_back( new GravityField( Eigen::Vector3f( 0, 1.f, 0 ) ) );
 	Sim sim( positions, masses, gridSize, shapeFunction, constitutiveModel, collisionObjects, forceFields );
 	
 	ConjugateResiduals solver( 40, 0 );
 	sim.advance( 0.01f, solver );
 	sim.advance( 0.01f, solver );
 	sim.advance( 0.01f, solver );
-	std::cerr << std::endl;
+	
+	// average velocity should be about 0.03 now, innit
+	const std::vector<Eigen::Vector3f>& velocities = sim.particleVariable<VectorData>( "v" )->m_data;
+	Eigen::Vector3f v = Eigen::Vector3f::Zero();
+	for( std::vector<Eigen::Vector3f>::const_iterator it = velocities.begin(); it != velocities.end(); ++it )
+	{
+		v += *it;
+	}
+	v /= velocities.size();
+	
+	assert( fabs( v[0] ) < 1.e-6 );
+	assert( fabs( v[2] ) < 1.e-6 );
+	assert( fabs( v[1] - 0.03f ) < 1.e-5 );
+
 }
 
 void testSimClass()
