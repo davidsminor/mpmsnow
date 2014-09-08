@@ -2,7 +2,6 @@
 #define MPMSIM_LINEARSOLVER_H
 
 #include "ProceduralMatrix.h"
-#include "CollisionObject.h"
 
 #include <Eigen/Dense>
 namespace MpmSim
