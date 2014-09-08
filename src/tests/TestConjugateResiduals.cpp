@@ -1,6 +1,7 @@
 #include "tests/TestConjugateResiduals.h"
 
 #include "MpmSim/ConjugateResiduals.h"
+#include "MpmSim/SquareMagnitudeTermination.h"
 
 #include <iostream>
 
@@ -50,7 +51,8 @@ void testSolve()
 	A += At;
 	
 	// solver should converge in "matrixSize" steps. "true" is for turning on logging:
-	ConjugateResiduals solver( matrixSize, 0, 0, true );
+	SquareMagnitudeTermination t( 0.0f );
+	ConjugateResiduals solver( matrixSize, t, 0, true );
 	VectorXf v = Eigen::VectorXf::Random(matrixSize);
 	VectorXf result(matrixSize);
 	result.setZero();

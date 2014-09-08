@@ -7,12 +7,12 @@ using namespace MpmSim;
 
 ConjugateResiduals::ConjugateResiduals(
 	int iters,
-	float tol_error,
+	TerminationCriterion& terminationCriterion,
 	const ProceduralMatrix* preconditioner,
 	bool log
 ) :
 	m_iters( iters ),
-	m_tolError( tol_error ),
+	m_terminationCriterion( terminationCriterion ),
 	m_preconditioner( preconditioner ),
 	m_log( log )
 {
@@ -38,7 +38,7 @@ void ConjugateResiduals::operator()
 		x.setZero();
 		return;
 	}
-	float threshold = m_tolError*m_tolError*bNorm2;
+	m_terminationCriterion.init( A, b );
 
 	// allocate workspace
 	Eigen::VectorXf y(N);
@@ -91,6 +91,7 @@ void ConjugateResiduals::operator()
 		x = x + alpha * p;
 		A.subspaceProject( x );
 		
+		// debug output:
 		if( d )
 		{
 			(*d)( x );
@@ -109,15 +110,12 @@ void ConjugateResiduals::operator()
 			// r <- b - A*x
 			r = b - Ax;
 		}
-
-		float rNorm2 = r.squaredNorm();
-		std::cerr << i << ": " << sqrt( rNorm2 ) << " / " << sqrt( threshold ) << "  " << alpha << std::endl;
-		if( rNorm2 < threshold )
+		
+		if( m_terminationCriterion( r ) )
 		{
 			return;
 		}
 		
-
 		// z <- M*r
 		if( m_preconditioner )
 		{

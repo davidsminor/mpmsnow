@@ -378,6 +378,10 @@
 				RelativePath=".\src\MpmSim\SnowConstitutiveModel.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\src\MpmSim\SquareMagnitudeTermination.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="include"
@@ -452,6 +456,14 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\SnowConstitutiveModel.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSim\SquareMagnitudeTermination.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSim\TerminationCriterion.h"
 				>
 			</File>
 		</Filter>

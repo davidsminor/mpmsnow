@@ -8,6 +8,7 @@
 #include "MpmSim/ConjugateResiduals.h"
 #include "MpmSim/CubicBsplineShapeFunction.h"
 #include "MpmSim/SnowConstitutiveModel.h"
+#include "MpmSim/SquareMagnitudeTermination.h"
 
 #include <iostream>
 #include <fstream>
@@ -596,7 +597,9 @@ void testImplicitUpdate()
 	collisionObjects.objects.push_back( plane2 );
 
 	std::vector<const ForceField*> fields;
-	ConjugateResiduals solver( 400, 0 );
+	
+	SquareMagnitudeTermination t( 0.0f );
+	ConjugateResiduals solver( 400, t );
 	
 	VectorXf explicitMomenta;
 	std::vector<char> nodeCollided;
@@ -849,7 +852,8 @@ void testMovingGrid()
 	collisionObjects.objects.push_back( plane1 );
 	
 	std::vector<const ForceField*> fields;
-	ConjugateResiduals solver( 400, 0 );
+	SquareMagnitudeTermination t( 0.0f );
+	ConjugateResiduals solver( 400, t );
 	
 	VectorXf explicitMomenta;
 	std::vector<char> nodeCollided;

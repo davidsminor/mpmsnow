@@ -10,6 +10,7 @@
 #include <GL/glut.h>
 
 #include "MpmSim/Sim.h"
+#include "MpmSim/SquareMagnitudeTermination.h"
 #include "MpmSim/CollisionPlane.h"
 #include "MpmSim/GravityField.h"
 #include "MpmSim/CubicBsplineShapeFunction.h"
@@ -40,8 +41,8 @@ void motion(int x, int y);
 int mouse_old_x, mouse_old_y;
 int mouse_buttons = 0;
 
-const float g_timeStep = 0.01f;
-const float g_gridSize = 0.05f;
+const float g_timeStep = 0.0025f;
+const float g_gridSize = 0.025f;
 
 std::auto_ptr< Sim > g_sim;
 
@@ -68,9 +69,12 @@ int g_time(0);
 int main(int argc, char** argv)
 {
 	// collisions and fields:
-	Eigen::Vector4f plane( .5f, 1, 0, 0.5f );
+	Eigen::Vector4f plane( 0, 1, 0, 0.5f );
+	Eigen::Vector4f plane2( 0, -1, 0, -1.5f );
 	Eigen::Vector3f gravity( 0, -9.8, 0 );
 	g_collisionObjects.objects.push_back( new CollisionPlane( plane, 0.7f, true ) );
+	//g_collisionObjects.objects.push_back( new CollisionPlane( plane2, 0.7f, true ) );
+	//((CollisionPlane*)g_collisionObjects.objects.back())->setV( Eigen::Vector3f(0,-1,0) );
 	g_fields.fields.push_back( new GravityField( gravity ) );
 	
 	// initial configuration:
@@ -79,13 +83,13 @@ int main(int argc, char** argv)
 
 	std::vector<Eigen::Vector3f> x;
 	std::vector<float> m;
-	for( int i=0; i < 20; ++i )
+	for( int i=0; i < 40; ++i )
 	{
-		for( int j=0; j < 20; ++j )
+		for( int j=0; j < 40; ++j )
 		{
 
-			float xr = particleSpacing * ( i - 10 + 0.5f );
-			float yr = particleSpacing * ( j - 10 + 0.5f );
+			float xr = particleSpacing * ( i - 20 + 0.5f );
+			float yr = particleSpacing * ( j - 20 + 0.5f );
 			Vector3f pos( xr, yr, 0 );
 			if( pos.norm() < 0.2f )
 			{
@@ -96,7 +100,7 @@ int main(int argc, char** argv)
 	}
 	g_sim.reset(
 		new MpmSim::Sim(
-			x, m, g_gridSize, g_shapeFunction, g_snowModel, g_collisionObjects, g_fields
+			x, m, g_gridSize, g_shapeFunction, g_snowModel, g_collisionObjects, g_fields, 2
 		)
 	);
 
@@ -243,10 +247,14 @@ void display()
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	
+
 	glOrtho( g_x - g_r, g_x + g_r, g_y - g_r, g_y + g_r, -1, 1);
 	
-	MpmSim::ConjugateResiduals solver( 60, 0.01f );
+	//static int count=0;
+	//((CollisionPlane*)g_collisionObjects.objects.back())->setCoeffs( Eigen::Vector4f(0,-1,0,-1.5f + g_timeStep * count++  ) );
+	
+	MpmSim::SquareMagnitudeTermination t( 0.01f );
+	MpmSim::ConjugateResiduals solver( 60, t );
 	g_sim->advance( g_timeStep, solver );
 	glDisable( GL_DEPTH_TEST );
 

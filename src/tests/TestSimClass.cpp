@@ -6,6 +6,7 @@
 #include "MpmSim/ConstitutiveModel.h"
 #include "MpmSim/SnowConstitutiveModel.h"
 #include "MpmSim/ConjugateResiduals.h"
+#include "MpmSim/SquareMagnitudeTermination.h"
 
 #include <iostream>
 
@@ -201,7 +202,8 @@ void testTimestepAdvance()
 	forceFields.fields.push_back( new GravityField( Eigen::Vector3f( 0, 1.f, 0 ) ) );
 	Sim sim( positions, masses, gridSize, shapeFunction, constitutiveModel, collisionObjects, forceFields );
 	
-	ConjugateResiduals solver( 40, 0 );
+	SquareMagnitudeTermination t( 0.0f );
+	ConjugateResiduals solver( 400, t );
 	sim.advance( 0.01f, solver );
 	sim.advance( 0.01f, solver );
 	sim.advance( 0.01f, solver );
