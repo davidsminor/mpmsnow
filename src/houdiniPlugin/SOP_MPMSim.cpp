@@ -1,5 +1,6 @@
 
 #include <SYS/SYS_Math.h>
+#include <UT/UT_Console.h>
 #include <UT/UT_DSOVersion.h>
 #include <UT/UT_Matrix3.h>
 #include <UT/UT_Matrix4.h>
@@ -16,6 +17,7 @@
 
 #include "houdiniPlugin/SOP_MPMSim.h"
 #include "houdiniPlugin/VDBCollisionObject.h"
+#include "houdiniPlugin/HoudiniSolveTermination.h"
 
 #include "MpmSim/SnowConstitutiveModel.h"
 
@@ -226,7 +228,7 @@ SOP_MPMSim::initSim(OP_Context &context)
 OP_ERROR
 SOP_MPMSim::cookMySop(OP_Context &context)
 {
-
+	UT_Console::initConsole();
 	std::cerr << "cookMySop" << std::endl;
 	OP_Node::flags().timeDep = 1;
 	// this is when we evaluate the collision objects:
@@ -329,8 +331,8 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 				std::cerr << "update particles " << dt << " " << h << " (" << i+1 << " of " << steps << ")" << std::endl;
 				try
 				{
-					MpmSim::ConjugateResiduals solver( maxIterations(t), tolerance(t) );
-					m_sim->advance( dt, solver );
+					MpmSim::HoudiniSolveTermination term( maxIterations(t), tolerance(t), boss );
+					m_sim->advance( dt, term );
 					if( boss->opInterrupt() )
 					{
 						break;
