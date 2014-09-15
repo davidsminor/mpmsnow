@@ -30,6 +30,7 @@ void ConjugateResiduals::operator()
 	const size_t N = b.size();
 	
 	float bNorm2 = b.squaredNorm();
+	std::cerr << "conjugate residuals... rhs squared norm: " << bNorm2 << std::endl;
 	if(bNorm2 == 0) 
 	{
 		x.setZero();
@@ -79,7 +80,7 @@ void ConjugateResiduals::operator()
 		residuals.push_back( r );
 		searchDirections.push_back( p );
 	}
-
+	
 	for( int i=0; ; ++i )
 	{
 		if( m_preconditioner )
@@ -92,7 +93,13 @@ void ConjugateResiduals::operator()
 		}
 
 		// alpha <- <r_precond,Ar>/<Ap,P^-1 Ap>
-		float alpha =  rz / Ap.dot(precond_Ap);
+		float ApdPAp = Ap.dot(precond_Ap);
+		if( ApdPAp == 0 )
+		{
+			std::cerr << "terminating solve due to potential divide by zero" << std::endl;
+			return;
+		}
+		float alpha =  rz / ApdPAp;
 
 		// x <- x + alpha * p
 		x = x + alpha * p;
@@ -127,7 +134,13 @@ void ConjugateResiduals::operator()
 
 		// rz = <r_precond^H, r_precond>
 		rz = r_precond.dot( Ar );
-
+		
+		if( rz_old == 0 )
+		{
+			std::cerr << "terminating solve due to potential divide by zero" << std::endl;
+			return;
+		}
+		
 		// beta <- <r_{i+1},r_{i+1}>/<r_precond,r_precond>
 		float beta = rz / rz_old;
 
