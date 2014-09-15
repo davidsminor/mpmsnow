@@ -6,12 +6,10 @@ using namespace Eigen;
 using namespace MpmSim;
 
 ConjugateResiduals::ConjugateResiduals(
-	int iters,
 	TerminationCriterion& terminationCriterion,
 	const ProceduralMatrix* preconditioner,
 	bool log
 ) :
-	m_iters( iters ),
 	m_terminationCriterion( terminationCriterion ),
 	m_preconditioner( preconditioner ),
 	m_log( log )
@@ -41,40 +39,42 @@ void ConjugateResiduals::operator()
 	m_terminationCriterion.init( A, b );
 
 	// allocate workspace
-	Eigen::VectorXf y(N);
-	Eigen::VectorXf z(N);
 	Eigen::VectorXf r(N);
+	Eigen::VectorXf r_precond(N);
+	Eigen::VectorXf Ar(N);
 	Eigen::VectorXf p(N);
-	Eigen::VectorXf Az(N);
+	Eigen::VectorXf Ap(N);
+	Eigen::VectorXf precond_Ap(N);
 	Eigen::VectorXf Ax(N);
 
-	// y <- A*x
+	// Ax <- A*x
 	A.multVector(x, Ax);
 
 	// r <- b - A*x
 	r = b - Ax;
 
-	// z <- M^-1*r
+	// r_precond <- M^-1*r
 	if( m_preconditioner )
 	{
-		m_preconditioner->multInverseVector( r, z );
+		m_preconditioner->multInverseVector( r, r_precond );
 	}
 	else
 	{
-		z = r;
+		r_precond = r;
 	}
 
-	// p <- z
-	p = z;
+	// p <- r_precond
+	p = r_precond;
 
-	// y <- A*p
-	A.multVector( p, y );
+	// Ap <- A*p
+	A.multVector( p, Ap );
 
-	// Az <- A*z
-	A.multVector( z, Az );
+	// Ar <- A*r
+	r = r_precond;
+	A.multVector( r, Ar );
 
-	// rz = <r^H, z>
-	float rz = r.dot( Az );
+	// rz = <r, Ar>
+	float rz = r.dot( Ar );
 	
 	if( m_log )
 	{
@@ -82,10 +82,19 @@ void ConjugateResiduals::operator()
 		searchDirections.push_back( p );
 	}
 
-	for( int i=0; i < m_iters; ++i )
+	for( int i=0; ; ++i )
 	{
-		// alpha <- <r,z>/<y,p>
-		float alpha =  rz / y.dot(y);
+		if( m_preconditioner )
+		{
+			m_preconditioner->multInverseVector( Ap, precond_Ap );
+		}
+		else
+		{
+			precond_Ap = Ap;
+		}
+
+		// alpha <- <r,Ar>/<Ap,P^-1 Ap>
+		float alpha =  rz / Ap.dot(precond_Ap);
 
 		// x <- x + alpha * p
 		x = x + alpha * p;
@@ -97,42 +106,21 @@ void ConjugateResiduals::operator()
 			(*d)( x );
 		}
 		
-		if( (i % recompute_r) && (i > 0) )
-		{
-			// r <- r - alpha * y
-			r = r - alpha * y;
-		}
-		else
-		{
-			// y <- A*x
-			A.multVector(x, Ax);
-
-			// r <- b - A*x
-			r = b - Ax;
-		}
+		// r <- r - alpha * P^-1 Ap
+		r = r - alpha * precond_Ap;
 		
-		if( m_terminationCriterion( r ) )
+		if( m_terminationCriterion( r, i ) )
 		{
 			return;
 		}
 		
-		// z <- M*r
-		if( m_preconditioner )
-		{
-			m_preconditioner->multInverseVector( r, z );
-		}
-		else
-		{
-			z = r;
-		}
-		
-		// Az <- A*z
-		A.multVector(z, Az);
+		// Ar <- A*r
+		A.multVector(r, Ar);
 		
 		float rz_old = rz;
 
-		// rz = <r^H, z>
-		rz = r.dot( Az );
+		// rz = <r^H, r>
+		rz = r.dot( Ar );
 
 		// beta <- <r_{i+1},r_{i+1}>/<r,r>
 		float beta = rz / rz_old;
@@ -140,128 +128,15 @@ void ConjugateResiduals::operator()
 		// p <- r + beta*p
 		p = r + beta * p;
 
-		// y <- Az + beta*y
-		y = Az + beta * y;
-		
-		if( m_log )
-		{
-			residuals.push_back( r );
-			searchDirections.push_back( p );
-		}
-	}
-
-	
-
-
-	/*
-	// NB: there are papers with an extra bit that supposedly makes
-	// this more numerically stable
-	// (eg http://webmail.cs.yale.edu/publications/techreports/tr107.pdf).
-	// Do we need this?
-	x.setZero();
-
-	float bNorm2 = b.squaredNorm();
-	if(bNorm2 == 0) 
-	{
-		return;
-	}
-	float threshold = m_tolError*m_tolError*bNorm2;
-	
-	const int N = (int)b.size();
-	
-	VectorXf r( N );
-	VectorXf p( N );
-
-	if( m_preconditioner )
-	{
-		m_preconditioner->multInverseVector( b, r );
-		p = r;
-	}
-	else
-	{
-		r = b;
-		p = b;
-	}
-	
-	if( m_log )
-	{
-		residuals.push_back( r );
-		searchDirections.push_back( p );
-	}
-
-	VectorXf Ap( N );
-	A.multVector( p, Ap );
-
-	VectorXf s;
-	
-	if( m_preconditioner )
-	{
-		s.resize( N );
-		m_preconditioner->multInverseVector( Ap, s );
-	}
-
-	VectorXf Ar( N );
-	A.multVector( r, Ar );
-
-	float rAr = r.dot( Ar );
-
-	int i = 0;
-	while( i < m_iters )
-	{
-		// minimize along search direction:
-		float alpha;
-		if( m_preconditioner )
-		{
-			alpha = rAr / Ap.dot( s );
-		}
-		else
-		{
-			alpha = rAr / Ap.dot( Ap );
-		}
-
-		x += alpha * p;
-		
-		if( d )
-		{
-			(*d)( x );
-		}
-
-		// update residual:
-		if( m_preconditioner )
-		{
-			r -= alpha * s;
-		}
-		else
-		{
-			r -= alpha * Ap;
-			A.subspaceProject( r );
-		}
-
-		float rNorm2 = r.squaredNorm();
-		std::cerr << i << ": " << Ar.norm() << "," << sqrt( rNorm2 ) << " / " << sqrt( threshold ) << "  " << alpha << std::endl;
-		if( rNorm2 < threshold )
-		{
-			return;
-		}
-		
-		// find a new search direction that's A^2 orto to the previous ones:
-		A.multVector( r, Ar );
-		float rArOld = rAr;
-		
-		rAr = r.dot( Ar );
-		float beta = rAr / rArOld;
-		
+		// Ap <- Ar + beta*Ap
 		Ap = Ar + beta * Ap;
-		p = r + beta * p;
 		
 		if( m_log )
 		{
 			residuals.push_back( r );
 			searchDirections.push_back( p );
 		}
-		
-		++i;
 	}
-	*/
+	
 }
 

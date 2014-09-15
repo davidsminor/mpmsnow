@@ -11,12 +11,13 @@ class SquareMagnitudeTermination : public TerminationCriterion
 
 public:
 
-	SquareMagnitudeTermination( float tolError );
+	SquareMagnitudeTermination( int maxIters, float tolError );
 	virtual void init( const ProceduralMatrix& A, const Eigen::VectorXf& b );
-	virtual bool operator()( Eigen::VectorXf& r ) const;
+	virtual bool operator()( Eigen::VectorXf& r, int iterationNumber ) const;
 
 private:
 
+	float m_maxIters;
 	float m_tolError;
 	float m_threshold;
 

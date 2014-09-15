@@ -11,7 +11,7 @@ class TerminationCriterion
 {
 	public:
 		virtual void init( const ProceduralMatrix& A, const Eigen::VectorXf& b ) = 0;
-		virtual bool operator()( Eigen::VectorXf& r ) const = 0;
+		virtual bool operator()( Eigen::VectorXf& r, int iterationNumber ) const = 0;
 };
 
 }; // namespace MpmSim

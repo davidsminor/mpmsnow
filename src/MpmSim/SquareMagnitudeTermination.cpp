@@ -5,7 +5,8 @@
 
 using namespace MpmSim;
 
-SquareMagnitudeTermination::SquareMagnitudeTermination( float tolError ) : m_tolError( tolError )
+SquareMagnitudeTermination::SquareMagnitudeTermination( int maxIters, float tolError )
+	: m_maxIters( maxIters ), m_tolError( tolError )
 {
 }
 
@@ -15,9 +16,13 @@ void SquareMagnitudeTermination::init( const ProceduralMatrix& A, const Eigen::V
 	m_threshold = m_tolError*m_tolError*bNorm2;
 }
 
-bool SquareMagnitudeTermination::operator()( Eigen::VectorXf& r ) const
+bool SquareMagnitudeTermination::operator()( Eigen::VectorXf& r, int iterationNum ) const
 {
+	if( iterationNum >= m_maxIters )
+	{
+		return true;
+	}
 	float rNorm2 = r.squaredNorm();
-	std::cerr << sqrt( rNorm2 ) << " / " << sqrt( m_threshold ) << std::endl;
+	std::cerr << iterationNum << ":" << sqrt( rNorm2 ) << " / " << sqrt( m_threshold ) << std::endl;
 	return rNorm2 < m_threshold;
 }

@@ -378,10 +378,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\tests\TestImplicitUpdateMatrix.cpp"
-					>
-				</File>
-				<File
 					RelativePath=".\src\tests\TestShapeFunction.cpp"
 					>
 				</File>
@@ -404,10 +400,6 @@
 			</File>
 			<File
 				RelativePath=".\include\tests\TestGrid.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\tests\TestImplicitUpdateMatrix.h"
 				>
 			</File>
 			<File

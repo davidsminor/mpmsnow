@@ -1,5 +1,5 @@
-#ifndef MPMSIM_MASSMATRIX_H
-#define MPMSIM_MASSMATRIX_H
+#ifndef MPMSIM_DIAGONALPRECONDITIONER_H
+#define MPMSIM_DIAGONALPRECONDITIONER_H
 
 #include "MpmSim/ProceduralMatrix.h"
 #include "MpmSim/Grid.h"
@@ -8,13 +8,15 @@
 namespace MpmSim
 {
 
-class MassMatrix : public ProceduralMatrix
+class DiagonalPreconditioner : public ProceduralMatrix
 {
 
 public:
 
-	MassMatrix(
-		const Grid& g
+	DiagonalPreconditioner(
+		const Grid& g,
+		const ConstitutiveModel& constitutiveModel,
+		float timeStep
 	);
 	
 	virtual void multVector( const Eigen::VectorXf& x, Eigen::VectorXf& result ) const;
@@ -23,9 +25,9 @@ public:
 	void subspaceProject( Eigen::VectorXf& x ) const;
 	
 private:
-	const Grid& m_g;
+	Eigen::VectorXf m_implicitUpdateDiagonal;
 };
 
 }
 
-#endif //MPMSIM_MASSMATRIX_H
+#endif //MPMSIM_DIAGONALPRECONDITIONER_H

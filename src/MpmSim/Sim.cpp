@@ -3,6 +3,8 @@
 #include "MpmSim/ForceField.h"
 #include "MpmSim/ConstitutiveModel.h"
 #include "MpmSim/Grid.h"
+#include "MpmSim/DiagonalPreconditioner.h"
+#include "MpmSim/ConjugateResiduals.h"
 
 #include <iostream>
 #include <queue>
@@ -148,7 +150,7 @@ Sim::~Sim()
 }
 
 
-void Sim::advance( float timeStep, const LinearSolver& solver, LinearSolver::Debug* d )
+void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolver::Debug* d )
 {
 	std::vector<Eigen::Vector3f>& particleX = particleVariable<VectorData>( "p" )->m_data;
 	std::vector<Eigen::Vector3f>& particleV = particleVariable<VectorData>( "v" )->m_data;
@@ -192,6 +194,10 @@ void Sim::advance( float timeStep, const LinearSolver& solver, LinearSolver::Deb
 		Grid g( particleData, *bIt, m_gridSize, m_shapeFunction, centreOfMassVelocity, m_dimension );
 		
 		// update grid velocities using internal stresses...
+		DiagonalPreconditioner preconditioner( g, m_constitutiveModel, timeStep );
+		ConjugateResiduals solver( termination, &preconditioner );
+
+		//ConjugateResiduals solver( termination );
 		g.updateGridVelocities(
 			timeStep,
 			m_constitutiveModel,

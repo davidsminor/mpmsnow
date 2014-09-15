@@ -253,9 +253,8 @@ void display()
 	//static int count=0;
 	//((CollisionPlane*)g_collisionObjects.objects.back())->setCoeffs( Eigen::Vector4f(0,-1,0,-1.5f + g_timeStep * count++  ) );
 	
-	MpmSim::SquareMagnitudeTermination t( 0.01f );
-	MpmSim::ConjugateResiduals solver( 60, t );
-	g_sim->advance( g_timeStep, solver );
+	MpmSim::SquareMagnitudeTermination t( 60, 0.01f );
+	g_sim->advance( g_timeStep, t );
 	glDisable( GL_DEPTH_TEST );
 
 	const std::vector<Eigen::Vector3f>& particleX = g_sim->particleVariable<MpmSim::VectorData>( "p" )->m_data;

@@ -12,7 +12,7 @@ class ConjugateResiduals : public LinearSolver
 {
 public:
 	
-	ConjugateResiduals( int iters, TerminationCriterion& terminationCriterion, const ProceduralMatrix* preconditioner = 0, bool log=false );
+	ConjugateResiduals( TerminationCriterion& terminationCriterion, const ProceduralMatrix* preconditioner = 0, bool log=false );
 
 	virtual void operator()(
 		const ProceduralMatrix& mat,
@@ -24,8 +24,7 @@ public:
 	mutable std::vector<Eigen::VectorXf> searchDirections;
 
 private:
-
-	int m_iters;
+	
 	TerminationCriterion& m_terminationCriterion;
 	const ProceduralMatrix* m_preconditioner;
 	bool m_log;

@@ -51,8 +51,8 @@ void testSolve()
 	A += At;
 	
 	// solver should converge in "matrixSize" steps. "true" is for turning on logging:
-	SquareMagnitudeTermination t( 0.0f );
-	ConjugateResiduals solver( matrixSize, t, 0, true );
+	SquareMagnitudeTermination t( matrixSize, 0.0f );
+	ConjugateResiduals solver( t, 0, true );
 	VectorXf v = Eigen::VectorXf::Random(matrixSize);
 	VectorXf result(matrixSize);
 	result.setZero();

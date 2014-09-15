@@ -246,6 +246,80 @@ public:
 
 
 
+class dFidXiSplatter : public Grid::GridSplatter
+{
+public:
+	
+	dFidXiSplatter(
+		const Grid& g,
+		Eigen::VectorXf& result,
+		const ConstitutiveModel& constitutiveModel
+	)
+		:
+		Grid::GridSplatter( g, result ),
+		m_particleX( particleVariable<VectorData>("p")->m_data ),
+		m_particleF( particleVariable<MatrixData>("F")->m_data ),
+		m_particleVolumes( particleVariable<ScalarData>("volume")->m_data ),
+		m_constitutiveModel( constitutiveModel )
+	{
+	}
+	
+	virtual void splat(
+		Sim::ConstIndexIterator begin,
+		Sim::ConstIndexIterator end,
+		Eigen::VectorXf& dfidxi
+	) const
+	{
+		Grid::ShapeFunctionIterator& shIt = m_g.shapeFunctionIterator();
+		Vector3i particleCell;
+		Vector3f weightGrad;
+		for( Sim::ConstIndexIterator it = begin; it != end; ++it )
+		{
+			int p = *it;
+
+			// work out deformation gradient differential for this particle when grid nodes are
+			// all moved one unit in the x, y and z directions:
+			Matrix3f dFpX = Matrix3f::Zero();
+			Matrix3f dFpY = Matrix3f::Zero();
+			Matrix3f dFpZ = Matrix3f::Zero();
+			Eigen::Vector3f df;
+			shIt.initialize( m_particleX[p], true );
+			do
+			{
+				shIt.gridPos( particleCell );
+				shIt.dw( weightGrad );
+				int idx = m_g.coordsToIndex( particleCell[0], particleCell[1], particleCell[2] );
+				dFpX = Eigen::Vector3f(1,0,0) * weightGrad.transpose() * m_particleF[p];
+				dFpY = Eigen::Vector3f(0,1,0) * weightGrad.transpose() * m_particleF[p];
+				dFpZ = Eigen::Vector3f(0,0,1) * weightGrad.transpose() * m_particleF[p];
+				
+				Matrix3f forceMatrixX =
+					m_particleVolumes[p] *
+					m_constitutiveModel.dEdFDifferential( dFpX, p ) *
+					m_particleF[p].transpose();
+				Matrix3f forceMatrixY =
+					m_particleVolumes[p] *
+					m_constitutiveModel.dEdFDifferential( dFpY, p ) *
+					m_particleF[p].transpose();
+				Matrix3f forceMatrixZ =
+					m_particleVolumes[p] *
+					m_constitutiveModel.dEdFDifferential( dFpZ, p ) *
+					m_particleF[p].transpose();
+
+				dfidxi[ 3 * idx   ] += (-forceMatrixX * weightGrad)[0];
+				dfidxi[ 3 * idx+1 ] += (-forceMatrixY * weightGrad)[1];
+				dfidxi[ 3 * idx+2 ] += (-forceMatrixZ * weightGrad)[2];		
+			} while( shIt.next() );
+		}
+	}
+	
+	const std::vector<float>& m_particleVolumes;
+	const std::vector<Eigen::Vector3f>& m_particleX;
+	const std::vector<Eigen::Matrix3f>& m_particleF;
+	const ConstitutiveModel& m_constitutiveModel;
+};
+
+
 Grid::Grid(
 		Sim::MaterialPointDataMap& d,
 		const Sim::IndexList& particleInds,
@@ -437,6 +511,14 @@ void Grid::calculateForces(
 }
 
 
+void Grid::dForceidXi(
+	Eigen::VectorXf& dfdxi, 
+	const ConstitutiveModel& constitutiveModel ) const
+{
+	dfdxi = Eigen::VectorXf::Constant( velocities.size(), 0.0f );
+	dFidXiSplatter s( *this, dfdxi, constitutiveModel );
+	splat( s );
+}
 
 void Grid::calculateForceDifferentials(
 		VectorXf& df,

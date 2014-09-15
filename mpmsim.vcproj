@@ -351,6 +351,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\MpmSim\DiagonalPreconditioner.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\MpmSim\GravityField.cpp"
 				>
 			</File>
@@ -360,10 +364,6 @@
 			</File>
 			<File
 				RelativePath=".\src\MpmSim\ImplicitUpdateMatrix.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\MpmSim\MassMatrix.cpp"
 				>
 			</File>
 			<File
@@ -407,6 +407,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\MpmSim\DiagonalPreconditioner.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\MpmSim\ForceField.h"
 				>
 			</File>
@@ -428,10 +432,6 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\LinearSolver.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\MpmSim\MassMatrix.h"
 				>
 			</File>
 			<File

@@ -202,11 +202,10 @@ void testTimestepAdvance()
 	forceFields.fields.push_back( new GravityField( Eigen::Vector3f( 0, 1.f, 0 ) ) );
 	Sim sim( positions, masses, gridSize, shapeFunction, constitutiveModel, collisionObjects, forceFields );
 	
-	SquareMagnitudeTermination t( 0.0f );
-	ConjugateResiduals solver( 400, t );
-	sim.advance( 0.01f, solver );
-	sim.advance( 0.01f, solver );
-	sim.advance( 0.01f, solver );
+	SquareMagnitudeTermination t( 10, 0.0f );
+	sim.advance( 0.01f, t );
+	sim.advance( 0.01f, t );
+	sim.advance( 0.01f, t );
 	
 	// average velocity should be about 0.03 now, innit
 	const std::vector<Eigen::Vector3f>& velocities = sim.particleVariable<VectorData>( "v" )->m_data;

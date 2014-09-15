@@ -3,7 +3,6 @@
 #include "tests/TestGrid.h"
 
 #include "MpmSim/Grid.h"
-#include "MpmSim/MassMatrix.h"
 #include "MpmSim/CollisionPlane.h"
 #include "MpmSim/ConjugateResiduals.h"
 #include "MpmSim/CubicBsplineShapeFunction.h"
@@ -598,8 +597,8 @@ void testImplicitUpdate()
 
 	std::vector<const ForceField*> fields;
 	
-	SquareMagnitudeTermination t( 0.0f );
-	ConjugateResiduals solver( 400, t );
+	SquareMagnitudeTermination t( 400, 0.0f );
+	ConjugateResiduals solver( t );
 	
 	VectorXf explicitMomenta;
 	std::vector<char> nodeCollided;
@@ -852,8 +851,8 @@ void testMovingGrid()
 	collisionObjects.objects.push_back( plane1 );
 	
 	std::vector<const ForceField*> fields;
-	SquareMagnitudeTermination t( 0.0f );
-	ConjugateResiduals solver( 400, t );
+	SquareMagnitudeTermination t( 400, 0.0f );
+	ConjugateResiduals solver( t );
 	
 	VectorXf explicitMomenta;
 	std::vector<char> nodeCollided;
@@ -884,16 +883,74 @@ void testMovingGrid()
 
 }
 
+void testDfiDxi()
+{
+
+	std::cerr << "testForces()" << std::endl;
+	// create a single particle:
+	Sim::MaterialPointDataMap particleData;
+
+	VectorData* p = new VectorData( 1, Eigen::Vector3f::Zero() );
+	particleData["p"] = p;
+	
+	VectorData* v = new VectorData( 1, Eigen::Vector3f::Zero() );
+	particleData["v"] = v;
+	
+	MatrixData* f = new MatrixData( 1, Matrix3f::Identity() + 0.1f * Matrix3f::Random() );
+	particleData["F"] = f;
+	
+	ScalarData* m = new ScalarData( 1, 1 );
+	particleData["m"] = m;
+
+	ScalarData* volume = new ScalarData( 1, 0.5f );
+	particleData["volume"] = volume;
+	
+	const float gridSize = 1.0f;
+	CubicBsplineShapeFunction shapeFunction;
+	SnowConstitutiveModel constitutiveModel(
+		1.4e5f, // young's modulus
+		0.2f, // poisson ratio
+		0, // hardening
+		100000.0f, // compressive strength
+		100000.0f	// tensile strength
+	);
+
+	constitutiveModel.createParticleData( particleData );
+	constitutiveModel.setParticles( particleData );
+	constitutiveModel.updateParticleData( particleData );
+
+	Sim::IndexList inds;
+	inds.push_back(0);
+	Grid g( particleData, inds, gridSize, shapeFunction );
+	Eigen::VectorXf dfidxi;
+	g.dForceidXi( dfidxi, constitutiveModel );
+
+	std::vector<const ForceField*> fields;
+	Eigen::VectorXf dx = Eigen::VectorXf::Constant(dfidxi.size(),0);
+	Eigen::VectorXf df( dfidxi.size() );
+	for( int i=0; i < dfidxi.size(); ++i )
+	{
+		dx[i] = 1;
+		g.calculateForceDifferentials(
+			df,
+			dx,
+			constitutiveModel,
+			fields );
+		assert( fabs( df[i] - dfidxi[i] ) < 1.e-8 );
+		dx[i] = 0;
+	}
+}
 
 void testGrid()
 {
 	std::cerr << "testGrid()" << std::endl;
-	//testProcessingPartitions();
-	//testSplatting();
-	//testDeformationGradients();
-	//testForces();
-	//testImplicitUpdate();
+	testProcessingPartitions();
+	testSplatting();
+	testDeformationGradients();
+	testForces();
+	testImplicitUpdate();
 	testMovingGrid();
+	testDfiDxi();
 }
 
 }

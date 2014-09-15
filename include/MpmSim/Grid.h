@@ -78,6 +78,10 @@ public:
 		const ConstitutiveModel& constitutiveModel,
 		const std::vector<const ForceField*>& fields ) const;
 	
+	void dForceidXi(
+		Eigen::VectorXf& dfdxi, 
+		const ConstitutiveModel& constitutiveModel ) const;
+
 	// iterator for looping over all the points whose shape function
 	// p is in the support of:
 	class ShapeFunctionIterator

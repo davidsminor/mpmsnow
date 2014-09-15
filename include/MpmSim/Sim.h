@@ -5,6 +5,7 @@
 
 #include "MpmSim/MaterialPointData.h"
 #include "MpmSim/ShapeFunction.h"
+#include "MpmSim/TerminationCriterion.h"
 #include "MpmSim/LinearSolver.h"
 
 #include <vector>
@@ -60,7 +61,7 @@ public:
 	~Sim();
 	
 	// complete a full simulation time step:
-	void advance( float timeStep, const LinearSolver& solver, LinearSolver::Debug* d = 0 );
+	void advance( float timeStep, TerminationCriterion& terminationCriterion, LinearSolver::Debug* d = 0 );
 
 	typedef std::vector<int> IndexList;
 	typedef IndexList::iterator IndexIterator;
