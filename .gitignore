@@ -1,6 +1,9 @@
 *.exe
 *.obj
 *.o
+*.os
+*.so
+.sconsign.dblite
 *.pdb
 *.htm
 *.ncb
