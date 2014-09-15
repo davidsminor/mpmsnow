@@ -26,9 +26,8 @@ void ConjugateResiduals::operator()
 {
 	// I copy pasted a lot of this from here:
 	// https://github.com/cusplibrary/cusplibrary/commit/dc757ce17229243d3852994f3c6c9c789936620a
-	
+	// Looks like the preconditioning stuff was broken though, so I changed that.
 	const size_t N = b.size();
-	const size_t recompute_r = 8;	     // interval to update r
 	
 	float bNorm2 = b.squaredNorm();
 	if(bNorm2 == 0) 

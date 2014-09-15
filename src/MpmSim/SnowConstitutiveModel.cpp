@@ -153,7 +153,6 @@ Eigen::Matrix3f SnowConstitutiveModel::dEnergyDensitydF( size_t p ) const
 	const std::vector<float>& particleLambda = *m_particleLambda;
 
 	Matrix3f rigidDeviation = particleF[p] - particleR[p];
-	float jjminusone = ( particleJ[p] - 1 ) * particleJ[p];
 	Matrix3f ret = 2 * particleMu[p] * (rigidDeviation ) + particleLambda[p] * ( particleJ[p] - 1 ) * particleJ[p] * particleFinvTrans[p];
 	
 	return ret;
@@ -161,7 +160,6 @@ Eigen::Matrix3f SnowConstitutiveModel::dEnergyDensitydF( size_t p ) const
 
 Eigen::Matrix3f SnowConstitutiveModel::dEdFDifferential( const Eigen::Matrix3f& dFp, size_t p ) const
 {
-	const std::vector<Eigen::Matrix3f>& particleF = *m_particleF;
 	const std::vector<Eigen::Matrix3f>& particleFinvTrans = *m_particleFinvTrans;
 	const std::vector<Eigen::Matrix3f>& particleR = *m_particleR;
 	const std::vector<Eigen::Matrix3f>& particleGinv = *m_particleGinv;

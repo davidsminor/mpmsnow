@@ -133,9 +133,9 @@ public:
 	)
 		:
 		Grid::GridSplatter( g, result ),
+		m_particleVolumes( particleVariable<ScalarData>("volume")->m_data ),
 		m_particleX( particleVariable<VectorData>("p")->m_data ),
 		m_particleF( particleVariable<MatrixData>("F")->m_data ),
-		m_particleVolumes( particleVariable<ScalarData>("volume")->m_data ),
 		m_constitutiveModel( constitutiveModel )
 	{
 	}
@@ -185,11 +185,11 @@ public:
 	)
 		:
 		Grid::GridSplatter( g, result ),
+		m_particleVolumes( particleVariable<ScalarData>("volume")->m_data ),
 		m_particleX( particleVariable<VectorData>("p")->m_data ),
 		m_particleF( particleVariable<MatrixData>("F")->m_data ),
-		m_particleVolumes( particleVariable<ScalarData>("volume")->m_data ),
-		m_constitutiveModel( constitutiveModel ),
-		m_dx( dx )
+		m_dx( dx ),
+		m_constitutiveModel( constitutiveModel )
 	{
 	}
 	
@@ -257,9 +257,9 @@ public:
 	)
 		:
 		Grid::GridSplatter( g, result ),
+		m_particleVolumes( particleVariable<ScalarData>("volume")->m_data ),
 		m_particleX( particleVariable<VectorData>("p")->m_data ),
 		m_particleF( particleVariable<MatrixData>("F")->m_data ),
-		m_particleVolumes( particleVariable<ScalarData>("volume")->m_data ),
 		m_constitutiveModel( constitutiveModel )
 	{
 	}
@@ -329,10 +329,10 @@ Grid::Grid(
 		int dimension
 ) :
 	m_d( d ),
+	m_frameVelocity( frameVelocity ),
 	m_particleInds( particleInds ),
 	m_gridSize( gridSize ),
 	m_shapeFunction( shapeFunction ),
-	m_frameVelocity( frameVelocity ),
 	m_dimension( dimension )
 {
 	// work out the physical size of the grid:
@@ -459,7 +459,7 @@ void Grid::computeProcessingPartitions()
 	// the voxels in the (0,0,0) corners go in processingPartitions[0][0][0],
 	// all the voxels in the (1,0,0) corners go in processingPartitions[1][0][0],
 	// etc etc.
-	Eigen::Vector3i currentVoxel;
+	Eigen::Vector3i currentVoxel = Eigen::Vector3i::Zero();
 	Sim::ConstIndexIterator begin = m_particleInds.begin();
 	Sim::ConstIndexIterator end = m_particleInds.end();
 	Sim::ConstIndexIterator* partitionEnd = 0;
