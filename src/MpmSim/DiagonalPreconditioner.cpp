@@ -39,7 +39,7 @@ void DiagonalPreconditioner::multInverseVector( const Eigen::VectorXf& x, Eigen:
 	result = x.cwiseQuotient( m_implicitUpdateDiagonal );
 }
 
-void DiagonalPreconditioner::multVector( const Eigen::VectorXf& vNPlusOne, Eigen::VectorXf& result ) const
+void DiagonalPreconditioner::multVector( const Eigen::VectorXf& x, Eigen::VectorXf& result ) const
 {
-	// not implemented
+	result = x.cwiseProduct( m_implicitUpdateDiagonal );
 }

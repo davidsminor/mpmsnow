@@ -70,11 +70,10 @@ void ConjugateResiduals::operator()
 	A.multVector( p, Ap );
 
 	// Ar <- A*r
-	r = r_precond;
-	A.multVector( r, Ar );
+	A.multVector( r_precond, Ar );
 
-	// rz = <r, Ar>
-	float rz = r.dot( Ar );
+	// rz = <r_precond, Ar>
+	float rz = r_precond.dot( Ar );
 	
 	if( m_log )
 	{
@@ -93,7 +92,7 @@ void ConjugateResiduals::operator()
 			precond_Ap = Ap;
 		}
 
-		// alpha <- <r,Ar>/<Ap,P^-1 Ap>
+		// alpha <- <r_precond,Ar>/<Ap,P^-1 Ap>
 		float alpha =  rz / Ap.dot(precond_Ap);
 
 		// x <- x + alpha * p
@@ -106,27 +105,35 @@ void ConjugateResiduals::operator()
 			(*d)( x );
 		}
 		
-		// r <- r - alpha * P^-1 Ap
-		r = r - alpha * precond_Ap;
+		// r_precond <- r_precond - alpha * P^-1 Ap
+		r_precond = r_precond - alpha * precond_Ap;
+		if( m_preconditioner )
+		{
+			m_preconditioner->multVector( r_precond, r );
+		}
+		else
+		{
+			r = r_precond;
+		}
 		
 		if( m_terminationCriterion( r, i ) )
 		{
 			return;
 		}
 		
-		// Ar <- A*r
-		A.multVector(r, Ar);
+		// Ar <- A*r_precond
+		A.multVector(r_precond, Ar);
 		
 		float rz_old = rz;
 
-		// rz = <r^H, r>
-		rz = r.dot( Ar );
+		// rz = <r_precond^H, r_precond>
+		rz = r_precond.dot( Ar );
 
-		// beta <- <r_{i+1},r_{i+1}>/<r,r>
+		// beta <- <r_{i+1},r_{i+1}>/<r_precond,r_precond>
 		float beta = rz / rz_old;
 
-		// p <- r + beta*p
-		p = r + beta * p;
+		// p <- r_precond + beta*p
+		p = r_precond + beta * p;
 
 		// Ap <- Ar + beta*Ap
 		Ap = Ar + beta * Ap;
