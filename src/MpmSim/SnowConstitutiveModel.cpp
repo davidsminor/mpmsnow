@@ -1,5 +1,6 @@
 #include "MpmSim/SnowConstitutiveModel.h"
 
+#include <stdexcept>
 #include <iostream>
 
 using namespace Eigen;
@@ -89,7 +90,25 @@ void SnowConstitutiveModel::updateParticleData( Sim::MaterialPointDataMap& p ) c
 		
 		
 		// apply hardening:
-		float hardeningFactor = exp( m_hardening * ( 1 - particleFplastic[p].determinant() ) );
+		float hardeningFactor = m_hardening * ( 1 - particleFplastic[p].determinant() );
+		if( hardeningFactor > 2 )
+		{
+			// don't let it harden by more than a factor of about 7.4
+			hardeningFactor = 2;
+		}
+		hardeningFactor = exp( hardeningFactor );
+		#ifdef WIN32
+		if( !_finite(hardeningFactor) )
+		#else
+		if( isinff(hardeningFactor) || isnanf(hardeningFactor) )
+		#endif
+		{
+			std::cerr << "plastic deformation: " << std::endl << particleFplastic[p] << std::endl;
+			std::cerr << "det: " << std::endl << particleFplastic[p].determinant() << std::endl;
+			std::cerr << "my log is hardening: " << m_hardening * ( 1 - particleFplastic[p].determinant() ) << std::endl;
+			throw std::runtime_error( "infinite hardness!!!" );
+		}
+
 		
 		particleMu[p] = m_mu * hardeningFactor;
 		particleLambda[p] = m_lambda * hardeningFactor;
@@ -154,6 +173,21 @@ Eigen::Matrix3f SnowConstitutiveModel::dEnergyDensitydF( size_t p ) const
 
 	Matrix3f rigidDeviation = particleF[p] - particleR[p];
 	Matrix3f ret = 2 * particleMu[p] * (rigidDeviation ) + particleLambda[p] * ( particleJ[p] - 1 ) * particleJ[p] * particleFinvTrans[p];
+	
+	float n = ret.norm();
+	#ifdef WIN32
+	if( !_finite(n) )
+	#else
+	if( isinff(n) || isnanf(n) )
+	#endif
+	{
+		std::cerr << "particle def grad: " << std::endl << particleF[p] << std::endl;
+		std::cerr << "inverse transpose: " << std::endl << particleFinvTrans[p] << std::endl;
+		std::cerr << "rigidDeviation: " << std::endl << rigidDeviation << std::endl;
+		std::cerr << "determinant: " << particleJ[p] << std::endl;
+		std::cerr << "lame parameters: " << particleMu[p] << " " << particleLambda[p] << std::endl;
+		throw std::runtime_error( "nans in dEnergyDensitydF matrix!" );
+	}
 	
 	return ret;
 }

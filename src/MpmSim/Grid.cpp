@@ -384,6 +384,15 @@ Grid::Grid(
 		{
 			masses[i] = 0;
 		}
+		
+		#ifdef WIN32
+		if( !_finite(masses[i]) )
+		#else
+		if( isinff(masses[i]) || isnanf(masses[i]) )
+		#endif
+		{
+			throw std::runtime_error( "nans in splatted masses!" );
+		}
 	}
 
 	// calculate velocities:
@@ -392,6 +401,18 @@ Grid::Grid(
 	
 	VelocitySplatter sV( *this, velocities );
 	splat( sV );
+	
+	for( int i=0; i < velocities.size(); ++i )
+	{
+		#ifdef WIN32
+		if( !_finite(velocities[i]) )
+		#else
+		if( isinff(velocities[i]) || isnanf(velocities[i]) )
+		#endif
+		{
+			throw std::runtime_error( "nans in splatted velocities!" );
+		}
+	}
 	
 	prevVelocities = velocities;
 }
@@ -571,6 +592,21 @@ void Grid::calculateExplicitMomenta(
 				Vector3f x( m_gridSize * i + m_min[0], m_gridSize * j + m_min[1], m_gridSize * k + m_min[2] );
 				nodeCollided[idx] = collisionObjects.collide( explicitVelocity, x, m_frameVelocity );
 				explicitMomenta.segment<3>( 3 * idx ) = explicitVelocity * masses[idx];
+				float prod = explicitMomenta[ 3 * idx ] * explicitMomenta[ 3 * idx + 1 ] * explicitMomenta[ 3 * idx + 2 ];
+				#ifdef WIN32
+				if( !_finite(prod) )
+				#else
+				if( isinff(prod) || isnanf(prod) )
+				#endif
+				{
+					std::cerr << "x: " << x.transpose() << std::endl;
+					std::cerr << "force: " << force.transpose() << std::endl;
+					std::cerr << "velocity: " << velocity.transpose() << std::endl;
+					std::cerr << "explicitVelocity: " << explicitVelocity.transpose() << std::endl;
+					std::cerr << "mass: " << masses[idx] << std::endl;
+					throw std::runtime_error( "nan in explicit momenta!" );
+				}
+				
 			}
 		}
 	}
@@ -664,12 +700,13 @@ void Grid::updateGridVelocities(
 		// use velocity of collision objects as an initial guess:
 		initialGuessVelocity = collidedMomentum / collidedMass;
 	}
-
+	
+	std::cerr <<  "initial guess velocity: " << initialGuessVelocity << std::endl;
 	for( int idx=0; idx<masses.size(); ++idx )
 	{
 		velocities.segment<3>( 3*idx ) = initialGuessVelocity;
 	}
-
+	
 	// looks like this works pretty well for when things are in freefall actually, although
 	// it still kind of sucks for resting contact. Maybe the solver's termination criterion
 	// is wrong? Perhaps I can make a little class to make that configurable?
@@ -711,8 +748,18 @@ void Grid::updateGridVelocities(
 	// so subtract the extra term onto the explicit momenta:
 	for( int idx=0; idx<masses.size(); ++idx )
 	{
-		explicitMomenta.segment<3>( 3 * idx ) +=
-			timeStep * timeStep * df.segment<3>( 3 * idx );
+		explicitMomenta.segment<3>( 3 * idx ) += timeStep * timeStep * df.segment<3>( 3 * idx );
+		float prod = explicitMomenta[ 3 * idx ] * explicitMomenta[ 3 * idx + 1 ] * explicitMomenta[ 3 * idx + 2 ];
+		#ifdef WIN32
+		if( !_finite(prod) )
+		#else
+		if( isinff(prod) || isnanf(prod) )
+		#endif
+		{
+			std::cerr << "df: " << df.segment<3>( 3 * idx ).transpose() << std::endl;
+			std::cerr << "explicitMomentum: " << explicitMomenta.segment<3>( 3 * idx ).transpose() << std::endl;
+			throw std::runtime_error( "nan in explicit momenta!" );
+		}
 	}
 	
 	

@@ -183,6 +183,7 @@ void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolv
 		Eigen::Vector3f centreOfMassVelocity = Eigen::Vector3f::Zero();
 		
 		float mass = 0;
+		std::cerr << "Body " << ( bIt - m_bodies.begin() ) << ": " << bIt->size() << " particles" << std::endl;
 		for( IndexIterator it = bIt->begin(); it != bIt->end(); ++it )
 		{
 			centreOfMassVelocity += particleV[*it] * particleMasses[*it];
@@ -307,12 +308,19 @@ static void minMax( float x, float& min, float& max )
 
 void Sim::calculateBodies()
 {
-	const VectorData* p = particleVariable<VectorData>("p");
-	if( !p )
+	const VectorData* vData = particleVariable<VectorData>("v");
+	if( !vData )
+	{
+		throw std::runtime_error( "Sim::calculateBodies(): couldn't find 'v' data" );
+	}
+	const std::vector<Eigen::Vector3f>& particleV = vData->m_data;
+	
+	const VectorData* pData = particleVariable<VectorData>("p");
+	if( !pData )
 	{
 		throw std::runtime_error( "Sim::calculateBodies(): couldn't find 'p' data" );
 	}
-	const std::vector<Eigen::Vector3f>& particleX = p->m_data;
+	const std::vector<Eigen::Vector3f>& particleX = pData->m_data;
 	
 	m_bodies.clear();
 	m_ballisticParticles.clear();
@@ -324,6 +332,16 @@ void Sim::calculateBodies()
 	std::vector<int> neighbourInds;
 	for( size_t i=0; i < particleX.size(); ++i )
 	{
+		float prod = particleV[i][0] * particleV[i][1] * particleV[i][2];
+		#ifdef WIN32
+		if( !_finite(prod) )
+		#else
+		if( isinff(prod) || isnanf(prod) )
+		#endif
+		{
+			throw std::runtime_error( "nans in particle velocity data!" );
+		}
+		
 		if( processed[i] )
 		{
 			continue;
