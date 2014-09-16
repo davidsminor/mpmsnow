@@ -5,6 +5,7 @@
 #include "MpmSim/Grid.h"
 #include "MpmSim/DiagonalPreconditioner.h"
 #include "MpmSim/ConjugateResiduals.h"
+#include "MpmSim/KdTree.h"
 
 #include <iostream>
 #include <queue>
@@ -307,21 +308,20 @@ static void minMax( float x, float& min, float& max )
 
 void Sim::calculateBodies()
 {
-	const VectorData* p = particleVariable<VectorData>("p");
+	VectorData* p = particleVariable<VectorData>("p");
 	if( !p )
 	{
 		throw std::runtime_error( "Sim::calculateBodies(): couldn't find 'p' data" );
 	}
-	const std::vector<Eigen::Vector3f>& particleX = p->m_data;
+	std::vector<Eigen::Vector3f>& particleX = p->m_data;
 	
 	m_bodies.clear();
 	m_ballisticParticles.clear();
 
 	// build little grid based acceleration structure for neighbour queries:
-	NeighbourQuery n( particleX, m_gridSize );
-	
+	V3fTree n( particleX.begin(), particleX.end() );
 	std::vector<bool> processed( particleX.size(), false );
-	std::vector<int> neighbourInds;
+	std::vector< std::vector<Eigen::Vector3f>::iterator > nearNeighbours;
 	for( size_t i=0; i < particleX.size(); ++i )
 	{
 		if( processed[i] )
@@ -329,8 +329,8 @@ void Sim::calculateBodies()
 			continue;
 		}
 		processed[i] = true;
-		n.neighbours( particleX[i], neighbourInds );
-		if( neighbourInds.size() == 0 )
+		n.nearestNeighbours( particleX[i], m_gridSize, nearNeighbours );
+		if( nearNeighbours.size() == 0 )
 		{
 			m_ballisticParticles.push_back((int)i);
 			continue;
@@ -340,9 +340,9 @@ void Sim::calculateBodies()
 		IndexList& b = m_bodies.back();
 		std::queue<int> flood;
 		b.push_back( (int)i );
-		for( size_t j=0; j < neighbourInds.size(); ++j )
+		for( size_t j=0; j < nearNeighbours.size(); ++j )
 		{
-			flood.push(neighbourInds[j]);
+			flood.push(nearNeighbours[j] - particleX.begin());
 		}
 		while( flood.size() )
 		{
@@ -355,10 +355,10 @@ void Sim::calculateBodies()
 
 			b.push_back( current );
 			processed[current] = true;
-			n.neighbours( particleX[current], neighbourInds );
-			for( size_t j=0; j < neighbourInds.size(); ++j )
+			n.nearestNeighbours( particleX[current], m_gridSize, nearNeighbours );
+			for( size_t j=0; j < nearNeighbours.size(); ++j )
 			{
-				flood.push(neighbourInds[j]);
+				flood.push(nearNeighbours[j] - particleX.begin());
 			}
 		}
 

@@ -431,6 +431,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\MpmSim\KdTree.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\MpmSim\KdTree.inl"
+				>
+			</File>
+			<File
 				RelativePath=".\include\MpmSim\LinearSolver.h"
 				>
 			</File>
