@@ -317,12 +317,12 @@ void Sim::calculateBodies()
 	}
 	const std::vector<Eigen::Vector3f>& particleV = vData->m_data;
 	
-	const VectorData* pData = particleVariable<VectorData>("p");
+	VectorData* pData = particleVariable<VectorData>("p");
 	if( !pData )
 	{
 		throw std::runtime_error( "Sim::calculateBodies(): couldn't find 'p' data" );
 	}
-	const std::vector<Eigen::Vector3f>& particleX = pData->m_data;
+	std::vector<Eigen::Vector3f>& particleX = pData->m_data;
 	
 	m_bodies.clear();
 	m_ballisticParticles.clear();

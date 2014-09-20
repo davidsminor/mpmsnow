@@ -150,6 +150,6 @@ typedef KDTree<double> V3dTree;
 
 } // namespace MpmSim
 
-#include "KDTree.inl"
+#include "KdTree.inl"
 
 #endif // MPMSIM_KDTREE_H
