@@ -42,49 +42,6 @@ public:
 
 };
 
-void testNeighbourQuery()
-{
-	std::cerr << "testNeighbourQuery()" << std::endl;
-	srand(20);
-	std::vector<Eigen::Vector3f> particleX;
-	for( int i=0; i < 1000; ++i )
-	{
-		float x = ((float)rand() / RAND_MAX);
-		float y = ((float)rand() / RAND_MAX);
-		float z = ((float)rand() / RAND_MAX);
-		particleX.push_back( Eigen::Vector3f(x,y,z) );
-	}
-
-	Sim::NeighbourQuery n( particleX, 0.1f );
-	for( size_t i=0; i < particleX.size(); ++i )
-	{
-		const Eigen::Vector3f& p = particleX[i];
-		std::vector<int> actualNeighbours;
-		for( size_t j=0; j < particleX.size(); ++j )
-		{
-			float squaredDist = ( particleX[j] - p ).squaredNorm();
-			if( squaredDist > 0 && squaredDist < ( 0.1f * 0.1f ) )
-			{
-				actualNeighbours.push_back( (int)j );
-			}
-		}
-		std::vector<int> neighbours;
-		
-		n.neighbours( p, neighbours );
-		assert( neighbours.size() == actualNeighbours.size() );
-		
-		std::sort( neighbours.begin(), neighbours.end() );
-		std::sort( actualNeighbours.begin(), actualNeighbours.end() );
-		
-		std::vector<int>::iterator it = neighbours.begin();
-		std::vector<int>::iterator ait = actualNeighbours.begin();
-		for( ;it != neighbours.end(); ++it, ++ait )
-		{
-			assert( *it == *ait );
-		}
-	}
-}
-
 void testInitialization()
 {
 	std::cerr << "testInitialization()" << std::endl;
@@ -225,7 +182,6 @@ void testTimestepAdvance()
 void testSimClass()
 {
 	std::cerr << "testSimClass()" << std::endl;
-	testNeighbourQuery();
 	testInitialization();
 	testTimestepAdvance();
 }

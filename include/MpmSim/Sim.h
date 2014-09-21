@@ -96,28 +96,7 @@ public:
 	
 	template< class T >
 	const T* particleVariable( const std::string& name ) const;
-
-	// class for doing neighbour queries on particles:
-	class NeighbourQuery
-	{
-		public:
-			NeighbourQuery( const std::vector<Eigen::Vector3f>& particleX, float r );
-			void neighbours( const Eigen::Vector3f& p, std::vector<int>& neighbourInds ) const;
-		private:
-
-			void neighboursInCell( const Eigen::Vector3f& p, const Eigen::Vector3i& cell, std::vector<int>& neighbourInds ) const;
-
-			size_t voxelOffset( const Eigen::Vector3i& cell ) const;
-			
-			Eigen::Vector3i m_cellMin;
-			Eigen::Vector3i m_gridDims;
-
-			const std::vector<Eigen::Vector3f>& m_particleX;
-			float m_r;
-			IndexList m_spatialSorting;
-			std::vector<int> m_voxels;
-	};
-		
+	
 	// sort the specified index range into voxels:
 	static void voxelSort(
 		IndexIterator begin,
