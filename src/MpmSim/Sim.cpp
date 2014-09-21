@@ -112,21 +112,21 @@ Sim::Sim(
 	m_forceFields( forceFields ),
 	m_dimension( dimension )
 {
-	VectorData* p = new VectorData;
+	VectorVariable* p = new VectorVariable;
 	p->m_data = x;
 	particleData["p"] = p;
 	
-	VectorData* v = new VectorData( x.size(), Eigen::Vector3f::Zero() );
+	VectorVariable* v = new VectorVariable( x.size(), Eigen::Vector3f::Zero() );
 	particleData["v"] = v;
 
-	MatrixData* f = new MatrixData( x.size(), Eigen::Matrix3f::Identity() );
+	MatrixVariable* f = new MatrixVariable( x.size(), Eigen::Matrix3f::Identity() );
 	particleData["F"] = f;
 	
-	ScalarData* m = new ScalarData;
+	ScalarVariable* m = new ScalarVariable;
 	m->m_data = masses;
 	particleData["m"] = m;
 
-	ScalarData* volume = new ScalarData( x.size(), 0.0f );
+	ScalarVariable* volume = new ScalarVariable( x.size(), 0.0f );
 	particleData["volume"] = volume;
 	
 	m_constitutiveModel.createParticleData( particleData );
@@ -153,9 +153,9 @@ Sim::~Sim()
 
 void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolver::Debug* d )
 {
-	std::vector<Eigen::Vector3f>& particleX = particleVariable<VectorData>( "p" )->m_data;
-	std::vector<Eigen::Vector3f>& particleV = particleVariable<VectorData>( "v" )->m_data;
-	std::vector<float>& particleMasses = particleVariable<ScalarData>( "m" )->m_data;
+	std::vector<Eigen::Vector3f>& particleX = particleVariable<VectorVariable>( "p" )->m_data;
+	std::vector<Eigen::Vector3f>& particleV = particleVariable<VectorVariable>( "v" )->m_data;
+	std::vector<float>& particleMasses = particleVariable<ScalarVariable>( "m" )->m_data;
 	
 	// advance ballistic particle velocities:
 	std::cerr << m_ballisticParticles.size() << " ballistic" << std::endl;
@@ -310,14 +310,14 @@ static void minMax( float x, float& min, float& max )
 void Sim::calculateBodies()
 {
 
-	const VectorData* vData = particleVariable<VectorData>("v");
+	const VectorVariable* vData = particleVariable<VectorVariable>("v");
 	if( !vData )
 	{
 		throw std::runtime_error( "Sim::calculateBodies(): couldn't find 'v' data" );
 	}
 	const std::vector<Eigen::Vector3f>& particleV = vData->m_data;
 	
-	VectorData* pData = particleVariable<VectorData>("p");
+	VectorVariable* pData = particleVariable<VectorVariable>("p");
 	if( !pData )
 	{
 		throw std::runtime_error( "Sim::calculateBodies(): couldn't find 'p' data" );

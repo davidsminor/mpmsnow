@@ -39,21 +39,21 @@ void testSnowConstitutiveModel()
 	p = p * p;
 	
 	// should have created all this particle data for the sim:
-	MpmSim::MatrixData* particleFData = sim.particleVariable<MpmSim::MatrixData>("F");
+	MpmSim::MatrixVariable* particleFData = sim.particleVariable<MpmSim::MatrixVariable>("F");
 	assert( particleFData );
-	MpmSim::MatrixData* particleFplasticData = sim.particleVariable<MpmSim::MatrixData>("Fp");
+	MpmSim::MatrixVariable* particleFplasticData = sim.particleVariable<MpmSim::MatrixVariable>("Fp");
 	assert( particleFplasticData );
-	MpmSim::MatrixData* particleFinvTransData = sim.particleVariable<MpmSim::MatrixData>("FinvTrans");
+	MpmSim::MatrixVariable* particleFinvTransData = sim.particleVariable<MpmSim::MatrixVariable>("FinvTrans");
 	assert( particleFinvTransData );
-	MpmSim::ScalarData* particleJData = sim.particleVariable<MpmSim::ScalarData>("J");
+	MpmSim::ScalarVariable* particleJData = sim.particleVariable<MpmSim::ScalarVariable>("J");
 	assert( particleJData );
-	MpmSim::MatrixData* particleRData = sim.particleVariable<MpmSim::MatrixData>("R");
+	MpmSim::MatrixVariable* particleRData = sim.particleVariable<MpmSim::MatrixVariable>("R");
 	assert( particleRData );
-	MpmSim::MatrixData* particleGinvData = sim.particleVariable<MpmSim::MatrixData>("Ginv");
+	MpmSim::MatrixVariable* particleGinvData = sim.particleVariable<MpmSim::MatrixVariable>("Ginv");
 	assert( particleGinvData );
-	MpmSim::ScalarData* particleMuData = sim.particleVariable<MpmSim::ScalarData>("mu");
+	MpmSim::ScalarVariable* particleMuData = sim.particleVariable<MpmSim::ScalarVariable>("mu");
 	assert( particleMuData );
-	MpmSim::ScalarData* particleLambdaData = sim.particleVariable<MpmSim::ScalarData>("lambda");
+	MpmSim::ScalarVariable* particleLambdaData = sim.particleVariable<MpmSim::ScalarVariable>("lambda");
 	assert( particleLambdaData );
 	
 	std::vector<Eigen::Matrix3f>& particleF = particleFData->m_data;

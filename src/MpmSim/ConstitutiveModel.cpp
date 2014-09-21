@@ -10,7 +10,7 @@ std::vector<float>& ConstitutiveModel::scalarData( MaterialPointDataMap& p, cons
 	{
 		throw std::runtime_error( "couldn't find scalar data " + name );
 	}
-	ScalarData* data = dynamic_cast<ScalarData*>( it->second );
+	ScalarVariable* data = dynamic_cast<ScalarVariable*>( it->second );
 	if( !data )
 	{
 		throw std::runtime_error( "couldn't find scalar data " + name );
@@ -25,7 +25,7 @@ std::vector<Eigen::Vector3f>& ConstitutiveModel::vectorData( MaterialPointDataMa
 	{
 		throw std::runtime_error( "couldn't find vector data " + name );
 	}
-	VectorData* data = dynamic_cast<VectorData*>( it->second );
+	VectorVariable* data = dynamic_cast<VectorVariable*>( it->second );
 	if( !data )
 	{
 		throw std::runtime_error( "couldn't find vector data " + name );
@@ -40,7 +40,7 @@ std::vector<Eigen::Matrix3f>& ConstitutiveModel::matrixData( MaterialPointDataMa
 	{
 		throw std::runtime_error( "couldn't find matrix data " + name );
 	}
-	MatrixData* data = dynamic_cast<MatrixData*>( it->second );
+	MatrixVariable* data = dynamic_cast<MatrixVariable*>( it->second );
 	if( !data )
 	{
 		throw std::runtime_error( "couldn't find matrix data " + name );

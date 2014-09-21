@@ -21,9 +21,9 @@ namespace MpmSimTest
 static void testProcessingPartitions()
 {
 	std::cerr << "testProcessingPartitions()" << std::endl;
-	VectorData* positionData = new VectorData;
-	VectorData* velocityData = new VectorData;
-	ScalarData* massData = new ScalarData;
+	VectorVariable* positionData = new VectorVariable;
+	VectorVariable* velocityData = new VectorVariable;
+	ScalarVariable* massData = new ScalarVariable;
 
 	// make some initial particles:
 	std::vector<Vector3f>& positions = positionData->m_data;
@@ -137,9 +137,9 @@ static void testSplatting()
 {
 
 	std::cerr << "testSplatting()" << std::endl;
-	VectorData* positionData = new VectorData;
-	VectorData* velocityData = new VectorData;
-	ScalarData* massData = new ScalarData;
+	VectorVariable* positionData = new VectorVariable;
+	VectorVariable* velocityData = new VectorVariable;
+	ScalarVariable* massData = new ScalarVariable;
 
 	// make some initial particles:
 	std::vector<Vector3f>& positions = positionData->m_data;
@@ -242,19 +242,19 @@ static void testDeformationGradients()
 	// unit cube full of particles centered at the origin:
 	MaterialPointDataMap particleData;
 
-	VectorData* p = new VectorData;
+	VectorVariable* p = new VectorVariable;
 	particleData["p"] = p;
 	
-	VectorData* v = new VectorData;
+	VectorVariable* v = new VectorVariable;
 	particleData["v"] = v;
 
-	MatrixData* f = new MatrixData;
+	MatrixVariable* f = new MatrixVariable;
 	particleData["F"] = f;
 	
-	ScalarData* m = new ScalarData;
+	ScalarVariable* m = new ScalarVariable;
 	particleData["m"] = m;
 
-	ScalarData* volume = new ScalarData;
+	ScalarVariable* volume = new ScalarVariable;
 	particleData["volume"] = volume;
 	
 	std::vector<Matrix3f>& F = f->m_data;
@@ -322,10 +322,10 @@ static void testForces()
 	// create a single particle:
 	MaterialPointDataMap particleData;
 
-	VectorData* p = new VectorData( 1, Eigen::Vector3f::Zero() );
+	VectorVariable* p = new VectorVariable( 1, Eigen::Vector3f::Zero() );
 	particleData["p"] = p;
 	
-	VectorData* v = new VectorData( 1, Eigen::Vector3f::Zero() );
+	VectorVariable* v = new VectorVariable( 1, Eigen::Vector3f::Zero() );
 	particleData["v"] = v;
 	
 	// initialize deformation gradient with an arbitrary rotation:
@@ -334,13 +334,13 @@ static void testForces()
 	  * AngleAxisf(float( 0.5*M_PI ),  Vector3f::UnitY())
 	  * AngleAxisf(float( 0.33*M_PI ), Vector3f::UnitZ());
 
-	MatrixData* f = new MatrixData( 1, rotato );
+	MatrixVariable* f = new MatrixVariable( 1, rotato );
 	particleData["F"] = f;
 	
-	ScalarData* m = new ScalarData( 1, 1 );
+	ScalarVariable* m = new ScalarVariable( 1, 1 );
 	particleData["m"] = m;
 
-	ScalarData* volume = new ScalarData( 1, 0.5f );
+	ScalarVariable* volume = new ScalarVariable( 1, 0.5f );
 	particleData["volume"] = volume;
 	
 	const float gridSize = 1.0f;
@@ -371,7 +371,7 @@ static void testForces()
 	
 	
 	// fiddle with F for one of the particles to get it out of equilibrium:
-	std::vector<Eigen::Matrix3f>& F = dynamic_cast<MatrixData*>( particleData["F"] )->m_data;
+	std::vector<Eigen::Matrix3f>& F = dynamic_cast<MatrixVariable*>( particleData["F"] )->m_data;
 	F[0] += 0.01f * Eigen::Matrix3f::Random();
 	constitutiveModel.updateParticleData( particleData );
 	
@@ -505,19 +505,19 @@ void testImplicitUpdate()
 	// create some particules:
 	MaterialPointDataMap particleData;
 
-	VectorData* p = new VectorData;
+	VectorVariable* p = new VectorVariable;
 	particleData["p"] = p;
 	
-	VectorData* v = new VectorData;
+	VectorVariable* v = new VectorVariable;
 	particleData["v"] = v;
 
-	MatrixData* fData = new MatrixData;
+	MatrixVariable* fData = new MatrixVariable;
 	particleData["F"] = fData;
 	
-	ScalarData* m = new ScalarData;
+	ScalarVariable* m = new ScalarVariable;
 	particleData["m"] = m;
 
-	ScalarData* volume = new ScalarData;
+	ScalarVariable* volume = new ScalarVariable;
 	particleData["volume"] = volume;
 
 	std::vector<Vector3f>& velocities = v->m_data;
@@ -776,19 +776,19 @@ void testMovingGrid()
 	// create some particules:
 	MaterialPointDataMap particleData;
 
-	VectorData* p = new VectorData;
+	VectorVariable* p = new VectorVariable;
 	particleData["p"] = p;
 	
-	VectorData* v = new VectorData;
+	VectorVariable* v = new VectorVariable;
 	particleData["v"] = v;
 
-	MatrixData* fData = new MatrixData;
+	MatrixVariable* fData = new MatrixVariable;
 	particleData["F"] = fData;
 	
-	ScalarData* m = new ScalarData;
+	ScalarVariable* m = new ScalarVariable;
 	particleData["m"] = m;
 
-	ScalarData* volume = new ScalarData;
+	ScalarVariable* volume = new ScalarVariable;
 	particleData["volume"] = volume;
 
 
@@ -890,19 +890,19 @@ void testDfiDxi()
 	// create a single particle:
 	MaterialPointDataMap particleData;
 
-	VectorData* p = new VectorData( 1, Eigen::Vector3f::Zero() );
+	VectorVariable* p = new VectorVariable( 1, Eigen::Vector3f::Zero() );
 	particleData["p"] = p;
 	
-	VectorData* v = new VectorData( 1, Eigen::Vector3f::Zero() );
+	VectorVariable* v = new VectorVariable( 1, Eigen::Vector3f::Zero() );
 	particleData["v"] = v;
 	
-	MatrixData* f = new MatrixData( 1, Matrix3f::Identity() + 0.1f * Matrix3f::Random() );
+	MatrixVariable* f = new MatrixVariable( 1, Matrix3f::Identity() + 0.1f * Matrix3f::Random() );
 	particleData["F"] = f;
 	
-	ScalarData* m = new ScalarData( 1, 1 );
+	ScalarVariable* m = new ScalarVariable( 1, 1 );
 	particleData["m"] = m;
 
-	ScalarData* volume = new ScalarData( 1, 0.5f );
+	ScalarVariable* volume = new ScalarVariable( 1, 0.5f );
 	particleData["volume"] = volume;
 	
 	const float gridSize = 1.0f;

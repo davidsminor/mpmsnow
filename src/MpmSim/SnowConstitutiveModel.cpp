@@ -123,14 +123,14 @@ void SnowConstitutiveModel::updateParticleData( MaterialPointDataMap& p ) const
 void SnowConstitutiveModel::createParticleData( MaterialPointDataMap& p ) const
 {
 	size_t nParticles = p["p"]->dataSize();
-	p["Fp"] = new MpmSim::MatrixData( nParticles, Eigen::Matrix3f::Identity() );
-	p["FinvTrans"] = new MpmSim::MatrixData( nParticles, Eigen::Matrix3f::Identity() );
-	p["R"] = new MpmSim::MatrixData( nParticles, Eigen::Matrix3f::Identity() );
-	p["Ginv"] = new MpmSim::MatrixData( nParticles, Eigen::Matrix3f::Identity() );
+	p["Fp"] = new MpmSim::MatrixVariable( nParticles, Eigen::Matrix3f::Identity() );
+	p["FinvTrans"] = new MpmSim::MatrixVariable( nParticles, Eigen::Matrix3f::Identity() );
+	p["R"] = new MpmSim::MatrixVariable( nParticles, Eigen::Matrix3f::Identity() );
+	p["Ginv"] = new MpmSim::MatrixVariable( nParticles, Eigen::Matrix3f::Identity() );
 	
-	p["J"] = new MpmSim::ScalarData( nParticles, 1.0f );
-	p["mu"] = new MpmSim::ScalarData( nParticles, m_mu );
-	p["lambda"] = new MpmSim::ScalarData( nParticles, m_lambda );
+	p["J"] = new MpmSim::ScalarVariable( nParticles, 1.0f );
+	p["mu"] = new MpmSim::ScalarVariable( nParticles, m_mu );
+	p["lambda"] = new MpmSim::ScalarVariable( nParticles, m_lambda );
 }
 
 void SnowConstitutiveModel::setParticles( MaterialPointDataMap& p ) const

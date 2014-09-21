@@ -47,9 +47,9 @@ void testShapeFunction( const ShapeFunction& shapeFunction )
 	Eigen::Vector3i gridPos;
 	const float gridH = 0.314857f;
 	
-	VectorData* positionData = new VectorData;
-	VectorData* velocityData = new VectorData;
-	ScalarData* massData = new ScalarData;
+	VectorVariable* positionData = new VectorVariable;
+	VectorVariable* velocityData = new VectorVariable;
+	ScalarVariable* massData = new ScalarVariable;
 
 	// make some initial particles:
 	std::vector<Vector3f>& positions = positionData->m_data;

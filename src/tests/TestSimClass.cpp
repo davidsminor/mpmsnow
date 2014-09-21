@@ -90,14 +90,14 @@ void testInitialization()
 	
 	// sensible particle variables?
 	assert( sim.numParticleVariables() == 5 );
-	assert( sim.particleVariable<MpmSim::ScalarData>("m") );
-	assert( sim.particleVariable<MpmSim::ScalarData>("volume") );
-	assert( sim.particleVariable<MpmSim::VectorData>("v") );
-	assert( sim.particleVariable<MpmSim::VectorData>("p") );
-	assert( sim.particleVariable<MpmSim::MatrixData>("F") );
+	assert( sim.particleVariable<MpmSim::ScalarVariable>("m") );
+	assert( sim.particleVariable<MpmSim::ScalarVariable>("volume") );
+	assert( sim.particleVariable<MpmSim::VectorVariable>("v") );
+	assert( sim.particleVariable<MpmSim::VectorVariable>("p") );
+	assert( sim.particleVariable<MpmSim::MatrixVariable>("F") );
 	
-	assert( sim.particleVariable<MpmSim::ScalarData>("F") == 0 );
-	assert( sim.particleVariable<MpmSim::ScalarData>("Fiddlesticks") == 0 );
+	assert( sim.particleVariable<MpmSim::ScalarVariable>("F") == 0 );
+	assert( sim.particleVariable<MpmSim::ScalarVariable>("Fiddlesticks") == 0 );
 
 	assert( sim.ballisticParticles().size() == 16 * 16 * 16 );
 	
@@ -165,7 +165,7 @@ void testTimestepAdvance()
 	sim.advance( 0.01f, t );
 	
 	// average velocity should be about 0.03 now, innit
-	const std::vector<Eigen::Vector3f>& velocities = sim.particleVariable<VectorData>( "v" )->m_data;
+	const std::vector<Eigen::Vector3f>& velocities = sim.particleVariable<VectorVariable>( "v" )->m_data;
 	Eigen::Vector3f v = Eigen::Vector3f::Zero();
 	for( std::vector<Eigen::Vector3f>::const_iterator it = velocities.begin(); it != velocities.end(); ++it )
 	{

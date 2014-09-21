@@ -8,29 +8,29 @@
 namespace MpmSim
 {
 
-class MaterialPointDataBase
+class MaterialPointVariableBase
 {
 public:
 	virtual size_t dataSize() = 0;
 };
 
 template <typename T> 
-class MaterialPointData : public MaterialPointDataBase
+class MaterialPointVariable : public MaterialPointVariableBase
 {
 public:
-	MaterialPointData() {}
-	MaterialPointData( size_t n ) : m_data(n) {}
-	MaterialPointData( size_t n, const T& value ) : m_data(n,value) {}
+	MaterialPointVariable() {}
+	MaterialPointVariable( size_t n ) : m_data(n) {}
+	MaterialPointVariable( size_t n, const T& value ) : m_data(n,value) {}
 	virtual size_t dataSize() { return m_data.size(); };
 	typedef std::vector<T> Data;
 	Data m_data;
 };
 
-typedef MaterialPointData<float> ScalarData;
-typedef MaterialPointData<Eigen::Vector3f> VectorData;
-typedef MaterialPointData<Eigen::Matrix3f> MatrixData;
+typedef MaterialPointVariable<float> ScalarVariable;
+typedef MaterialPointVariable<Eigen::Vector3f> VectorVariable;
+typedef MaterialPointVariable<Eigen::Matrix3f> MatrixVariable;
 
-typedef std::map< std::string, MaterialPointDataBase* > MaterialPointDataMap;
+typedef std::map< std::string, MaterialPointVariableBase* > MaterialPointDataMap;
 
 }
 #endif
