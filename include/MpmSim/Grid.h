@@ -19,7 +19,7 @@ class Grid
 public:
 
 	Grid(
-		MaterialPointDataMap& d,
+		MaterialPointData& d,
 		const Sim::IndexList& particleInds,
 		float gridSize,
 		const ShapeFunction& shapeFunction,
@@ -141,9 +141,6 @@ public:
 
 			void operator()(const tbb::blocked_range<int> &r) const;
 
-			template< class T >
-			T* particleVariable( const std::string& name );
-			
 		protected:
 
 			virtual void splat(
@@ -166,12 +163,12 @@ public:
 	const Eigen::Vector3i& n() const;
 	float gridSize() const;
 	
-	MaterialPointDataMap& m_d;	
+	MaterialPointData& m_d;	
 	Eigen::Vector3f m_frameVelocity;
 
 private:
-
-	template <class Splatter>
+	
+	template< class Splatter >
 	void splat( Splatter& s ) const;
 	
 	const Sim::IndexList& m_particleInds;
@@ -197,6 +194,6 @@ private:
 
 } // namespace MpmSim
 
-#include "MpmSim/Grid.inl"
+#include "Grid.inl"
 
 #endif // MPMSIM_GRID_H

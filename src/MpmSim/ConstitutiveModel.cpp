@@ -3,9 +3,9 @@
 
 using namespace MpmSim;
 
-std::vector<float>& ConstitutiveModel::scalarData( MaterialPointDataMap& p, const std::string& name )
+std::vector<float>& ConstitutiveModel::scalarData( MaterialPointData& p, const std::string& name )
 {
-	MaterialPointDataMap::const_iterator it = p.find( name );
+	MaterialPointData::const_iterator it = p.find( name );
 	if( it == p.end() )
 	{
 		throw std::runtime_error( "couldn't find scalar data " + name );
@@ -18,9 +18,9 @@ std::vector<float>& ConstitutiveModel::scalarData( MaterialPointDataMap& p, cons
 	return data->m_data;
 }
 
-std::vector<Eigen::Vector3f>& ConstitutiveModel::vectorData( MaterialPointDataMap& p, const std::string& name )
+std::vector<Eigen::Vector3f>& ConstitutiveModel::vectorData( MaterialPointData& p, const std::string& name )
 {
-	MaterialPointDataMap::const_iterator it = p.find( name );
+	MaterialPointData::const_iterator it = p.find( name );
 	if( it == p.end() )
 	{
 		throw std::runtime_error( "couldn't find vector data " + name );
@@ -33,9 +33,9 @@ std::vector<Eigen::Vector3f>& ConstitutiveModel::vectorData( MaterialPointDataMa
 	return data->m_data;
 }
 
-std::vector<Eigen::Matrix3f>& ConstitutiveModel::matrixData( MaterialPointDataMap& p, const std::string& name )
+std::vector<Eigen::Matrix3f>& ConstitutiveModel::matrixData( MaterialPointData& p, const std::string& name )
 {
-	MaterialPointDataMap::const_iterator it = p.find( name );
+	MaterialPointData::const_iterator it = p.find( name );
 	if( it == p.end() )
 	{
 		throw std::runtime_error( "couldn't find matrix data " + name );

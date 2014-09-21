@@ -21,13 +21,13 @@ class DummyModel : public ConstitutiveModel
 {
 public:
 
-	virtual void createParticleData( MaterialPointDataMap& p ) const
+	virtual void createParticleData( MaterialPointData& p ) const
 	{}
 	
-	virtual void updateParticleData( MaterialPointDataMap&  ) const
+	virtual void updateParticleData( MaterialPointData& p ) const
 	{}
 
-	virtual void setParticles( MaterialPointDataMap& p ) const
+	virtual void setParticles( MaterialPointData& p ) const
 	{}
 	
 	virtual float energyDensity( size_t p ) const
@@ -90,16 +90,27 @@ void testInitialization()
 	
 	// sensible particle variables?
 	assert( sim.numParticleVariables() == 5 );
-	assert( sim.particleVariable<MpmSim::ScalarVariable>("m") );
-	assert( sim.particleVariable<MpmSim::ScalarVariable>("volume") );
-	assert( sim.particleVariable<MpmSim::VectorVariable>("v") );
-	assert( sim.particleVariable<MpmSim::VectorVariable>("p") );
-	assert( sim.particleVariable<MpmSim::MatrixVariable>("F") );
-	
-	assert( sim.particleVariable<MpmSim::ScalarVariable>("F") == 0 );
-	assert( sim.particleVariable<MpmSim::ScalarVariable>("Fiddlesticks") == 0 );
 
-	assert( sim.ballisticParticles().size() == 16 * 16 * 16 );
+	// these throw exceptions if the requested items don't exist:
+	sim.particleData.variable<float>("m");
+	sim.particleData.variable<float>("volume");
+	sim.particleData.variable<Eigen::Vector3f>("v");
+	sim.particleData.variable<Eigen::Vector3f>("p");
+	sim.particleData.variable<Eigen::Matrix3f>("F");
+	
+	bool exceptionThrown(false);
+	try
+	{
+		sim.particleData.variable<float>("Fiddlesticks");
+	}
+	catch( ... )
+	{
+		exceptionThrown = true;
+	}
+	assert( exceptionThrown );
+
+	int numBallistics = sim.ballisticParticles().size();
+	assert( numBallistics == 16 * 16 * 16 );
 	
 	assert( sim.numBodies() == 2 );
 	assert( sim.body( 0 ).size() == 16 * 16 * 16 );
@@ -141,7 +152,6 @@ void testTimestepAdvance()
 			{
 				positions.push_back( Vector3f( 1.1f * gridSize * i + 20, 1.1f * gridSize * j, 1.1f * gridSize * k ) );
 				masses.push_back( 1.0f );
-
 			}
 		}
 	}
@@ -165,7 +175,7 @@ void testTimestepAdvance()
 	sim.advance( 0.01f, t );
 	
 	// average velocity should be about 0.03 now, innit
-	const std::vector<Eigen::Vector3f>& velocities = sim.particleVariable<VectorVariable>( "v" )->m_data;
+	const std::vector<Eigen::Vector3f>& velocities = sim.particleData.variable<Eigen::Vector3f>( "v" );
 	Eigen::Vector3f v = Eigen::Vector3f::Zero();
 	for( std::vector<Eigen::Vector3f>::const_iterator it = velocities.begin(); it != velocities.end(); ++it )
 	{

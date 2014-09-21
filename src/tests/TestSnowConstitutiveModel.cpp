@@ -17,6 +17,16 @@ namespace MpmSimTest
 void testSnowConstitutiveModel()
 {
 	std::cerr << "testSnowConstitutiveModel()" << std::endl;
+	
+	std::vector<Vector3f> positions;
+	std::vector<float> masses;
+	
+	positions.push_back( Eigen::Vector3f::Zero() );
+	masses.push_back( 1.0f );
+	
+	const float gridSize(1);
+	CubicBsplineShapeFunction shapeFunction;
+	
 	SnowConstitutiveModel snowModel(
 		1, // young's modulus
 		0.25, // poisson ratio
@@ -24,14 +34,7 @@ void testSnowConstitutiveModel()
 		0.1f, // compressive strength
 		0.2f	// tensile strength
 	);
-	
-	std::vector< Eigen::Vector3f > positions;
-	std::vector< float > masses;
-	positions.push_back( Eigen::Vector3f::Zero() );
-	masses.push_back( 1.0f );
-	
-	const float gridSize(1);
-	CubicBsplineShapeFunction shapeFunction;
+
 	Sim::CollisionObjectSet collisionObjects;
 	Sim::ForceFieldSet forceFields;
 	Sim sim( positions, masses, gridSize, shapeFunction, snowModel, collisionObjects, forceFields );
@@ -39,28 +42,15 @@ void testSnowConstitutiveModel()
 	p = p * p;
 	
 	// should have created all this particle data for the sim:
-	MpmSim::MatrixVariable* particleFData = sim.particleVariable<MpmSim::MatrixVariable>("F");
-	assert( particleFData );
-	MpmSim::MatrixVariable* particleFplasticData = sim.particleVariable<MpmSim::MatrixVariable>("Fp");
-	assert( particleFplasticData );
-	MpmSim::MatrixVariable* particleFinvTransData = sim.particleVariable<MpmSim::MatrixVariable>("FinvTrans");
-	assert( particleFinvTransData );
-	MpmSim::ScalarVariable* particleJData = sim.particleVariable<MpmSim::ScalarVariable>("J");
-	assert( particleJData );
-	MpmSim::MatrixVariable* particleRData = sim.particleVariable<MpmSim::MatrixVariable>("R");
-	assert( particleRData );
-	MpmSim::MatrixVariable* particleGinvData = sim.particleVariable<MpmSim::MatrixVariable>("Ginv");
-	assert( particleGinvData );
-	MpmSim::ScalarVariable* particleMuData = sim.particleVariable<MpmSim::ScalarVariable>("mu");
-	assert( particleMuData );
-	MpmSim::ScalarVariable* particleLambdaData = sim.particleVariable<MpmSim::ScalarVariable>("lambda");
-	assert( particleLambdaData );
+	std::vector<Eigen::Matrix3f>& particleF = sim.particleData.variable<Matrix3f>( "F" );
+	std::vector<Eigen::Matrix3f>& particleFplastic = sim.particleData.variable<Matrix3f>( "Fp" );
+	std::vector<Eigen::Matrix3f>& particleFinvTrans = sim.particleData.variable<Matrix3f>( "FinvTrans" );
+	std::vector<Eigen::Matrix3f>& particleR = sim.particleData.variable<Matrix3f>( "R" );
+	std::vector<Eigen::Matrix3f>& particleGinv = sim.particleData.variable<Matrix3f>( "Ginv" );
+	std::vector<float>& particleJ = sim.particleData.variable<float>( "J" );
+	std::vector<float>& particleMu = sim.particleData.variable<float>( "mu" );
+	std::vector<float>& particleLambda = sim.particleData.variable<float>( "lambda" );
 	
-	std::vector<Eigen::Matrix3f>& particleF = particleFData->m_data;
-	std::vector<Eigen::Matrix3f>& particleFplastic = particleFplasticData->m_data;
-	std::vector<Eigen::Matrix3f>& particleFinvTrans = particleFinvTransData->m_data;
-	std::vector<float>& particleJ = particleJData->m_data;
-
 	particleFplastic[0] = p;
 	
 	Matrix3f m = Matrix3f::Random();
@@ -108,9 +98,9 @@ void testSnowConstitutiveModel()
 	particleF[0](1,1) = 0.95f;
 
 	// rotate its ass:
-	particleF[0] = particleF[0] * AngleAxisf(0.25*M_PI, Vector3f::UnitX())
-	  * AngleAxisf(0.5*M_PI,  Vector3f::UnitY())
-	  * AngleAxisf(0.33*M_PI, Vector3f::UnitZ());
+	particleF[0] = particleF[0] * AngleAxisf(float(0.25*M_PI), Vector3f::UnitX())
+	  * AngleAxisf(float(0.5*M_PI),  Vector3f::UnitY())
+	  * AngleAxisf(float(0.33*M_PI), Vector3f::UnitZ());
 
 	Matrix3f originalF = particleF[0];
 	snowModel.updateParticleData( sim.particleData );

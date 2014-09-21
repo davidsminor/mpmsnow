@@ -10,7 +10,7 @@ VDBCollisionObject::VDBCollisionObject( const GEO_PrimVDB* vdb, const GEO_PrimVD
 
 float VDBCollisionObject::phi( const Eigen::Vector3f& x ) const
 {
-	return m_vdb->getValueF( UT_Vector3( x[0], x[1], x[2] ) );
+	return (float)m_vdb->getValueF( UT_Vector3( x[0], x[1], x[2] ) );
 }
 
 void VDBCollisionObject::grad( const Eigen::Vector3f& x, Eigen::Vector3f& dPhi ) const

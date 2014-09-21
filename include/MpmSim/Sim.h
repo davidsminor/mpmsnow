@@ -58,8 +58,6 @@ public:
 		int dimension=3
 	);
 	
-	~Sim();
-	
 	// complete a full simulation time step:
 	void advance( float timeStep, TerminationCriterion& terminationCriterion, LinearSolver::Debug* d = 0 );
 
@@ -88,14 +86,7 @@ public:
 	size_t numParticleVariables() const;
 	
 	// material point data for all the particles
-	MaterialPointDataMap particleData;
-
-	// convenience methods for accessing per particle data by name:
-	template< class T >
-	T* particleVariable( const std::string& name );
-	
-	template< class T >
-	const T* particleVariable( const std::string& name ) const;
+	MaterialPointData particleData;
 	
 	// sort the specified index range into voxels:
 	static void voxelSort(
@@ -140,6 +131,4 @@ private:
 
 } // namespace MpmSim
 
-#include "MpmSim/Sim.inl"
-
-#endif //MPMSIM_PARTICLEDATA_H
+#endif //MPMSIM_SIM_H

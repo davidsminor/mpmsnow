@@ -12,12 +12,13 @@
 #include <stdexcept>
 
 using namespace MpmSim;
+using namespace Eigen;
 
 
 int Sim::CollisionObjectSet::collide(
-	Eigen::Vector3f& v,
-	const Eigen::Vector3f& x,
-	const Eigen::Vector3f& frameVelocity,
+	Vector3f& v,
+	const Vector3f& x,
+	const Vector3f& frameVelocity,
 	bool addCollisionVelocity
 ) const
 {
@@ -39,7 +40,7 @@ int Sim::CollisionObjectSet::collide(
 			intersectedAlready = true;
 
 			// intersecting the object
-			Eigen::Vector3f vObj;
+			Vector3f vObj;
 			objects[objIdx]->velocity( x, vObj );
 			
 			// express object velocity relative to moving frame:
@@ -48,7 +49,7 @@ int Sim::CollisionObjectSet::collide(
 			// subtract off object velocity:
 			v -= vObj;
 			
-			Eigen::Vector3f n;
+			Vector3f n;
 			objects[objIdx]->grad( x, n );
 			n.normalize();
 			
@@ -66,10 +67,10 @@ int Sim::CollisionObjectSet::collide(
 				{
 					
 					// velocity perpendicular to the object
-					Eigen::Vector3f vPerp = nDotV * n;
+					Vector3f vPerp = nDotV * n;
 					
 					// remaining component is velocity paralell to the object:
-					Eigen::Vector3f vTangent = v - vPerp;
+					Vector3f vTangent = v - vPerp;
 					float vtNorm = vTangent.norm();
 					float coulombFriction = objects[objIdx]->coulombFriction();
 					if( vtNorm >= -nDotV * coulombFriction )
@@ -96,7 +97,7 @@ int Sim::CollisionObjectSet::collide(
 
 
 Sim::Sim(
-	const std::vector<Eigen::Vector3f>& x,
+	const std::vector<Vector3f>& x,
 	const std::vector<float>& masses,
 	float gridSize,
 	const ShapeFunction& shapeFunction,
@@ -111,29 +112,18 @@ Sim::Sim(
 	m_collisionObjects( collisionObjects ),
 	m_forceFields( forceFields ),
 	m_dimension( dimension )
-{
-	VectorVariable* p = new VectorVariable;
-	p->m_data = x;
-	particleData["p"] = p;
-	
-	VectorVariable* v = new VectorVariable( x.size(), Eigen::Vector3f::Zero() );
-	particleData["v"] = v;
-
-	MatrixVariable* f = new MatrixVariable( x.size(), Eigen::Matrix3f::Identity() );
-	particleData["F"] = f;
-	
-	ScalarVariable* m = new ScalarVariable;
-	m->m_data = masses;
-	particleData["m"] = m;
-
-	ScalarVariable* volume = new ScalarVariable( x.size(), 0.0f );
-	particleData["volume"] = volume;
+{	
+	particleData.variable<Vector3f>("p") = x;
+	particleData.variable<Vector3f>("v").resize( x.size(), Vector3f::Zero() );
+	particleData.variable<Matrix3f>("F").resize( x.size(), Matrix3f::Identity() );
+	particleData.variable<float>("m") = masses;
+	particleData.variable<float>("volume").resize( x.size(), 0.0f );
 	
 	m_constitutiveModel.createParticleData( particleData );
 	m_constitutiveModel.setParticles( particleData );
-
+	
 	calculateBodies();
-
+	
 	for( std::vector< IndexList >::iterator it = m_bodies.begin(); it != m_bodies.end(); ++it )
 	{
 		IndexList& b = *it;
@@ -142,20 +132,11 @@ Sim::Sim(
 	}
 }
 
-Sim::~Sim()
-{
-	for( MaterialPointDataMap::iterator it = particleData.begin(); it != particleData.end(); ++it )
-	{
-		delete it->second;
-	}
-}
-
-
 void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolver::Debug* d )
 {
-	std::vector<Eigen::Vector3f>& particleX = particleVariable<VectorVariable>( "p" )->m_data;
-	std::vector<Eigen::Vector3f>& particleV = particleVariable<VectorVariable>( "v" )->m_data;
-	std::vector<float>& particleMasses = particleVariable<ScalarVariable>( "m" )->m_data;
+	std::vector<Eigen::Vector3f>& particleX = particleData.variable<Vector3f>( "p" );
+	std::vector<Eigen::Vector3f>& particleV = particleData.variable<Vector3f>( "v" );
+	std::vector<float>& particleMasses = particleData.variable<float>( "m" );
 	
 	// advance ballistic particle velocities:
 	std::cerr << m_ballisticParticles.size() << " ballistic" << std::endl;
@@ -235,7 +216,7 @@ void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolv
 
 size_t Sim::numParticleVariables() const
 {
-	return particleData.size();
+	return particleData.numVariables();
 }
 
 
@@ -310,19 +291,8 @@ static void minMax( float x, float& min, float& max )
 void Sim::calculateBodies()
 {
 
-	const VectorVariable* vData = particleVariable<VectorVariable>("v");
-	if( !vData )
-	{
-		throw std::runtime_error( "Sim::calculateBodies(): couldn't find 'v' data" );
-	}
-	const std::vector<Eigen::Vector3f>& particleV = vData->m_data;
-	
-	VectorVariable* pData = particleVariable<VectorVariable>("p");
-	if( !pData )
-	{
-		throw std::runtime_error( "Sim::calculateBodies(): couldn't find 'p' data" );
-	}
-	std::vector<Eigen::Vector3f>& particleX = pData->m_data;
+	const std::vector<Eigen::Vector3f>& particleV = particleData.variable<Vector3f>("v");
+	std::vector<Eigen::Vector3f>& particleX = particleData.variable<Vector3f>("p");
 	
 	m_bodies.clear();
 	m_ballisticParticles.clear();
@@ -347,21 +317,25 @@ void Sim::calculateBodies()
 		{
 			continue;
 		}
-		processed[i] = true;
 		n.nearestNeighbours( particleX[i], m_gridSize, nearNeighbours );
-		if( nearNeighbours.size() == 0 )
+		if( nearNeighbours.size() == 1 )
 		{
+			// this means the only particle within a radius of m_gridSize of
+			// particleX[i] IS particleX[i], so stick it on the ballistic list:
+			processed[i] = true;
 			m_ballisticParticles.push_back((int)i);
 			continue;
 		}
 		
+		// looks like the particle actually has neighbours: create a body
 		m_bodies.resize( m_bodies.size() + 1 );
 		IndexList& b = m_bodies.back();
+
+		// now push all the neighbours onto a queue and do a floodfill to fill up the body:
 		std::queue<int> flood;
-		b.push_back( (int)i );
 		for( size_t j=0; j < nearNeighbours.size(); ++j )
 		{
-			flood.push(nearNeighbours[j] - particleX.begin());
+			flood.push((int)(nearNeighbours[j] - particleX.begin()));
 		}
 		while( flood.size() )
 		{
@@ -377,7 +351,7 @@ void Sim::calculateBodies()
 			n.nearestNeighbours( particleX[current], m_gridSize, nearNeighbours );
 			for( size_t j=0; j < nearNeighbours.size(); ++j )
 			{
-				flood.push(nearNeighbours[j] - particleX.begin());
+				flood.push( (int)(nearNeighbours[j] - particleX.begin()));
 			}
 		}
 

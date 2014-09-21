@@ -343,10 +343,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\MpmSim\ConstitutiveModel.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\src\MpmSim\CubicBsplineShapeFunction.cpp"
 				>
 			</File>
@@ -364,6 +360,10 @@
 			</File>
 			<File
 				RelativePath=".\src\MpmSim\ImplicitUpdateMatrix.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\MpmSim\MaterialPointData.cpp"
 				>
 			</File>
 			<File
@@ -427,10 +427,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\MpmSim\Grid.inl"
-				>
-			</File>
-			<File
 				RelativePath=".\include\MpmSim\ImplicitUpdateMatrix.h"
 				>
 			</File>
@@ -451,6 +447,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\MpmSim\MaterialPointData.inl"
+				>
+			</File>
+			<File
 				RelativePath=".\include\MpmSim\ProceduralMatrix.h"
 				>
 			</File>
@@ -460,10 +460,6 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\Sim.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\MpmSim\Sim.inl"
 				>
 			</File>
 			<File

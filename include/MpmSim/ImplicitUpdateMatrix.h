@@ -16,7 +16,7 @@ class ImplicitUpdateMatrix : public ProceduralMatrix
 public:
 
 	ImplicitUpdateMatrix(
-		const MaterialPointDataMap& d,
+		const MaterialPointData& d,
 		const Grid& g,
 		const ConstitutiveModel& constitutiveModel,
 		const std::vector<const CollisionObject*>& collisionObjects,
@@ -31,7 +31,7 @@ public:
 	
 private:
 	
-	const MaterialPointDataMap& m_d;
+	const MaterialPointData& m_d;
 	const Grid& m_g;
 	const ConstitutiveModel& m_constitutiveModel;
 	const std::vector< const CollisionObject* >& m_collisionObjects;

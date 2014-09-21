@@ -47,26 +47,17 @@ void testShapeFunction( const ShapeFunction& shapeFunction )
 	Eigen::Vector3i gridPos;
 	const float gridH = 0.314857f;
 	
-	VectorVariable* positionData = new VectorVariable;
-	VectorVariable* velocityData = new VectorVariable;
-	ScalarVariable* massData = new ScalarVariable;
-
 	// make some initial particles:
-	std::vector<Vector3f>& positions = positionData->m_data;
-	std::vector<Vector3f>& velocities = velocityData->m_data;
-	std::vector<float>& masses = massData->m_data;
+	MaterialPointData d;
+	std::vector<Vector3f>& positions = d.variable<Vector3f>("p");
+	std::vector<Vector3f>& velocities = d.variable<Vector3f>("v");
+	std::vector<float>& masses = d.variable<float>("m");
 	Sim::IndexList particleInds;
 	
-	MaterialPointDataMap d;
-	d["p"] = positionData;
-	d["v"] = velocityData;
-	d["m"] = massData;
-
 	positions.push_back( gridOrigin );
 	velocities.push_back( Eigen::Vector3f::Zero() );
 	masses.push_back( 1.0f );
 	particleInds.push_back( 0 );
-
 	
 	Grid g( d, particleInds, gridH, shapeFunction );
 	Grid::ShapeFunctionIterator& it = g.shapeFunctionIterator();

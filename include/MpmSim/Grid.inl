@@ -17,18 +17,6 @@ void Grid::splat( Splatter& s ) const
 	}
 }
 
-
-template< class T >
-T* Grid::GridSplatter::particleVariable( const std::string& name )
-{
-	MaterialPointDataMap::iterator it = m_g.m_d.find( name );
-	if( it == m_g.m_d.end() )
-	{
-		return 0;
-	}
-	return dynamic_cast<T*>( it->second );
-}
-
 } //namespace MpmSim
 
 #endif // MPMSIM_GRID_INL

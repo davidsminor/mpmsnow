@@ -1,3 +1,6 @@
+
+#include "tbb/parallel_for.h"
+
 #include "MpmSim/Grid.h"
 #include "MpmSim/ForceField.h"
 #include "MpmSim/ImplicitUpdateMatrix.h"
@@ -38,8 +41,8 @@ public:
 	MassSplatter( const Grid& g, Eigen::VectorXf& result )
 		:
 		Grid::GridSplatter( g, result ),
-		m_particleX( particleVariable<VectorVariable>("p")->m_data ),
-		m_particleM( particleVariable<ScalarVariable>("m")->m_data )
+		m_particleX( g.m_d.variable<Eigen::Vector3f>("p") ),
+		m_particleM( g.m_d.variable<float>("m") )
 	{
 	}
 	
@@ -80,9 +83,9 @@ public:
 	VelocitySplatter( const Grid& g, Eigen::VectorXf& result )
 		:
 		Grid::GridSplatter( g, result ),
-		m_particleM( particleVariable<ScalarVariable>("m")->m_data ),
-		m_particleX( particleVariable<VectorVariable>("p")->m_data ),
-		m_particleV( particleVariable<VectorVariable>("v")->m_data )
+		m_particleM( g.m_d.variable<float>("m") ),
+		m_particleX( g.m_d.variable<Eigen::Vector3f>("p") ),
+		m_particleV( g.m_d.variable<Eigen::Vector3f>("v") )
 	{	
 	}
 	
@@ -133,9 +136,9 @@ public:
 	)
 		:
 		Grid::GridSplatter( g, result ),
-		m_particleVolumes( particleVariable<ScalarVariable>("volume")->m_data ),
-		m_particleX( particleVariable<VectorVariable>("p")->m_data ),
-		m_particleF( particleVariable<MatrixVariable>("F")->m_data ),
+		m_particleVolumes( g.m_d.variable<float>("volume") ),
+		m_particleX( g.m_d.variable<Eigen::Vector3f>("p") ),
+		m_particleF( g.m_d.variable<Eigen::Matrix3f>("F") ),
 		m_constitutiveModel( constitutiveModel )
 	{
 	}
@@ -185,9 +188,9 @@ public:
 	)
 		:
 		Grid::GridSplatter( g, result ),
-		m_particleVolumes( particleVariable<ScalarVariable>("volume")->m_data ),
-		m_particleX( particleVariable<VectorVariable>("p")->m_data ),
-		m_particleF( particleVariable<MatrixVariable>("F")->m_data ),
+		m_particleVolumes( g.m_d.variable<float>("volume") ),
+		m_particleX( g.m_d.variable<Eigen::Vector3f>("p") ),
+		m_particleF( g.m_d.variable<Eigen::Matrix3f>("F") ),
 		m_dx( dx ),
 		m_constitutiveModel( constitutiveModel )
 	{
@@ -257,9 +260,9 @@ public:
 	)
 		:
 		Grid::GridSplatter( g, result ),
-		m_particleVolumes( particleVariable<ScalarVariable>("volume")->m_data ),
-		m_particleX( particleVariable<VectorVariable>("p")->m_data ),
-		m_particleF( particleVariable<MatrixVariable>("F")->m_data ),
+		m_particleVolumes( g.m_d.variable<float>("volume") ),
+		m_particleX( g.m_d.variable<Vector3f>("p") ),
+		m_particleF( g.m_d.variable<Matrix3f>("F") ),
 		m_constitutiveModel( constitutiveModel )
 	{
 	}
@@ -321,7 +324,7 @@ public:
 
 
 Grid::Grid(
-		MaterialPointDataMap& d,
+		MaterialPointData& d,
 		const Sim::IndexList& particleInds,
 		float gridSize,
 		const ShapeFunction& shapeFunction,
@@ -339,7 +342,7 @@ Grid::Grid(
 	m_min.setConstant( 1.e10 );
 	m_max.setConstant( -1.e10 );
 
-	const std::vector<Eigen::Vector3f>& particleX = dynamic_cast< VectorVariable* >( d["p"] )->m_data;
+	const std::vector<Vector3f>& particleX = d.variable<Vector3f>("p");
 
 	for( Sim::ConstIndexIterator it = particleInds.begin(); it != particleInds.end(); ++it )
 	{
@@ -440,9 +443,9 @@ float Grid::gridSize() const
 
 void Grid::computeParticleVolumes() const
 {
-	const std::vector<Eigen::Vector3f>& particleX = dynamic_cast< VectorVariable* >( m_d["p"] )->m_data;
-	const std::vector<float>& particleM = dynamic_cast< ScalarVariable* >( m_d["m"] )->m_data;
-	std::vector<float>& particleVolumes = dynamic_cast< ScalarVariable* >( m_d["volume"] )->m_data;
+	const std::vector<Vector3f>& particleX = m_d.variable<Vector3f>("p");
+	const std::vector<float>& particleM = m_d.variable<float>("m");
+	std::vector<float>& particleVolumes = m_d.variable<float>("volume");
 	
 	ShapeFunctionIterator& shIt = shapeFunctionIterator();
 	Vector3i particleCell;
@@ -474,7 +477,7 @@ const Grid::PartitionList& Grid::partition( int i, int j, int k ) const
 
 void Grid::computeProcessingPartitions()
 {
-	const std::vector<Eigen::Vector3f>& particleX = dynamic_cast< VectorVariable* >( m_d["p"] )->m_data;
+	const std::vector<Eigen::Vector3f>& particleX = m_d.variable<Vector3f>("p");
 	
 	// now imagine chopping space up into little 2x2x2 voxel blocks. All
 	// the voxels in the (0,0,0) corners go in processingPartitions[0][0][0],
@@ -778,8 +781,8 @@ void Grid::updateGridVelocities(
 void Grid::updateDeformationGradients( float timeStep )
 {
 	
-	const std::vector<Eigen::Vector3f>& particleX = dynamic_cast< VectorVariable* >( m_d["p"] )->m_data;
-	std::vector<Eigen::Matrix3f>& particleF = dynamic_cast< MatrixVariable* >( m_d["F"] )->m_data;
+	const std::vector<Eigen::Vector3f>& particleX = m_d.variable<Vector3f>("p");
+	std::vector<Eigen::Matrix3f>& particleF = m_d.variable<Matrix3f>("F");
 
 	ShapeFunctionIterator& shIt = shapeFunctionIterator();
 	Vector3f weightGrad;
@@ -808,8 +811,8 @@ void Grid::updateDeformationGradients( float timeStep )
 
 void Grid::updateParticleVelocities()
 {
-	const std::vector<Eigen::Vector3f>& particleX = dynamic_cast< VectorVariable* >( m_d["p"] )->m_data;
-	std::vector<Eigen::Vector3f>& particleV = dynamic_cast< VectorVariable* >( m_d["v"] )->m_data;
+	const std::vector<Eigen::Vector3f>& particleX = m_d.variable<Vector3f>("p");
+	std::vector<Eigen::Vector3f>& particleV = m_d.variable<Vector3f>("v");
 	
 	Grid::ShapeFunctionIterator& shIt = shapeFunctionIterator();
 	Vector3i particleCell;

@@ -24,17 +24,17 @@ SnowConstitutiveModel::SnowConstitutiveModel(
 	m_lambda = ( youngsModulus * poissonRatio / ( ( 1 + poissonRatio ) * ( 1 - 2 * poissonRatio ) ) );
 }
 
-void SnowConstitutiveModel::updateParticleData( MaterialPointDataMap& p ) const
+void SnowConstitutiveModel::updateParticleData( MaterialPointData& p ) const
 {
-	std::vector<Eigen::Matrix3f>& particleF = matrixData( p, "F" );
-	std::vector<Eigen::Matrix3f>& particleFplastic = matrixData( p, "Fp" );
-	std::vector<Eigen::Matrix3f>& particleFinvTrans = matrixData( p, "FinvTrans" );
-	std::vector<Eigen::Matrix3f>& particleR = matrixData( p, "R" );
-	std::vector<Eigen::Matrix3f>& particleGinv = matrixData( p, "Ginv" );
+	std::vector<Eigen::Matrix3f>& particleF = p.variable<Matrix3f>( "F" );
+	std::vector<Eigen::Matrix3f>& particleFplastic = p.variable<Matrix3f>( "Fp" );
+	std::vector<Eigen::Matrix3f>& particleFinvTrans = p.variable<Matrix3f>( "FinvTrans" );
+	std::vector<Eigen::Matrix3f>& particleR = p.variable<Matrix3f>( "R" );
+	std::vector<Eigen::Matrix3f>& particleGinv = p.variable<Matrix3f>( "Ginv" );
 	
-	std::vector<float>& particleJ = scalarData( p, "J" );
-	std::vector<float>& particleMu = scalarData( p, "mu" );
-	std::vector<float>& particleLambda = scalarData( p, "lambda" );
+	std::vector<float>& particleJ = p.variable<float>( "J" );
+	std::vector<float>& particleMu = p.variable<float>( "mu" );
+	std::vector<float>& particleLambda = p.variable<float>( "lambda" );
 	
 	for( size_t p=0; p < particleF.size(); ++p )
 	{
@@ -120,29 +120,50 @@ void SnowConstitutiveModel::updateParticleData( MaterialPointDataMap& p ) const
 	}
 }
 
-void SnowConstitutiveModel::createParticleData( MaterialPointDataMap& p ) const
+void SnowConstitutiveModel::createParticleData( MaterialPointData& p ) const
 {
-	size_t nParticles = p["p"]->dataSize();
-	p["Fp"] = new MpmSim::MatrixVariable( nParticles, Eigen::Matrix3f::Identity() );
-	p["FinvTrans"] = new MpmSim::MatrixVariable( nParticles, Eigen::Matrix3f::Identity() );
-	p["R"] = new MpmSim::MatrixVariable( nParticles, Eigen::Matrix3f::Identity() );
-	p["Ginv"] = new MpmSim::MatrixVariable( nParticles, Eigen::Matrix3f::Identity() );
+	// create variables:
+	// plastic deformation:
+	p.createVariable<Matrix3f>("Fp");
+
+	// inverse transpose of the deformation gradient:
+	p.createVariable<Matrix3f>("FinvTrans");
 	
-	p["J"] = new MpmSim::ScalarVariable( nParticles, 1.0f );
-	p["mu"] = new MpmSim::ScalarVariable( nParticles, m_mu );
-	p["lambda"] = new MpmSim::ScalarVariable( nParticles, m_lambda );
+	// jacobian of the deformation gradient:
+	p.createVariable<float>("J");
+
+	// rotational component of the deformation gradient
+	p.createVariable<Matrix3f>("R");
+
+	// matrix used to calculate the differential of R when you change F by a small amount
+	p.createVariable<Matrix3f>("Ginv");
+	
+	// lame parameters
+	p.createVariable<float>("mu");
+	p.createVariable<float>("lambda");
+	
+	// initialize variables:
+	size_t nParticles = p.variable<float>("m").size();
+	p.variable<Matrix3f>("Fp").resize( nParticles, Eigen::Matrix3f::Identity() );
+	p.variable<Matrix3f>("FinvTrans").resize( nParticles, Eigen::Matrix3f::Identity() );
+	p.variable<Matrix3f>("R").resize( nParticles, Eigen::Matrix3f::Identity() );
+	p.variable<Matrix3f>("Ginv").resize( nParticles, Eigen::Matrix3f::Identity() );
+	
+	p.variable<float>("J").resize( nParticles, 1.0f );
+	p.variable<float>("mu").resize( nParticles, m_mu );
+	p.variable<float>("lambda").resize( nParticles, m_lambda );
 }
 
-void SnowConstitutiveModel::setParticles( MaterialPointDataMap& p ) const
+void SnowConstitutiveModel::setParticles( MaterialPointData& p ) const
 {
-	m_particleF = &matrixData( p, "F" );
-	m_particleFinvTrans = &matrixData( p, "FinvTrans" );
-	m_particleR = &matrixData( p, "R" );
-	m_particleGinv = &matrixData( p, "Ginv" );
+	m_particleF = &p.variable<Matrix3f>( "F" );
+	m_particleFinvTrans = &p.variable<Matrix3f>( "FinvTrans" );
+	m_particleR = &p.variable<Matrix3f>( "R" );
+	m_particleGinv = &p.variable<Matrix3f>( "Ginv" );
 	
-	m_particleJ = &scalarData( p, "J" );
-	m_particleMu = &scalarData( p, "mu" );
-	m_particleLambda = &scalarData( p, "lambda" );
+	m_particleJ = &p.variable<float>( "J" );
+	m_particleMu = &p.variable<float>( "mu" );
+	m_particleLambda = &p.variable<float>( "lambda" );
 }
 
 float SnowConstitutiveModel::energyDensity( size_t p ) const

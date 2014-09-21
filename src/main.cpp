@@ -257,9 +257,9 @@ void display()
 	g_sim->advance( g_timeStep, t );
 	glDisable( GL_DEPTH_TEST );
 
-	const std::vector<Eigen::Vector3f>& particleX = g_sim->particleVariable<MpmSim::VectorVariable>( "p" )->m_data;
-	const std::vector<Eigen::Matrix3f>& F = g_sim->particleVariable<MpmSim::MatrixVariable>( "F" )->m_data;
-	const std::vector<float>& volume = g_sim->particleVariable<MpmSim::ScalarVariable>( "volume" )->m_data;
+	const std::vector<Eigen::Vector3f>& particleX = g_sim->particleData.variable<Eigen::Vector3f>( "p" );
+	const std::vector<Eigen::Matrix3f>& F = g_sim->particleData.variable<Eigen::Matrix3f>( "F" );
+	const std::vector<float>& volume = g_sim->particleData.variable<float>( "volume" );
 	
 	for( size_t p = 0; p < particleX.size(); ++p )
 	{

@@ -203,14 +203,14 @@ SOP_MPMSim::initSim(OP_Context &context)
 		if( vVdb )
 		{
 			
-			const std::vector<Eigen::Vector3f>& x = m_sim->particleVariable<MpmSim::VectorVariable>( "p" )->m_data;
-			std::vector<Eigen::Vector3f>& v = m_sim->particleVariable<MpmSim::VectorVariable>( "v" )->m_data;
+			const std::vector<Eigen::Vector3f>& x = m_sim->particleData.variable<Eigen::Vector3f>( "p" );
+			std::vector<Eigen::Vector3f>& v = m_sim->particleData.variable<Eigen::Vector3f>( "v" );
 			for( size_t i=0; i < x.size(); ++i )
 			{
 				UT_Vector3D vdbValue = vVdb->getValueV3( UT_Vector3( x[i][0], x[i][1], x[i][2] ) );
-				v[i][0] = vdbValue.x();
-				v[i][1] = vdbValue.y();
-				v[i][2] = vdbValue.z();
+				v[i][0] = (float)vdbValue.x();
+				v[i][1] = (float)vdbValue.y();
+				v[i][2] = (float)vdbValue.z();
 			}
 		}
 		unlockInput(0);
@@ -347,7 +347,7 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 		}
 	}
 
-	const std::vector<Eigen::Vector3f>& x = m_sim->particleVariable<MpmSim::VectorVariable>( "p" )->m_data;
+	const std::vector<Eigen::Vector3f>& x = m_sim->particleData.variable<Eigen::Vector3f>( "p" );
 	
 	std::cerr << "create " << x.size() << " particles" << std::endl;
 	
