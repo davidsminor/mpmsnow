@@ -2,6 +2,7 @@
 #define MPMSIM_MATERIALPOINTDATA_H
 
 #include <vector>
+#include <map>
 #include <Eigen/Dense>
 
 namespace MpmSim
@@ -28,6 +29,8 @@ public:
 typedef MaterialPointData<float> ScalarData;
 typedef MaterialPointData<Eigen::Vector3f> VectorData;
 typedef MaterialPointData<Eigen::Matrix3f> MatrixData;
+
+typedef std::map< std::string, MaterialPointDataBase* > MaterialPointDataMap;
 
 }
 #endif

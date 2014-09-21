@@ -4,7 +4,7 @@
 #include "tbb/enumerable_thread_specific.h"
 
 #include "ShapeFunction.h"
-#include "Sim.h"
+#include "MaterialPointData.h"
 #include "CollisionObject.h"
 #include "ConstitutiveModel.h"
 
@@ -19,7 +19,7 @@ class Grid
 public:
 
 	Grid(
-		Sim::MaterialPointDataMap& d,
+		MaterialPointDataMap& d,
 		const Sim::IndexList& particleInds,
 		float gridSize,
 		const ShapeFunction& shapeFunction,
@@ -166,7 +166,7 @@ public:
 	const Eigen::Vector3i& n() const;
 	float gridSize() const;
 	
-	Sim::MaterialPointDataMap& m_d;	
+	MaterialPointDataMap& m_d;	
 	Eigen::Vector3f m_frameVelocity;
 
 private:

@@ -21,13 +21,13 @@ class DummyModel : public ConstitutiveModel
 {
 public:
 
-	virtual void createParticleData( Sim::MaterialPointDataMap& p ) const
+	virtual void createParticleData( MaterialPointDataMap& p ) const
 	{}
 	
-	virtual void updateParticleData( Sim::MaterialPointDataMap&  ) const
+	virtual void updateParticleData( MaterialPointDataMap&  ) const
 	{}
 
-	virtual void setParticles( Sim::MaterialPointDataMap& p ) const
+	virtual void setParticles( MaterialPointDataMap& p ) const
 	{}
 	
 	virtual float energyDensity( size_t p ) const

@@ -56,7 +56,7 @@ static void testProcessingPartitions()
 		voxelSize,
 		positions );
 	
-	Sim::MaterialPointDataMap d;
+	MaterialPointDataMap d;
 	d["p"] = positionData;
 	d["v"] = velocityData;
 	d["m"] = massData;
@@ -127,7 +127,7 @@ static void testProcessingPartitions()
 	assert( numPartitionedVoxels == numVoxels );
 	assert( numPartitionedParticles == positions.size() );
 	
-	for( Sim::MaterialPointDataMap::iterator it = d.begin(); it != d.end(); ++it )
+	for( MaterialPointDataMap::iterator it = d.begin(); it != d.end(); ++it )
 	{
 		delete it->second;
 	}
@@ -174,7 +174,7 @@ static void testSplatting()
 		voxelSize,
 		positions );
 	
-	Sim::MaterialPointDataMap d;
+	MaterialPointDataMap d;
 	d["p"] = positionData;
 	d["v"] = velocityData;
 	d["m"] = massData;
@@ -229,7 +229,7 @@ static void testSplatting()
 	// again: should be equal but for numerical shiz:
 	assert( ( particleMomentum - gridMomentum ).norm() / particleMomentum.norm() < 1.e-4 );
 
-	for( Sim::MaterialPointDataMap::iterator it = d.begin(); it != d.end(); ++it )
+	for( MaterialPointDataMap::iterator it = d.begin(); it != d.end(); ++it )
 	{
 		delete it->second;
 	}
@@ -240,7 +240,7 @@ static void testDeformationGradients()
 {
 	std::cerr << "testDeformationGradients()" << std::endl;
 	// unit cube full of particles centered at the origin:
-	Sim::MaterialPointDataMap particleData;
+	MaterialPointDataMap particleData;
 
 	VectorData* p = new VectorData;
 	particleData["p"] = p;
@@ -320,7 +320,7 @@ static void testForces()
 {
 	std::cerr << "testForces()" << std::endl;
 	// create a single particle:
-	Sim::MaterialPointDataMap particleData;
+	MaterialPointDataMap particleData;
 
 	VectorData* p = new VectorData( 1, Eigen::Vector3f::Zero() );
 	particleData["p"] = p;
@@ -503,7 +503,7 @@ void testImplicitUpdate()
 	std::cerr << "testImplicitUpdate()" << std::endl;
 
 	// create some particules:
-	Sim::MaterialPointDataMap particleData;
+	MaterialPointDataMap particleData;
 
 	VectorData* p = new VectorData;
 	particleData["p"] = p;
@@ -774,7 +774,7 @@ void testMovingGrid()
 	std::cerr << "testMovingGrid" << std::endl;
 	
 	// create some particules:
-	Sim::MaterialPointDataMap particleData;
+	MaterialPointDataMap particleData;
 
 	VectorData* p = new VectorData;
 	particleData["p"] = p;
@@ -888,7 +888,7 @@ void testDfiDxi()
 
 	std::cerr << "testForces()" << std::endl;
 	// create a single particle:
-	Sim::MaterialPointDataMap particleData;
+	MaterialPointDataMap particleData;
 
 	VectorData* p = new VectorData( 1, Eigen::Vector3f::Zero() );
 	particleData["p"] = p;

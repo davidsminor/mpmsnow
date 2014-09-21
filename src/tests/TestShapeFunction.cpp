@@ -57,7 +57,7 @@ void testShapeFunction( const ShapeFunction& shapeFunction )
 	std::vector<float>& masses = massData->m_data;
 	Sim::IndexList particleInds;
 	
-	Sim::MaterialPointDataMap d;
+	MaterialPointDataMap d;
 	d["p"] = positionData;
 	d["v"] = velocityData;
 	d["m"] = massData;

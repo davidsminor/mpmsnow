@@ -17,13 +17,13 @@ public:
 			float compressiveStrength,
 			float tensileStrength );
 
-	virtual void createParticleData( Sim::MaterialPointDataMap& p ) const;
+	virtual void createParticleData( MaterialPointDataMap& p ) const;
 
 	// update deformation at particle p:
-	virtual void updateParticleData( Sim::MaterialPointDataMap& p ) const;
+	virtual void updateParticleData( MaterialPointDataMap& p ) const;
 	
 	// prepare to call the following 3 methods:
-	virtual void setParticles( Sim::MaterialPointDataMap& p ) const;
+	virtual void setParticles( MaterialPointDataMap& p ) const;
 
 	// energy density for particle p:
 	virtual float energyDensity( size_t p ) const;

@@ -70,8 +70,6 @@ public:
 	typedef std::vector<IndexList> BodyList;
 	typedef BodyList::iterator BodyIterator;
 	typedef BodyList::const_iterator ConstBodyIterator;
-
-	typedef std::map< std::string, MaterialPointDataBase* > MaterialPointDataMap;
 	
 	// SIM PARTITIONS:
 

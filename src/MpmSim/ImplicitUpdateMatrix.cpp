@@ -4,7 +4,7 @@ using namespace Eigen;
 using namespace MpmSim;
 
 ImplicitUpdateMatrix::ImplicitUpdateMatrix(
-	const Sim::MaterialPointDataMap& d,
+	const MaterialPointDataMap& d,
 	const Grid& g,
 	const ConstitutiveModel& constitutiveModel,
 	const std::vector<const CollisionObject*>& collisionObjects,

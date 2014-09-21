@@ -21,7 +21,7 @@ void Grid::splat( Splatter& s ) const
 template< class T >
 T* Grid::GridSplatter::particleVariable( const std::string& name )
 {
-	Sim::MaterialPointDataMap::iterator it = m_g.m_d.find( name );
+	MaterialPointDataMap::iterator it = m_g.m_d.find( name );
 	if( it == m_g.m_d.end() )
 	{
 		return 0;

@@ -24,7 +24,7 @@ SnowConstitutiveModel::SnowConstitutiveModel(
 	m_lambda = ( youngsModulus * poissonRatio / ( ( 1 + poissonRatio ) * ( 1 - 2 * poissonRatio ) ) );
 }
 
-void SnowConstitutiveModel::updateParticleData( Sim::MaterialPointDataMap& p ) const
+void SnowConstitutiveModel::updateParticleData( MaterialPointDataMap& p ) const
 {
 	std::vector<Eigen::Matrix3f>& particleF = matrixData( p, "F" );
 	std::vector<Eigen::Matrix3f>& particleFplastic = matrixData( p, "Fp" );
@@ -120,7 +120,7 @@ void SnowConstitutiveModel::updateParticleData( Sim::MaterialPointDataMap& p ) c
 	}
 }
 
-void SnowConstitutiveModel::createParticleData( Sim::MaterialPointDataMap& p ) const
+void SnowConstitutiveModel::createParticleData( MaterialPointDataMap& p ) const
 {
 	size_t nParticles = p["p"]->dataSize();
 	p["Fp"] = new MpmSim::MatrixData( nParticles, Eigen::Matrix3f::Identity() );
@@ -133,7 +133,7 @@ void SnowConstitutiveModel::createParticleData( Sim::MaterialPointDataMap& p ) c
 	p["lambda"] = new MpmSim::ScalarData( nParticles, m_lambda );
 }
 
-void SnowConstitutiveModel::setParticles( Sim::MaterialPointDataMap& p ) const
+void SnowConstitutiveModel::setParticles( MaterialPointDataMap& p ) const
 {
 	m_particleF = &matrixData( p, "F" );
 	m_particleFinvTrans = &matrixData( p, "FinvTrans" );

@@ -411,6 +411,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\MpmSim\FlatGrid.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\MpmSim\ForceField.h"
 				>
 			</File>

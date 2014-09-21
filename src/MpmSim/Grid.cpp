@@ -321,7 +321,7 @@ public:
 
 
 Grid::Grid(
-		Sim::MaterialPointDataMap& d,
+		MaterialPointDataMap& d,
 		const Sim::IndexList& particleInds,
 		float gridSize,
 		const ShapeFunction& shapeFunction,
