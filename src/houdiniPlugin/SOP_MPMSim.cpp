@@ -30,7 +30,7 @@ newSopOperator(OP_OperatorTable *table)
 					 SOP_MPMSim::myConstructor,
 					 SOP_MPMSim::myTemplateList,
 					 2,
-					 2,
+					 999,
 					 0));
 }
 
@@ -298,32 +298,40 @@ SOP_MPMSim::cookMySop(OP_Context &context)
 			
 			m_collisionObjects = MpmSim::Sim::CollisionObjectSet();
 			
-			const GU_Detail *collisionsGdp = inputGeo(1);
-			
-			const GEO_PrimVDB *pVdb = 0;
-			const GEO_PrimVDB *vVdb = 0;
-			findVDBs( collisionsGdp, pVdb, vVdb );
-			
-			if( !pVdb )
+			for( size_t i=1; ; ++i )
 			{
-				opError(OP_BAD_OPINPUT_READ, "Couldn't find VDB for collision SDF!");
-				boss->opEnd();
-				unlockInputs();
-				gdp->notifyCache(GU_CACHE_ALL);
-				return error();
+				const GU_Detail *collisionsGdp = inputGeo(i);
+				
+				if( !collisionsGdp )
+				{
+					break;
+				}
+
+				const GEO_PrimVDB *pVdb = 0;
+				const GEO_PrimVDB *vVdb = 0;
+				findVDBs( collisionsGdp, pVdb, vVdb );
+				
+				if( !pVdb )
+				{
+					opError(OP_BAD_OPINPUT_READ, "Couldn't find VDB for collision SDF!");
+					boss->opEnd();
+					unlockInputs();
+					gdp->notifyCache(GU_CACHE_ALL);
+					return error();
+				}
+				
+				if( vVdb )
+				{
+					std::cerr << "found collision vdb with velocity" << std::endl;
+					m_collisionObjects.objects.push_back( new MpmSimHoudini::VDBCollisionObject( pVdb, vVdb ) );
+				}
+				else
+				{
+					m_collisionObjects.objects.push_back( new MpmSimHoudini::VDBCollisionObject( pVdb ) );
+					std::cerr << "found static collision vdb" << std::endl;
+				}
 			}
-			
-			if( vVdb )
-			{
-				std::cerr << "found collision vdb with velocity" << std::endl;
-				m_collisionObjects.objects.push_back( new MpmSimHoudini::VDBCollisionObject( pVdb, vVdb ) );
-			}
-			else
-			{
-				m_collisionObjects.objects.push_back( new MpmSimHoudini::VDBCollisionObject( pVdb ) );
-				std::cerr << "found static collision vdb" << std::endl;
-			}
-			
+
 			std::cerr << m_collisionObjects.objects.size() << " vdb collisions!" << std::endl;
 			
 			for( int i=0; i < steps; ++i )
