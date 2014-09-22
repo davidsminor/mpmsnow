@@ -276,18 +276,6 @@ void Sim::voxelSort(
 	}
 }
 
-static void minMax( float x, float& min, float& max )
-{
-	if( x < min )
-	{
-		min = x;
-	}
-	if( x > max )
-	{
-		max = x;
-	}
-}
-
 void Sim::calculateBodies()
 {
 
