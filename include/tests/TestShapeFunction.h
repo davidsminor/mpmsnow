@@ -6,7 +6,13 @@
 namespace MpmSimTest
 {
 
-void testShapeFunction( const MpmSim::ShapeFunction& shapeFunction );
+class TestShapeFunction
+{
+
+public:
+	static void test( const MpmSim::ShapeFunction& shapeFunction );
+
+};
 
 }
 

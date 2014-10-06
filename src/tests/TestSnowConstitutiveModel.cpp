@@ -14,7 +14,7 @@ using namespace Eigen;
 namespace MpmSimTest
 {
 
-void testSnowConstitutiveModel()
+void TestSnowConstitutiveModel::test()
 {
 	std::cerr << "testSnowConstitutiveModel()" << std::endl;
 	

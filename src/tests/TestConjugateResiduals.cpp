@@ -40,7 +40,7 @@ private:
 namespace MpmSimTest
 {
 
-void testSolve()
+void TestConjugateResiduals::testSolve()
 {
 	std::cerr << "testSolve()" << std::endl;
 	const int matrixSize = 6;
@@ -101,7 +101,7 @@ void testSolve()
 
 }
 
-void testPreconditioner()
+void TestConjugateResiduals::testPreconditioner()
 {
 	std::cerr << "testPreconditioner()" << std::endl;
 	const bool iKnowWhatImDoing( false );
@@ -109,9 +109,9 @@ void testPreconditioner()
 }
 
 
-void testConjugateResiduals()
+void TestConjugateResiduals::test()
 {
-	std::cerr << "testConjugateResiduals()" << std::endl;
+	std::cerr << "TestConjugateResiduals::test()" << std::endl;
 	testSolve();
 	//testPreconditioner();
 }

@@ -3,9 +3,14 @@
 
 namespace MpmSimTest
 {
-
-void testSimClass();
-
+class TestSimClass
+{
+public:
+	static void test();
+private:
+	static void testInitialization();
+	static void testTimestepAdvance();
+};
 }
 
 #endif // MPMSIMTEST_TESTSIMCLASS_H

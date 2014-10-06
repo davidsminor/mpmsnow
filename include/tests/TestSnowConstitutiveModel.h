@@ -4,7 +4,11 @@
 namespace MpmSimTest
 {
 
-void testSnowConstitutiveModel();
+class TestSnowConstitutiveModel
+{
+public:
+	static void test();
+};
 
 }
 

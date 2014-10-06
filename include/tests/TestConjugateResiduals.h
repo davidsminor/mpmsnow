@@ -4,8 +4,14 @@
 namespace MpmSimTest
 {
 
-void testConjugateResiduals();
+class TestConjugateResiduals
+{
+public:
+	static void test();
+private:
+	static void testSolve();
+	static void testPreconditioner();
+};
 
 }
-
 #endif

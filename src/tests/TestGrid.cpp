@@ -18,7 +18,7 @@ using namespace Eigen;
 namespace MpmSimTest
 {
 
-static void testProcessingPartitions()
+void TestGrid::testProcessingPartitions()
 {
 	std::cerr << "testProcessingPartitions()" << std::endl;
 	MaterialPointData d;
@@ -121,7 +121,7 @@ static void testProcessingPartitions()
 	assert( numPartitionedParticles == positions.size() );
 }
 
-static void testSplatting()
+void TestGrid::testSplatting()
 {
 
 	std::cerr << "testSplatting()" << std::endl;
@@ -213,7 +213,7 @@ static void testSplatting()
 }
 
 
-static void testDeformationGradients()
+void TestGrid::testDeformationGradients()
 {
 	std::cerr << "testDeformationGradients()" << std::endl;
 	// unit cube full of particles centered at the origin:
@@ -278,7 +278,7 @@ static void testDeformationGradients()
 }
 
 
-static void testForces()
+void TestGrid::testForces()
 {
 	std::cerr << "testForces()" << std::endl;
 	// create a single particle:
@@ -454,7 +454,7 @@ public:
 };
 
 
-void testImplicitUpdate()
+void TestGrid::testImplicitUpdate()
 {
 	std::cerr << "testImplicitUpdate()" << std::endl;
 
@@ -710,7 +710,7 @@ void testImplicitUpdate()
 	assert( maxNorm < 1.e-6 );
 }
 
-void testMovingGrid()
+void TestGrid::testMovingGrid()
 {
 	std::cerr << "testMovingGrid" << std::endl;
 	
@@ -808,7 +808,7 @@ void testMovingGrid()
 
 }
 
-void testDfiDxi()
+void TestGrid::testDfiDxi()
 {
 
 	std::cerr << "testForces()" << std::endl;
@@ -857,7 +857,7 @@ void testDfiDxi()
 	}
 }
 
-void testGrid()
+void TestGrid::test()
 {
 	std::cerr << "testGrid()" << std::endl;
 	testProcessingPartitions();

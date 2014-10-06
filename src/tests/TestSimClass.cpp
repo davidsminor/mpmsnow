@@ -42,7 +42,7 @@ public:
 
 };
 
-void testInitialization()
+void TestSimClass::testInitialization()
 {
 	std::cerr << "testInitialization()" << std::endl;
 
@@ -109,7 +109,7 @@ void testInitialization()
 	}
 	assert( exceptionThrown );
 
-	int numBallistics = sim.ballisticParticles().size();
+	int numBallistics = (int)sim.ballisticParticles().size();
 	assert( numBallistics == 16 * 16 * 16 );
 	
 	assert( sim.numBodies() == 2 );
@@ -117,7 +117,7 @@ void testInitialization()
 	assert( sim.body( 1 ).size() == 16 * 16 * 16 );
 }
 
-void testTimestepAdvance()
+void TestSimClass::testTimestepAdvance()
 {
 	std::cerr << "testTimestepAdvance()" << std::endl;
 
@@ -181,7 +181,7 @@ void testTimestepAdvance()
 	{
 		v += *it;
 	}
-	v /= velocities.size();
+	v /= (float)velocities.size();
 	
 	assert( fabs( v[0] ) < 1.e-6 );
 	assert( fabs( v[2] ) < 1.e-6 );
@@ -189,7 +189,7 @@ void testTimestepAdvance()
 
 }
 
-void testSimClass()
+void TestSimClass::test()
 {
 	std::cerr << "testSimClass()" << std::endl;
 	testInitialization();

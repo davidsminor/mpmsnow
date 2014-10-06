@@ -11,10 +11,10 @@ using namespace MpmSimTest;
 
 int main(int argc, char** argv)
 {
-	//testShapeFunction( CubicBsplineShapeFunction() );
-	//testConjugateResiduals();
-	//testSnowConstitutiveModel();
-	//testGrid();
-	testSimClass();
+	TestShapeFunction::test( CubicBsplineShapeFunction() );
+	TestConjugateResiduals::test();
+	TestSnowConstitutiveModel::test();
+	TestGrid::test();
+	TestSimClass::test();
 	return 0;
 }

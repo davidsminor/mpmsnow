@@ -14,7 +14,7 @@ static float evaluateShapeFunction( const ShapeFunction& shapeFunction, const Ei
 
 namespace MpmSimTest
 {
-void testShapeFunction( const ShapeFunction& shapeFunction )
+void TestShapeFunction::test( const ShapeFunction& shapeFunction )
 {
 	std::cerr << "testShapeFunction()" << std::endl;
 	assert( shapeFunction.w( (float)shapeFunction.supportRadius() ) == 0. );

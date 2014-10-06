@@ -4,7 +4,19 @@
 namespace MpmSimTest
 {
 
-void testGrid();
+class TestGrid
+{
+public:
+	static void test();
+private:
+	static void testProcessingPartitions();
+	static void testSplatting();
+	static void testDeformationGradients();
+	static void testForces();
+	static void testImplicitUpdate();
+	static void testMovingGrid();
+	static void testDfiDxi();
+};
 
 }
 
