@@ -10,6 +10,11 @@ HoudiniSolveTermination::HoudiniSolveTermination( int maxIters, float tolError, 
 {
 }
 
+bool HoudiniSolveTermination::cancelled() const
+{
+	return m_utInterrupt->opInterrupt();
+}
+
 bool HoudiniSolveTermination::operator()( Eigen::VectorXf& r, int iterationNum ) const
 {
 	if( m_utInterrupt->opInterrupt() )

@@ -14,6 +14,7 @@ public:
 	SquareMagnitudeTermination( int maxIters, float tolError );
 	virtual void init( const ProceduralMatrix& A, const Eigen::VectorXf& b );
 	virtual bool operator()( Eigen::VectorXf& r, int iterationNumber ) const;
+	virtual bool cancelled() const;
 
 private:
 

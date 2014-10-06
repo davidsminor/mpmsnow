@@ -26,3 +26,8 @@ bool SquareMagnitudeTermination::operator()( Eigen::VectorXf& r, int iterationNu
 	std::cerr << iterationNum << ":" << sqrt( rNorm2 ) << " / " << sqrt( m_threshold ) << std::endl;
 	return rNorm2 < m_threshold;
 }
+
+bool SquareMagnitudeTermination::cancelled() const
+{
+	return false;
+}

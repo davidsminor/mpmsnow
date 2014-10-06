@@ -14,6 +14,7 @@ public:
 
 	HoudiniSolveTermination( int maxIters, float tolError, UT_Interrupt* utInterrupt );
 	virtual bool operator()( Eigen::VectorXf& r, int iterationNumber ) const;
+	virtual bool cancelled() const;
 
 private:
 	

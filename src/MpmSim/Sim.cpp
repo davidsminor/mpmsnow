@@ -188,7 +188,12 @@ void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolv
 			termination,
 			d
 		);
-		
+		if( termination.cancelled() )
+		{
+			calculateBodies();
+			return;
+		}
+
 		// transfer the grid velocities back onto the particles:
 		g.updateParticleVelocities();
 		
