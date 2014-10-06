@@ -21,15 +21,15 @@ class DummyModel : public ConstitutiveModel
 {
 public:
 
-	virtual void createParticleData( MaterialPointData& p ) const
-	{}
-	
-	virtual void updateParticleData( MaterialPointData& p ) const
+	virtual void setParticles( MaterialPointData& p )
 	{}
 
-	virtual void setParticles( MaterialPointData& p ) const
+	virtual void createParticleData()
 	{}
 	
+	virtual void updateParticleData()
+	{}
+
 	virtual float energyDensity( size_t p ) const
 	{ return 0; }
 	

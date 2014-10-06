@@ -308,9 +308,8 @@ void TestGrid::testForces()
 		100000.0f	// tensile strength
 	);
 
-	constitutiveModel.createParticleData( particleData );
 	constitutiveModel.setParticles( particleData );
-	constitutiveModel.updateParticleData( particleData );
+	constitutiveModel.updateParticleData();
 
 	Sim::IndexList inds;
 	inds.push_back(0);
@@ -328,7 +327,7 @@ void TestGrid::testForces()
 	// fiddle with F for one of the particles to get it out of equilibrium:
 	std::vector<Eigen::Matrix3f>& F = particleData.variable<Matrix3f>("F");
 	F[0] += 0.01f * Eigen::Matrix3f::Random();
-	constitutiveModel.updateParticleData( particleData );
+	constitutiveModel.updateParticleData();
 	
 	// recompute forces on grid nodes:
 	g.calculateForces( forces, constitutiveModel, forceFields.fields );
@@ -354,7 +353,7 @@ void TestGrid::testForces()
 		}
 		
 		F[0] = Forig;
-		constitutiveModel.updateParticleData( particleData );
+		constitutiveModel.updateParticleData();
 		VectorXf df(g.m_velocities.size());
 		g.m_velocities[i] = dx;
 		g.calculateForceDifferentials(
@@ -370,7 +369,7 @@ void TestGrid::testForces()
 		g.m_velocities[i] = dx;
 		F[0] = Forig;
 		g.updateDeformationGradients( 1.0f );
-		constitutiveModel.updateParticleData( particleData );
+		constitutiveModel.updateParticleData();
 		float ePlus = constitutiveModel.energyDensity( 0 ) * volume[0];
 		g.calculateForces( forcesPerturbed, constitutiveModel, forceFields.fields );
 		
@@ -378,7 +377,7 @@ void TestGrid::testForces()
 		g.m_velocities[i] = -dx;
 		F[0] = Forig;
 		g.updateDeformationGradients( 1.0f );
-		constitutiveModel.updateParticleData( particleData );
+		constitutiveModel.updateParticleData();
 		float eMinus = constitutiveModel.energyDensity( 0 ) * volume[0];
 		g.calculateForces( forcesPerturbedNegative, constitutiveModel, forceFields.fields );
 		
@@ -521,7 +520,6 @@ void TestGrid::testImplicitUpdate()
 		voxelSize,
 		positions );
 	
-	snowModel.createParticleData( particleData );
 	snowModel.setParticles( particleData );
 	Grid g( particleData, inds, gridSize, shapeFunction );
 	g.computeParticleVolumes();
@@ -764,7 +762,6 @@ void TestGrid::testMovingGrid()
 		voxelSize,
 		positions );
 	
-	snowModel.createParticleData( particleData );
 	snowModel.setParticles( particleData );
 	Grid g( particleData, inds, gridSize, shapeFunction, Vector3f( 0, -1, 0 ) );
 	g.computeParticleVolumes();
@@ -829,9 +826,8 @@ void TestGrid::testDfiDxi()
 		100000.0f	// tensile strength
 	);
 
-	constitutiveModel.createParticleData( particleData );
 	constitutiveModel.setParticles( particleData );
-	constitutiveModel.updateParticleData( particleData );
+	constitutiveModel.updateParticleData();
 
 	Sim::IndexList inds;
 	inds.push_back(0);

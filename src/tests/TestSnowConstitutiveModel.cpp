@@ -57,7 +57,7 @@ void TestSnowConstitutiveModel::test()
 	m = m * m;
 	particleF[0] = m;
 	
-	snowModel.updateParticleData( sim.particleData() );
+	snowModel.updateParticleData();
 	
 	// test general matrix decomposition properties:
 	assert( ( particleF[0] * particleFplastic[0] - m * p ).norm() < 1.e-4 );
@@ -70,14 +70,14 @@ void TestSnowConstitutiveModel::test()
 	particleF[0](0,0) = 1.3f;
 	particleF[0](1,1) = 0.8f;
 	
-	snowModel.updateParticleData( sim.particleData() );
+	snowModel.updateParticleData();
 	
 	assert( abs( particleF[0](0,0) - 1.2f ) < 1.e-4 );
 	assert( abs( particleF[0](1,1) - 0.9f ) < 1.e-4 );
 	
 	// identity particle should have zero enegy density and forces:
 	particleF[0] = Matrix3f::Identity();
-	snowModel.updateParticleData( sim.particleData() );
+	snowModel.updateParticleData();
 	assert( snowModel.energyDensity( 0 ) == 0 );
 	assert( snowModel.dEnergyDensitydF( 0 ) == Matrix3f::Zero() );
 	
@@ -85,7 +85,7 @@ void TestSnowConstitutiveModel::test()
 	particleF[0] = AngleAxisf(float(0.25*M_PI), Vector3f::UnitX())
 	  * AngleAxisf(float(0.5*M_PI),  Vector3f::UnitY())
 	  * AngleAxisf(float(0.33*M_PI), Vector3f::UnitZ());
-	snowModel.updateParticleData( sim.particleData() );
+	snowModel.updateParticleData();
 
 	// should also have zero energy density and forces, innit!
 	assert( fabs( snowModel.energyDensity( 0 ) ) < 1.e-6 );
@@ -103,10 +103,9 @@ void TestSnowConstitutiveModel::test()
 	  * AngleAxisf(float(0.33*M_PI), Vector3f::UnitZ());
 
 	Matrix3f originalF = particleF[0];
-	snowModel.updateParticleData( sim.particleData() );
+	snowModel.updateParticleData();
 	
 	// work out dedf with model:
-	snowModel.setParticles( sim.particleData() );
 	Matrix3f dEdF = snowModel.dEnergyDensitydF( 0 );
 
 	// compare to finite difference version:
@@ -118,12 +117,12 @@ void TestSnowConstitutiveModel::test()
 		{
 			particleF[0] = originalF;
 			particleF[0](i,j) += delta;
-			snowModel.updateParticleData( sim.particleData() );
+			snowModel.updateParticleData();
 			float ePlusDeltaE = snowModel.energyDensity( 0 );
 			
 			particleF[0] = originalF;
 			particleF[0](i,j) -= delta;
-			snowModel.updateParticleData( sim.particleData() );
+			snowModel.updateParticleData();
 			float eMinusDeltaE = snowModel.energyDensity( 0 );
 
 			dEdF_fd( i, j ) = ( ePlusDeltaE - eMinusDeltaE ) / ( 2 * delta );
@@ -136,14 +135,14 @@ void TestSnowConstitutiveModel::test()
 	
 	// now work out "force differential density" (maybe there's a better name for that...)
 	particleF[0] = originalF;
-	snowModel.updateParticleData( sim.particleData() );
+	snowModel.updateParticleData();
 	
 	Matrix3f dF = Matrix3f::Random() * 0.001f;
 	Matrix3f dEdFDifferential = snowModel.dEdFDifferential( dF, 0 );
 	
 	// compare with finite difference:
 	particleF[0] += dF;
-	snowModel.updateParticleData( sim.particleData() );
+	snowModel.updateParticleData();
 	Matrix3f plusDelta = snowModel.dEnergyDensitydF( 0 );
 	
 	Matrix3f dEdFDifferential_fd = plusDelta - dEdF;

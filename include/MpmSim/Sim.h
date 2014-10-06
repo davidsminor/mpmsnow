@@ -57,7 +57,7 @@ public:
 		const std::vector<float>& masses,
 		float gridSize,
 		const ShapeFunction& shapeFunction,
-		const ConstitutiveModel& model,
+		ConstitutiveModel& model,
 		const CollisionObjectSet& collisionObjects,
 		const ForceFieldSet& forceFields,
 		int dimension=3
@@ -100,7 +100,7 @@ private:
 	const ShapeFunction& m_shapeFunction;
 
 	// constitutive model governing the material physics
-	const ConstitutiveModel& m_constitutiveModel;
+	ConstitutiveModel& m_constitutiveModel;
 	
 	// collision objects:
 	const CollisionObjectSet& m_collisionObjects;

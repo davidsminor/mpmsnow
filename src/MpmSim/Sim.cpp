@@ -100,7 +100,7 @@ Sim::Sim(
 	const std::vector<float>& masses,
 	float gridSize,
 	const ShapeFunction& shapeFunction,
-	const ConstitutiveModel& model,
+	ConstitutiveModel& model,
 	const CollisionObjectSet& collisionObjects,
 	const ForceFieldSet& forceFields,
 	int dimension
@@ -118,7 +118,6 @@ Sim::Sim(
 	m_particleData.variable<float>("m") = masses;
 	m_particleData.variable<float>("volume").resize( x.size(), 0.0f );
 	
-	m_constitutiveModel.createParticleData( m_particleData );
 	m_constitutiveModel.setParticles( m_particleData );
 	
 	calculateBodies();
@@ -195,7 +194,7 @@ void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolv
 		
 		// update particle deformation gradients:
 		g.updateDeformationGradients( timeStep );
-		m_constitutiveModel.updateParticleData( m_particleData );
+		m_constitutiveModel.updateParticleData();
 		
 	}
 	

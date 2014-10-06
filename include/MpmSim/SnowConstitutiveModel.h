@@ -16,14 +16,11 @@ public:
 			float hardening,
 			float compressiveStrength,
 			float tensileStrength );
-
-	virtual void createParticleData( MaterialPointData& p ) const;
-
-	// update deformation at particle p:
-	virtual void updateParticleData( MaterialPointData& p ) const;
 	
-	// prepare to call the following 3 methods:
-	virtual void setParticles( MaterialPointData& p ) const;
+	virtual void setParticles( MaterialPointData& p );
+	
+	// update deformation at particle p:
+	virtual void updateParticleData();
 
 	// energy density for particle p:
 	virtual float energyDensity( size_t p ) const;
@@ -47,15 +44,17 @@ private:
 
 	float m_mu;
 	float m_lambda;
-
-	mutable const std::vector<Eigen::Matrix3f>* m_particleF;
-	mutable const std::vector<Eigen::Matrix3f>* m_particleR;
-	mutable const std::vector<Eigen::Matrix3f>* m_particleFinvTrans;
-	mutable const std::vector<Eigen::Matrix3f>* m_particleGinv;
 	
-	mutable const std::vector<float>* m_particleJ;
-	mutable const std::vector<float>* m_particleMu;
-	mutable const std::vector<float>* m_particleLambda;
+	MaterialPointData* m_p;
+
+	std::vector<Eigen::Matrix3f>* m_particleF;
+	std::vector<Eigen::Matrix3f>* m_particleR;
+	std::vector<Eigen::Matrix3f>* m_particleFinvTrans;
+	std::vector<Eigen::Matrix3f>* m_particleGinv;
+	
+	std::vector<float>* m_particleJ;
+	std::vector<float>* m_particleMu;
+	std::vector<float>* m_particleLambda;
 	
 };
 

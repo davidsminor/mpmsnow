@@ -14,15 +14,12 @@ public:
 
 	virtual ~ConstitutiveModel() {}
 	
-	// create extra particle variables specific to this constitutive model:
-	virtual void createParticleData( MaterialPointData& p ) const = 0;
+	// set up particles: must be called before using the following methods
+	virtual void setParticles( MaterialPointData& p ) = 0;
 	
 	// constitutive model specific update step, so you can track things like plastic deformation and
 	// history dependant material properties:
-	virtual void updateParticleData( MaterialPointData& p ) const = 0;
-	
-	// set up particles: must be called before using the following 3 methods
-	virtual void setParticles( MaterialPointData& p ) const = 0;
+	virtual void updateParticleData() = 0;
 	
 	// energy density for particle p:
 	virtual float energyDensity( size_t p ) const = 0;

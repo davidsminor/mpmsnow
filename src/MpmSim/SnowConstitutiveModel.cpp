@@ -24,17 +24,17 @@ SnowConstitutiveModel::SnowConstitutiveModel(
 	m_lambda = ( youngsModulus * poissonRatio / ( ( 1 + poissonRatio ) * ( 1 - 2 * poissonRatio ) ) );
 }
 
-void SnowConstitutiveModel::updateParticleData( MaterialPointData& p ) const
+void SnowConstitutiveModel::updateParticleData()
 {
-	std::vector<Eigen::Matrix3f>& particleF = p.variable<Matrix3f>( "F" );
-	std::vector<Eigen::Matrix3f>& particleFplastic = p.variable<Matrix3f>( "Fp" );
-	std::vector<Eigen::Matrix3f>& particleFinvTrans = p.variable<Matrix3f>( "FinvTrans" );
-	std::vector<Eigen::Matrix3f>& particleR = p.variable<Matrix3f>( "R" );
-	std::vector<Eigen::Matrix3f>& particleGinv = p.variable<Matrix3f>( "Ginv" );
+	std::vector<Eigen::Matrix3f>& particleF = m_p->variable<Matrix3f>( "F" );
+	std::vector<Eigen::Matrix3f>& particleFplastic = m_p->variable<Matrix3f>( "Fp" );
+	std::vector<Eigen::Matrix3f>& particleFinvTrans = m_p->variable<Matrix3f>( "FinvTrans" );
+	std::vector<Eigen::Matrix3f>& particleR = m_p->variable<Matrix3f>( "R" );
+	std::vector<Eigen::Matrix3f>& particleGinv = m_p->variable<Matrix3f>( "Ginv" );
 	
-	std::vector<float>& particleJ = p.variable<float>( "J" );
-	std::vector<float>& particleMu = p.variable<float>( "mu" );
-	std::vector<float>& particleLambda = p.variable<float>( "lambda" );
+	std::vector<float>& particleJ = m_p->variable<float>( "J" );
+	std::vector<float>& particleMu = m_p->variable<float>( "mu" );
+	std::vector<float>& particleLambda = m_p->variable<float>( "lambda" );
 	
 	for( size_t p=0; p < particleF.size(); ++p )
 	{
@@ -120,42 +120,44 @@ void SnowConstitutiveModel::updateParticleData( MaterialPointData& p ) const
 	}
 }
 
-void SnowConstitutiveModel::createParticleData( MaterialPointData& p ) const
+void SnowConstitutiveModel::setParticles( MaterialPointData& p )
 {
+	m_p = &p;
+	
+	
 	// create variables:
 	// plastic deformation:
-	p.createVariable<Matrix3f>("Fp");
+	m_p->createVariable<Matrix3f>("Fp");
 
 	// inverse transpose of the deformation gradient:
-	p.createVariable<Matrix3f>("FinvTrans");
+	m_p->createVariable<Matrix3f>("FinvTrans");
 	
 	// jacobian of the deformation gradient:
-	p.createVariable<float>("J");
+	m_p->createVariable<float>("J");
 
 	// rotational component of the deformation gradient
-	p.createVariable<Matrix3f>("R");
+	m_p->createVariable<Matrix3f>("R");
 
 	// matrix used to calculate the differential of R when you change F by a small amount
-	p.createVariable<Matrix3f>("Ginv");
+	m_p->createVariable<Matrix3f>("Ginv");
 	
 	// lame parameters
-	p.createVariable<float>("mu");
-	p.createVariable<float>("lambda");
+	m_p->createVariable<float>("mu");
+	m_p->createVariable<float>("lambda");
 	
 	// initialize variables:
-	size_t nParticles = p.variable<float>("m").size();
-	p.variable<Matrix3f>("Fp").resize( nParticles, Eigen::Matrix3f::Identity() );
-	p.variable<Matrix3f>("FinvTrans").resize( nParticles, Eigen::Matrix3f::Identity() );
-	p.variable<Matrix3f>("R").resize( nParticles, Eigen::Matrix3f::Identity() );
-	p.variable<Matrix3f>("Ginv").resize( nParticles, Eigen::Matrix3f::Identity() );
+	size_t nParticles = m_p->variable<float>("m").size();
+	m_p->variable<Matrix3f>("Fp").resize( nParticles, Eigen::Matrix3f::Identity() );
+	m_p->variable<Matrix3f>("FinvTrans").resize( nParticles, Eigen::Matrix3f::Identity() );
+	m_p->variable<Matrix3f>("R").resize( nParticles, Eigen::Matrix3f::Identity() );
+	m_p->variable<Matrix3f>("Ginv").resize( nParticles, Eigen::Matrix3f::Identity() );
 	
-	p.variable<float>("J").resize( nParticles, 1.0f );
-	p.variable<float>("mu").resize( nParticles, m_mu );
-	p.variable<float>("lambda").resize( nParticles, m_lambda );
-}
-
-void SnowConstitutiveModel::setParticles( MaterialPointData& p ) const
-{
+	m_p->variable<float>("J").resize( nParticles, 1.0f );
+	m_p->variable<float>("mu").resize( nParticles, m_mu );
+	m_p->variable<float>("lambda").resize( nParticles, m_lambda );
+	
+	
+	// keep some pointers around for convenience/performance reasons:
 	m_particleF = &p.variable<Matrix3f>( "F" );
 	m_particleFinvTrans = &p.variable<Matrix3f>( "FinvTrans" );
 	m_particleR = &p.variable<Matrix3f>( "R" );
