@@ -7,8 +7,13 @@ namespace MpmSimTest
 class TestGrid
 {
 public:
+
 	static void test();
+
 private:
+
+	class ImplicitUpdateRecord;
+
 	static void testProcessingPartitions();
 	static void testSplatting();
 	static void testDeformationGradients();

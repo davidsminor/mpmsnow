@@ -68,7 +68,7 @@ void TestConjugateResiduals::testSolve()
 	// test residuals always decrease in norm:
 	for( int i=1; i < matrixSize; ++i )
 	{
-		assert( solver.residuals[i].squaredNorm() < solver.residuals[i-1].squaredNorm() );
+		assert( solver.m_residuals[i].squaredNorm() < solver.m_residuals[i-1].squaredNorm() );
 	}
 	
 	// test A orthogonality of residuals:
@@ -77,7 +77,7 @@ void TestConjugateResiduals::testSolve()
 		for( int j=0; j < matrixSize; ++j )
 		{
 			VectorXf test( matrixSize );
-			float f = fabs( solver.residuals[ i ].dot( A * solver.residuals[ j ] ) );
+			float f = fabs( solver.m_residuals[ i ].dot( A * solver.m_residuals[ j ] ) );
 			if( i != j )
 			{
 				assert( f < 1.e-4 );
@@ -91,7 +91,7 @@ void TestConjugateResiduals::testSolve()
 		for( int j=0; j < matrixSize; ++j )
 		{
 			VectorXf test( matrixSize );
-			float f = fabs( ( A * solver.searchDirections[ i ] ).dot( A * solver.searchDirections[ j ] ) );
+			float f = fabs( ( A * solver.m_searchDirections[ i ] ).dot( A * solver.m_searchDirections[ j ] ) );
 			if( i != j )
 			{
 				assert( f < 1.e-4 );

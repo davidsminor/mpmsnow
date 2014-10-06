@@ -10,6 +10,12 @@
 
 #include <Eigen/Dense>
 
+namespace MpmSimTest
+{
+class TestGrid;
+class TestShapeFunction;
+}
+
 namespace MpmSim
 {
 
@@ -27,9 +33,6 @@ public:
 		int dimension = 3
 	);
 	
-	// map grid coordinates to cell index:
-	int coordsToIndex( int i, int j, int k ) const;
-	
 	// work out particle volumes:
 	void computeParticleVolumes() const;
 
@@ -39,7 +42,7 @@ public:
 		const ConstitutiveModel& constitutiveModel,
 		const Sim::CollisionObjectSet& collisionObjects,
 		const std::vector<const ForceField*>& fields,
-		const LinearSolver& implicitSolver,
+		TerminationCriterion& termination,
 		LinearSolver::Debug* d = 0
 	);
 	
@@ -48,42 +51,19 @@ public:
 	
 	// transfer grid velocities to particles:
 	void updateParticleVelocities();
-
-	typedef std::vector< std::pair<Sim::ConstIndexIterator, Sim::ConstIndexIterator> > PartitionList;
-	const PartitionList& partition( int i, int j, int k ) const;
 	
-	void calculateExplicitMomenta(
-		Eigen::VectorXf& explicitMomenta,
-		std::vector<char>& nodeCollided,
-		float timeStep,
-		const ConstitutiveModel& constitutiveModel,
-		const Sim::CollisionObjectSet& collisionObjects,
-		const std::vector<const ForceField*>& fields
-	);
-
-	void collisionVelocities(
-		Eigen::VectorXf& vc,
-		const std::vector<const CollisionObject*>& collisionObjects,
-		const std::vector<char>& nodeCollided
-	) const;
+private:
 	
-	void calculateForces(
-		Eigen::VectorXf& forces, 
-		const ConstitutiveModel& constitutiveModel,
-		const std::vector<const ForceField*>& fields ) const;
+	// classes used by updateGridVelocities() in the implicit velocity solve:
+	class ImplicitUpdateMatrix;
+	class DiagonalPreconditioner;
 
-	void calculateForceDifferentials(
-		Eigen::VectorXf& df,
-		const Eigen::VectorXf& dx,
-		const ConstitutiveModel& constitutiveModel,
-		const std::vector<const ForceField*>& fields ) const;
+	// map grid coordinates to cell index:
+	int coordsToIndex( int i, int j, int k ) const;
 	
-	void dForceidXi(
-		Eigen::VectorXf& dfdxi, 
-		const ConstitutiveModel& constitutiveModel ) const;
-
-	// iterator for looping over all the points whose shape function
-	// p is in the support of:
+	// the ShapeFunctionIterator is a class for iterating over all grid nodes
+	// which have a specified point in their support, and evaluating the corresponding
+	// shape functions and their derivatives at that point.
 	class ShapeFunctionIterator
 	{
 	public:
@@ -119,77 +99,123 @@ public:
 		
 	};
 	
-	// grabs a shape function iterator
+	// thread specific storage for shape function iterators
+	mutable tbb::enumerable_thread_specific< std::auto_ptr< ShapeFunctionIterator > > m_shapeFunctionIterators;
+
+	// grabs a shape function iterator for this thread
 	ShapeFunctionIterator& shapeFunctionIterator() const;
 	
-	Eigen::VectorXf masses;
-	Eigen::VectorXf velocities;
-	Eigen::VectorXf prevVelocities;
-	
-	// class for splatting quantities like mass onto the grid in paralell:
-	class GridSplatter
-	{
-		public:
-			GridSplatter(
-				const Grid& g,
-				Eigen::VectorXf& result
-			);
-			
-			virtual ~GridSplatter() {}
-			
-			void setPartition( int i, int j, int k );
+	// class for splatting quantities like mass onto the grid in paralell, using the shape function iterator:
+	class GridSplatter;
 
-			void operator()(const tbb::blocked_range<int> &r) const;
-
-		protected:
-
-			virtual void splat(
-				Sim::ConstIndexIterator begin,
-				Sim::ConstIndexIterator end,
-				Eigen::VectorXf& result ) const = 0;
-
-			const Grid& m_g;
-
-		private:
-
-			const PartitionList* m_partition;
-			mutable Eigen::VectorXf& m_result;
-			const void* m_args;
-
-	};
-	
-	const Eigen::Vector3f& minCoord() const;
-	const Eigen::Vector3f& maxCoord() const;
-	const Eigen::Vector3i& n() const;
-	float gridSize() const;
-	
-	MaterialPointData& m_d;	
-	Eigen::Vector3f m_frameVelocity;
-
-private:
-	
+	// splat a quantity onto the grid in paralell using the supplied splatter object
 	template< class Splatter >
 	void splat( Splatter& s ) const;
 	
-	const Sim::IndexList& m_particleInds;
-	float m_gridSize;
-	const ShapeFunction& m_shapeFunction;
-	int m_dimension;
+
+	// Paralell splatting requires that the particles be partitioned into chunks that can be processed in
+	// paralell with the guarantee that the regions we write onto don't overlap. We do this by dividing
+	// space up into voxels twice the size of the shape function's support radius, then taking all the
+	// voxels that can be indexed (2i, 2j, 2k) for integers i,j and k as the first partition, all 
+	// (2i+1,2j,2k) voxels as the second partition, etc for all the 8 possible offsets. That way we can
+	// process all the particles in the first partition's voxels in paralell (seeing as no shape function
+	// can possibly touch more than one of them) then we move onto the second partition, etc.
 	
+	// sort the specified index range in such a way that contiguous particles are in the same
+	// voxel as described above.
+	static void voxelSort(
+		Sim::IndexIterator begin,
+		Sim::IndexIterator end,
+		float voxelSize,
+		const std::vector<Eigen::Vector3f>& particleX,
+		int dim=0 );
+
+	// This variable consists of eight lists of voxels corresponding to the eight partitions described above
+	typedef std::vector< std::pair<Sim::ConstIndexIterator, Sim::ConstIndexIterator> > ParticlesInVoxelList;
+	ParticlesInVoxelList m_processingPartitions[2][2][2];
+	
+	
+	// compute m_processingPartitions:
+	void computeProcessingPartitions();
+		
+	// splatters for transferring mass and velocity onto the grid:
+	class MassSplatter;
+	class VelocitySplatter;
+
+	
+	// grid physics:
+	
+	// calculate the forces on all the grid nodes by considering how moving each node
+	// will deform the particles in its shape function's support, and alter their energy
+	// content:
+	class ForceSplatter;
+	void calculateForces(
+		Eigen::VectorXf& forces, 
+		const ConstitutiveModel& constitutiveModel,
+		const std::vector<const ForceField*>& fields ) const;
+	
+	// calculate the change in the forces on the grid nodes if their positions are offset
+	// by df. Used in the implicit solve:
+	class ForceDifferentialSplatter;
+	void calculateForceDifferentials(
+		Eigen::VectorXf& df,
+		const Eigen::VectorXf& dx,
+		const ConstitutiveModel& constitutiveModel,
+		const std::vector<const ForceField*>& fields ) const;
+	
+	// work out momenta in next frame using explicit Euler: calculate forces in this frame,
+	// multiply by the time step and add onto the existing momenta
+	void calculateExplicitMomenta(
+		Eigen::VectorXf& explicitMomenta,
+		std::vector<char>& nodeCollided,
+		float timeStep,
+		const ConstitutiveModel& constitutiveModel,
+		const Sim::CollisionObjectSet& collisionObjects,
+		const std::vector<const ForceField*>& fields
+	);
+	
+	// velocities of the collision objects, for the cells in which they're active:
+	void collisionVelocities(
+		Eigen::VectorXf& vc,
+		const std::vector<const CollisionObject*>& collisionObjects,
+		const std::vector<char>& nodeCollided
+	) const;
+	
+	// calculate how much the force changes for each node/axis per unit displacement
+	// for that node on that axis. I'm currently trying to use this to make the implicit
+	// solve converge faster:
+	class dFidXiSplatter;
+	void dForceidXi(
+		Eigen::VectorXf& dfdxi, 
+		const ConstitutiveModel& constitutiveModel ) const;
+	
+	// particle info:
+	MaterialPointData& m_d;	
+	Sim::IndexList m_particleInds;
+	
+	// grid variables:
+	Eigen::VectorXf m_masses;
+	Eigen::VectorXf m_velocities;
+	Eigen::VectorXf m_prevVelocities;
+	std::vector<char> m_nodeCollided;
+	
+	// shape function we're using for this grid:
+	const ShapeFunction& m_shapeFunction;
+	
+	// grid geometry:
+	float m_gridSize;
 	Eigen::Vector3f m_min;
 	Eigen::Vector3f m_max;
 	Eigen::Vector3i m_n;
+	int m_dimension;
 	
-	void computeProcessingPartitions();
-	PartitionList m_processingPartitions[2][2][2];
+	// grid motion:
+	Eigen::Vector3f m_frameVelocity;
 
-	friend class ImplicitUpdateMatrix;
-	std::vector<char> m_nodeCollided;
+	friend class MpmSimTest::TestGrid;
+	friend class MpmSimTest::TestShapeFunction;
 	
-	static inline void minMax( float x, float& min, float& max );
-	inline int fixDim( float& min, float& max ) const;
 	
-	mutable tbb::enumerable_thread_specific< std::auto_ptr< ShapeFunctionIterator > > m_shapeFunctionIterators;
 };
 
 } // namespace MpmSim

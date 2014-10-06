@@ -89,19 +89,19 @@ void TestSimClass::testInitialization()
 	Sim sim( positions, masses, gridSize, shapeFunction, constitutiveModel, collisionObjects, forceFields );
 	
 	// sensible particle variables?
-	assert( sim.numParticleVariables() == 5 );
+	assert( sim.particleData().numVariables() == 5 );
 
 	// these throw exceptions if the requested items don't exist:
-	sim.particleData.variable<float>("m");
-	sim.particleData.variable<float>("volume");
-	sim.particleData.variable<Eigen::Vector3f>("v");
-	sim.particleData.variable<Eigen::Vector3f>("p");
-	sim.particleData.variable<Eigen::Matrix3f>("F");
+	sim.particleData().variable<float>("m");
+	sim.particleData().variable<float>("volume");
+	sim.particleData().variable<Eigen::Vector3f>("v");
+	sim.particleData().variable<Eigen::Vector3f>("p");
+	sim.particleData().variable<Eigen::Matrix3f>("F");
 	
 	bool exceptionThrown(false);
 	try
 	{
-		sim.particleData.variable<float>("Fiddlesticks");
+		sim.particleData().variable<float>("Fiddlesticks");
 	}
 	catch( ... )
 	{
@@ -109,12 +109,12 @@ void TestSimClass::testInitialization()
 	}
 	assert( exceptionThrown );
 
-	int numBallistics = (int)sim.ballisticParticles().size();
+	int numBallistics = (int)sim.m_ballisticParticles.size();
 	assert( numBallistics == 16 * 16 * 16 );
 	
-	assert( sim.numBodies() == 2 );
-	assert( sim.body( 0 ).size() == 16 * 16 * 16 );
-	assert( sim.body( 1 ).size() == 16 * 16 * 16 );
+	assert( sim.m_bodies.size() == 2 );
+	assert( sim.m_bodies[0].size() == 16 * 16 * 16 );
+	assert( sim.m_bodies[1].size() == 16 * 16 * 16 );
 }
 
 void TestSimClass::testTimestepAdvance()
@@ -175,7 +175,7 @@ void TestSimClass::testTimestepAdvance()
 	sim.advance( 0.01f, t );
 	
 	// average velocity should be about 0.03 now, innit
-	const std::vector<Eigen::Vector3f>& velocities = sim.particleData.variable<Eigen::Vector3f>( "v" );
+	const std::vector<Eigen::Vector3f>& velocities = sim.particleData().variable<Eigen::Vector3f>( "v" );
 	Eigen::Vector3f v = Eigen::Vector3f::Zero();
 	for( std::vector<Eigen::Vector3f>::const_iterator it = velocities.begin(); it != velocities.end(); ++it )
 	{

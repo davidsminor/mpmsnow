@@ -3,7 +3,6 @@
 #include "MpmSim/ForceField.h"
 #include "MpmSim/ConstitutiveModel.h"
 #include "MpmSim/Grid.h"
-#include "MpmSim/DiagonalPreconditioner.h"
 #include "MpmSim/ConjugateResiduals.h"
 #include "MpmSim/KdTree.h"
 
@@ -113,30 +112,35 @@ Sim::Sim(
 	m_forceFields( forceFields ),
 	m_dimension( dimension )
 {	
-	particleData.variable<Vector3f>("p") = x;
-	particleData.variable<Vector3f>("v").resize( x.size(), Vector3f::Zero() );
-	particleData.variable<Matrix3f>("F").resize( x.size(), Matrix3f::Identity() );
-	particleData.variable<float>("m") = masses;
-	particleData.variable<float>("volume").resize( x.size(), 0.0f );
+	m_particleData.variable<Vector3f>("p") = x;
+	m_particleData.variable<Vector3f>("v").resize( x.size(), Vector3f::Zero() );
+	m_particleData.variable<Matrix3f>("F").resize( x.size(), Matrix3f::Identity() );
+	m_particleData.variable<float>("m") = masses;
+	m_particleData.variable<float>("volume").resize( x.size(), 0.0f );
 	
-	m_constitutiveModel.createParticleData( particleData );
-	m_constitutiveModel.setParticles( particleData );
+	m_constitutiveModel.createParticleData( m_particleData );
+	m_constitutiveModel.setParticles( m_particleData );
 	
 	calculateBodies();
 	
 	for( std::vector< IndexList >::iterator it = m_bodies.begin(); it != m_bodies.end(); ++it )
 	{
 		IndexList& b = *it;
-		Grid g( particleData, b, gridSize, shapeFunction, Eigen::Vector3f::Zero(),m_dimension );
+		Grid g( m_particleData, b, gridSize, shapeFunction, Eigen::Vector3f::Zero(),m_dimension );
 		g.computeParticleVolumes();
 	}
 }
 
+MaterialPointData& Sim::particleData()
+{
+	return m_particleData;
+}
+
 void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolver::Debug* d )
 {
-	std::vector<Eigen::Vector3f>& particleX = particleData.variable<Vector3f>( "p" );
-	std::vector<Eigen::Vector3f>& particleV = particleData.variable<Vector3f>( "v" );
-	std::vector<float>& particleMasses = particleData.variable<float>( "m" );
+	std::vector<Eigen::Vector3f>& particleX = m_particleData.variable<Vector3f>( "p" );
+	std::vector<Eigen::Vector3f>& particleV = m_particleData.variable<Vector3f>( "v" );
+	std::vector<float>& particleMasses = m_particleData.variable<float>( "m" );
 	
 	// advance ballistic particle velocities:
 	std::cerr << m_ballisticParticles.size() << " ballistic" << std::endl;
@@ -174,29 +178,24 @@ void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolv
 		centreOfMassVelocity /= mass;
 		
 		// construct comoving background grid for this body:
-		Grid g( particleData, *bIt, m_gridSize, m_shapeFunction, centreOfMassVelocity, m_dimension );
+		Grid g( m_particleData, *bIt, m_gridSize, m_shapeFunction, centreOfMassVelocity, m_dimension );
 		
 		// update grid velocities using internal stresses...
-		DiagonalPreconditioner preconditioner( g, m_constitutiveModel, timeStep );
-		ConjugateResiduals solver( termination, &preconditioner );
-
-		//ConjugateResiduals solver( termination );
 		g.updateGridVelocities(
 			timeStep,
 			m_constitutiveModel,
 			m_collisionObjects,
 			m_forceFields.fields,
-			solver,
+			termination,
 			d
 		);
 		
 		// transfer the grid velocities back onto the particles:
 		g.updateParticleVelocities();
-		// \todo: apply collisions. Or can I just apply them all at once at the end?
 		
 		// update particle deformation gradients:
 		g.updateDeformationGradients( timeStep );
-		m_constitutiveModel.updateParticleData( particleData );
+		m_constitutiveModel.updateParticleData( m_particleData );
 		
 	}
 	
@@ -214,73 +213,11 @@ void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolv
 	calculateBodies();
 }
 
-size_t Sim::numParticleVariables() const
-{
-	return particleData.numVariables();
-}
-
-
-// used for sorting a list of points by their positions on the "dim" axis
-class SpatialComparator
-{
-public:
-	
-	SpatialComparator( int dim, const std::vector< Eigen::Vector3f >& x ) :
-		m_dim( dim ), m_x( x )
-	{
-	}
-	
-	bool operator()( int a, int b )
-	{
-		return m_x[a][m_dim] < m_x[b][m_dim];
-	}
-
-private:
-	int m_dim;
-	const std::vector< Eigen::Vector3f >& m_x;
-};
-
-void Sim::voxelSort(
-	IndexIterator begin,
-	IndexIterator end,
-	float voxelSize,
-	const std::vector<Eigen::Vector3f>& particleX,
-	int dim )
-{
-	// sort along dim:
-	std::sort( begin, end, SpatialComparator( dim, particleX ) );
-
-	if( dim == 2 )
-	{
-		// got to z coord - done!
-		return;
-	}
-	
-	// now chop into slices along dim, and sort each slice along dim + 1:
-	int currentSlice = int( floor( particleX[*begin][dim] / voxelSize ) );
-	std::vector<int>::iterator sliceBegin = begin;
-	std::vector<int>::iterator sliceEnd = begin + 1;
-	for( ;;++sliceEnd )
-	{
-		int particleSlice = sliceEnd == end ? currentSlice + 1 : int( floor( particleX[*sliceEnd][dim] / voxelSize ) );
-		if( particleSlice != currentSlice )
-		{
-			voxelSort( sliceBegin, sliceEnd, voxelSize, particleX, dim + 1 );
-			if( sliceEnd == end )
-			{
-				break;
-			}
-			sliceBegin = sliceEnd;
-			currentSlice = particleSlice;
-		}
-	}
-}
-
 void Sim::calculateBodies()
 {
 
-	const std::vector<Eigen::Vector3f>& particleV = particleData.variable<Vector3f>("v");
-	std::vector<Eigen::Vector3f>& particleX = particleData.variable<Vector3f>("p");
+	const std::vector<Eigen::Vector3f>& particleV = m_particleData.variable<Vector3f>("v");
+	std::vector<Eigen::Vector3f>& particleX = m_particleData.variable<Vector3f>("p");
 	
 	m_bodies.clear();
 	m_ballisticParticles.clear();
@@ -342,9 +279,6 @@ void Sim::calculateBodies()
 				flood.push( (int)(nearNeighbours[j] - particleX.begin()));
 			}
 		}
-
-		// sort the spatial index so particles in the same voxel are adjacent:
-		voxelSort( b.begin(), b.end(), 2 * m_shapeFunction.supportRadius() * m_gridSize, particleX );
 	}
 }
 
@@ -373,25 +307,3 @@ void Sim::ForceFieldSet::add( ForceField* f )
 {
 	fields.push_back( f );
 }
-
-size_t Sim::numBodies() const
-{
-	return m_bodies.size();
-}
-
-// particle indices in body n:
-const Sim::IndexList& Sim::body( size_t n ) const
-{
-	if( n >= m_bodies.size() )
-	{
-		throw std::runtime_error( "Sim::body(): index exceeds number of bodies" );
-	}
-	return m_bodies[n];
-}
-
-// particle indices for the ballistic particles:
-const Sim::IndexList& Sim::ballisticParticles() const
-{
-	return m_ballisticParticles;
-}
-

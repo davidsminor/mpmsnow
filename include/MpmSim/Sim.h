@@ -12,6 +12,11 @@
 #include <map>
 #include <memory>
 
+namespace MpmSimTest
+{
+class TestSimClass;
+}
+
 namespace MpmSim
 {
 
@@ -58,49 +63,27 @@ public:
 		int dimension=3
 	);
 	
+	// accessor for particle data:
+	MaterialPointData& particleData();
+
 	// complete a full simulation time step:
 	void advance( float timeStep, TerminationCriterion& terminationCriterion, LinearSolver::Debug* d = 0 );
-
+	
 	typedef std::vector<int> IndexList;
 	typedef IndexList::iterator IndexIterator;
 	typedef IndexList::const_iterator ConstIndexIterator;
-
+	
 	typedef std::vector<IndexList> BodyList;
 	typedef BodyList::iterator BodyIterator;
 	typedef BodyList::const_iterator ConstBodyIterator;
 	
-	// SIM PARTITIONS:
-
-	// number of contiguous bodies:
-	size_t numBodies() const;
-	
-	// particle indices in body n:
-	const IndexList& body( size_t n ) const;
-	
-	// particle indices for the ballistic particles:
-	const IndexList& ballisticParticles() const;
-	
-	// PARTICLE VARIABLES:
-
-	// number of variables per particle:
-	size_t numParticleVariables() const;
-	
-	// material point data for all the particles
-	MaterialPointData particleData;
-	
-	// sort the specified index range into voxels:
-	static void voxelSort(
-		IndexIterator begin,
-		IndexIterator end,
-		float voxelSize,
-		const std::vector<Eigen::Vector3f>& particleX,
-		int dim=0 );
-
-
 private:
 	
 	// partition the sim into contiguous bodies:
 	void calculateBodies();
+	
+	// material point data for all the particles
+	MaterialPointData m_particleData;
 	
 	// a list of particles with no neighbours, which are treated in isolation:
 	IndexList m_ballisticParticles;
@@ -127,6 +110,10 @@ private:
 
 	// dimension:
 	int m_dimension;
+	
+	// testing:
+	friend class MpmSimTest::TestSimClass;
+
 };
 
 } // namespace MpmSim

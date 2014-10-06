@@ -5,6 +5,11 @@
 #include "TerminationCriterion.h"
 #include <vector>
 
+namespace MpmSimTest
+{
+	class TestConjugateResiduals;
+}
+
 namespace MpmSim
 {
 
@@ -20,14 +25,16 @@ public:
 		Eigen::VectorXf& x,
 		Debug* d=0 ) const;
 
-	mutable std::vector<Eigen::VectorXf> residuals;
-	mutable std::vector<Eigen::VectorXf> searchDirections;
-
 private:
 	
 	TerminationCriterion& m_terminationCriterion;
 	const ProceduralMatrix* m_preconditioner;
+	
+	// testing:
+	friend class MpmSimTest::TestConjugateResiduals;
 	bool m_log;
+	mutable std::vector<Eigen::VectorXf> m_residuals;
+	mutable std::vector<Eigen::VectorXf> m_searchDirections;
 
 };
 

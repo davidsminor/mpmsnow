@@ -77,8 +77,8 @@ void ConjugateResiduals::operator()
 	
 	if( m_log )
 	{
-		residuals.push_back( r );
-		searchDirections.push_back( p );
+		m_residuals.push_back( r );
+		m_searchDirections.push_back( p );
 	}
 	
 	for( int i=0; ; ++i )
@@ -152,8 +152,8 @@ void ConjugateResiduals::operator()
 		
 		if( m_log )
 		{
-			residuals.push_back( r );
-			searchDirections.push_back( p );
+			m_residuals.push_back( r );
+			m_searchDirections.push_back( p );
 		}
 	}
 	

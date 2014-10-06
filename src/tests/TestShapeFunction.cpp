@@ -83,9 +83,9 @@ void TestShapeFunction::test( const ShapeFunction& shapeFunction )
 		if( gridPos[2] > maxGridPos[2] ) maxGridPos[2] = gridPos[2];
 		
 		Eigen::Vector3f worldPos;
-		worldPos[0] = gridPos[0] * gridH + g.minCoord()[0];
-		worldPos[1] = gridPos[1] * gridH + g.minCoord()[1];
-		worldPos[2] = gridPos[2] * gridH + g.minCoord()[2];
+		worldPos[0] = gridPos[0] * gridH + g.m_min[0];
+		worldPos[1] = gridPos[1] * gridH + g.m_min[1];
+		worldPos[2] = gridPos[2] * gridH + g.m_min[2];
 
 		if( worldPos[0] < minPos[0] ) minPos[0] = worldPos[0];
 		if( worldPos[1] < minPos[1] ) minPos[1] = worldPos[1];
@@ -131,11 +131,11 @@ void TestShapeFunction::test( const ShapeFunction& shapeFunction )
 	assert( fabs( totalWeight - 1 ) < 1.0e-6f );
 
 	// correct bounds?
-	Eigen::Vector3f gridRelativeParticle = ( particlePos - g.minCoord() )/gridH;
+	Eigen::Vector3f gridRelativeParticle = ( particlePos - g.m_min )/gridH;
 	Eigen::Vector3f expectedMin(
-		g.minCoord()[0] + ( floor( gridRelativeParticle[0] ) - 1 ) * gridH,
-		g.minCoord()[1] + ( floor( gridRelativeParticle[1] ) - 1 ) * gridH,
-		g.minCoord()[2] + ( floor( gridRelativeParticle[2] ) - 1 ) * gridH
+		g.m_min[0] + ( floor( gridRelativeParticle[0] ) - 1 ) * gridH,
+		g.m_min[1] + ( floor( gridRelativeParticle[1] ) - 1 ) * gridH,
+		g.m_min[2] + ( floor( gridRelativeParticle[2] ) - 1 ) * gridH
 	);
 	Eigen::Vector3f expectedMax = expectedMin + ( 2.0f * shapeFunction.supportRadius() - 1.0f ) * Eigen::Vector3f( gridH, gridH, gridH );
 	

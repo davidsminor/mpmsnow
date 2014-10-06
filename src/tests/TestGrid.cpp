@@ -48,7 +48,7 @@ void TestGrid::testProcessingPartitions()
 	
 	CubicBsplineShapeFunction shapeFunction;
 	float voxelSize( 2 * shapeFunction.supportRadius() * gridSize );
-	Sim::voxelSort(
+	Grid::voxelSort(
 		particleInds.begin(),
 		particleInds.end(),
 		voxelSize,
@@ -90,7 +90,7 @@ void TestGrid::testProcessingPartitions()
 		{
 			for( int k=0; k < 2; ++k )
 			{
-				const Grid::PartitionList& partition = g.partition( i, j, k );
+				const Grid::ParticlesInVoxelList& partition = g.m_processingPartitions[i][j][k];
 				numPartitionedVoxels += (int)partition.size();
 				for( size_t v=0; v < partition.size(); ++v )
 				{
@@ -154,7 +154,7 @@ void TestGrid::testSplatting()
 	const float gridSize = 0.01f;
 	
 	float voxelSize( 2 * shapeFunction.supportRadius() * gridSize );
-	Sim::voxelSort(
+	Grid::voxelSort(
 		particleInds.begin(),
 		particleInds.end(),
 		voxelSize,
@@ -165,7 +165,7 @@ void TestGrid::testSplatting()
 	Grid g( d, particleInds, gridSize, shapeFunction );
 	
 	// now manually splat the masses, serial stylee:
-	Eigen::VectorXf massVector( g.masses.size() );
+	Eigen::VectorXf massVector( g.m_masses.size() );
 	massVector.setZero();
 	
 	Grid::ShapeFunctionIterator& shIt = g.shapeFunctionIterator();
@@ -181,12 +181,12 @@ void TestGrid::testSplatting()
 		} while( shIt.next() );
 	}	
 	
-	massVector -= g.masses;
+	massVector -= g.m_masses;
 	assert( fabs( massVector.maxCoeff() ) < 1.e-6 );
 	assert( fabs( massVector.minCoeff() ) < 1.e-6 );
 	
 	// check conservation of mass:
-	float totalGridMass = g.masses.sum();
+	float totalGridMass = g.m_masses.sum();
 	float totalParticleMass = 0;
 	for( size_t p = 0; p < masses.size(); ++p )
 	{
@@ -198,9 +198,9 @@ void TestGrid::testSplatting()
 	
 	// check conservation of momentum:
 	Eigen::Vector3f gridMomentum = Eigen::Vector3f::Zero();
-	for( int i=0; i < g.masses.size(); ++i )
+	for( int i=0; i < g.m_masses.size(); ++i )
 	{
-		gridMomentum += g.masses[i] * g.velocities.segment<3>( 3 * i );
+		gridMomentum += g.m_masses[i] * g.m_velocities.segment<3>( 3 * i );
 	}
 	Eigen::Vector3f particleMomentum = Eigen::Vector3f::Zero();
 	for( size_t p = 0; p < masses.size(); ++p )
@@ -318,7 +318,7 @@ void TestGrid::testForces()
 
 	// at equilibrium, so no forces on the grid nodes:
 	Sim::ForceFieldSet forceFields;
-	Eigen::VectorXf forces( g.velocities.size() );
+	Eigen::VectorXf forces( g.m_velocities.size() );
 	g.calculateForces( forces, constitutiveModel, forceFields.fields );
 	float minF = fabs( forces.minCoeff() );
 	float maxF = fabs( forces.maxCoeff() );
@@ -333,20 +333,20 @@ void TestGrid::testForces()
 	// recompute forces on grid nodes:
 	g.calculateForces( forces, constitutiveModel, forceFields.fields );
 	
-	Eigen::Vector3f fracDimPos = ( Eigen::Vector3f::Zero() - g.minCoord() ) / gridSize;
-	const Eigen::Vector3i& n = g.n();
+	Eigen::Vector3f fracDimPos = ( Eigen::Vector3f::Zero() - g.m_min ) / gridSize;
+	const Eigen::Vector3i& n = g.m_n;
 	int centerIdx = int(fracDimPos[0]) + n[0] *( int(fracDimPos[1]) + n[1] * int(fracDimPos[2]) );
 	
 	Eigen::Matrix3f Forig = F[0];
 	
-	Eigen::VectorXf forcesPerturbed( g.velocities.size() );
-	Eigen::VectorXf forcesPerturbedNegative( g.velocities.size() );
+	Eigen::VectorXf forcesPerturbed( g.m_velocities.size() );
+	Eigen::VectorXf forcesPerturbedNegative( g.m_velocities.size() );
 	
 	// now work out the forces on the grid nodes by finite differences!
 	std::vector<float>& volume = particleData.variable<float>("volume");
 	float e0 = constitutiveModel.energyDensity( 0 ) * volume[0];
 	const float dx = 0.01f;
-	for( int i=0; i <g.velocities.size(); ++i )
+	for( int i=0; i <g.m_velocities.size(); ++i )
 	{
 		if( forces[i] == 0 )
 		{
@@ -355,11 +355,11 @@ void TestGrid::testForces()
 		
 		F[0] = Forig;
 		constitutiveModel.updateParticleData( particleData );
-		VectorXf df(g.velocities.size());
-		g.velocities[i] = dx;
+		VectorXf df(g.m_velocities.size());
+		g.m_velocities[i] = dx;
 		g.calculateForceDifferentials(
 			df,
-			g.velocities,
+			g.m_velocities,
 			constitutiveModel,
 			forceFields.fields );
 
@@ -367,7 +367,7 @@ void TestGrid::testForces()
 		// a small distance along one of the axes, so it squishes the
 		// particle around a bit and work out the energy in this perturbed
 		// configuration:
-		g.velocities[i] = dx;
+		g.m_velocities[i] = dx;
 		F[0] = Forig;
 		g.updateDeformationGradients( 1.0f );
 		constitutiveModel.updateParticleData( particleData );
@@ -375,7 +375,7 @@ void TestGrid::testForces()
 		g.calculateForces( forcesPerturbed, constitutiveModel, forceFields.fields );
 		
 		// now deform it the other way and work out the energy:
-		g.velocities[i] = -dx;
+		g.m_velocities[i] = -dx;
 		F[0] = Forig;
 		g.updateDeformationGradients( 1.0f );
 		constitutiveModel.updateParticleData( particleData );
@@ -392,11 +392,11 @@ void TestGrid::testForces()
 		assert( ( 0.5f * ( forcesPerturbed - forcesPerturbedNegative ) - df ).norm() / df.norm() < 0.025f );
 
 		// put things back in their place
-		g.velocities[i] = 0;
+		g.m_velocities[i] = 0;
 	}
 }
 
-class ImplicitUpdateRecord : public LinearSolver::Debug
+class TestGrid::ImplicitUpdateRecord : public LinearSolver::Debug
 {
 public:
 
@@ -412,11 +412,11 @@ public:
 		g.collisionVelocities( vc, collisionObjects, nodeCollided );
 
 		Eigen::VectorXf explicitVelocities( explicitMomenta.size() );
-		for( int i=0; i < g.masses.size(); ++i )
+		for( int i=0; i < g.m_masses.size(); ++i )
 		{
-			if( g.masses[i] != 0 )
+			if( g.m_masses[i] != 0 )
 			{
-				explicitVelocities.segment<3>( 3 * i ) = explicitMomenta.segment<3>( 3 * i ) / g.masses[i];
+				explicitVelocities.segment<3>( 3 * i ) = explicitMomenta.segment<3>( 3 * i ) / g.m_masses[i];
 			}
 			else
 			{
@@ -425,20 +425,20 @@ public:
 		}
 		explicitVelocities += vc;
 
-		float gridH = g.gridSize();
+		float gridH = g.m_gridSize;
 		outFile.write( (const char*)&gridH, sizeof( float ) );
 
-		outFile.write( (const char*)&(g.minCoord()[0]), sizeof( float ) );
-		outFile.write( (const char*)&(g.minCoord()[1]), sizeof( float ) );
-		outFile.write( (const char*)&(g.minCoord()[2]), sizeof( float ) );
+		outFile.write( (const char*)&(g.m_min[0]), sizeof( float ) );
+		outFile.write( (const char*)&(g.m_min[1]), sizeof( float ) );
+		outFile.write( (const char*)&(g.m_min[2]), sizeof( float ) );
 
-		outFile.write( (const char*)&(g.n()[0]), sizeof( int ) );
-		outFile.write( (const char*)&(g.n()[1]), sizeof( int ) );
-		outFile.write( (const char*)&(g.n()[2]), sizeof( int ) );
+		outFile.write( (const char*)&(g.m_n[0]), sizeof( int ) );
+		outFile.write( (const char*)&(g.m_n[1]), sizeof( int ) );
+		outFile.write( (const char*)&(g.m_n[2]), sizeof( int ) );
 
-		outFile.write( (const char*)&(g.masses[0]), g.n()[0] * g.n()[1] * g.n()[2] * sizeof( float ) );
+		outFile.write( (const char*)&(g.m_masses[0]), g.m_n[0] * g.m_n[1] * g.m_n[2] * sizeof( float ) );
 		
-		outFile.write( (const char*)&(explicitVelocities[0]), 3 * g.n()[0] * g.n()[1] * g.n()[2] * sizeof( float ) );
+		outFile.write( (const char*)&(explicitVelocities[0]), 3 * g.m_n[0] * g.m_n[1] * g.m_n[2] * sizeof( float ) );
 	}
 	
 	virtual void operator()( Eigen::VectorXf& x )
@@ -515,7 +515,7 @@ void TestGrid::testImplicitUpdate()
 		100000.0f	// tensile strength
 	);
 	float voxelSize( 2 * shapeFunction.supportRadius() * gridSize );
-	Sim::voxelSort(
+	Grid::voxelSort(
 		inds.begin(),
 		inds.end(),
 		voxelSize,
@@ -538,8 +538,7 @@ void TestGrid::testImplicitUpdate()
 
 	std::vector<const ForceField*> fields;
 	
-	SquareMagnitudeTermination t( 400, 0.0f );
-	ConjugateResiduals solver( t );
+	SquareMagnitudeTermination t( 40, 0.0f );
 	
 	VectorXf explicitMomenta;
 	std::vector<char> nodeCollided;
@@ -559,7 +558,7 @@ void TestGrid::testImplicitUpdate()
 			snowModel,
 			collisionObjects,
 			fields,
-			solver,
+			t,
 			&d
 		);
 	}
@@ -567,20 +566,20 @@ void TestGrid::testImplicitUpdate()
 	//system( "C:\\Users\\david\\Documents\\GitHub\\mpmsnow\\Debug\\viewer.exe" );
 
 	// check nothing's moving in or out of the collision objects:
-	VectorXf vc( g.velocities.size() );
+	VectorXf vc( g.m_velocities.size() );
 	g.collisionVelocities( vc, collisionObjects.objects, nodeCollided );
-	for( int i=0; i < g.n()[0]; ++i )
+	for( int i=0; i < g.m_n[0]; ++i )
 	{
-		for( int j=0; j < g.n()[1]; ++j )
+		for( int j=0; j < g.m_n[1]; ++j )
 		{
-			for( int k=0; k < g.n()[2]; ++k )
+			for( int k=0; k < g.m_n[2]; ++k )
 			{
 				int idx = g.coordsToIndex( i, j, k );
-				Vector3f velocity = g.velocities.segment<3>( 3 * idx );
+				Vector3f velocity = g.m_velocities.segment<3>( 3 * idx );
 				Vector3f x(
-					g.gridSize() * i + g.minCoord()[0],
-					g.gridSize() * j + g.minCoord()[1],
-					g.gridSize() * k + g.minCoord()[2]
+					g.m_gridSize * i + g.m_min[0],
+					g.m_gridSize * j + g.m_min[1],
+					g.m_gridSize * k + g.m_min[2]
 				);
 
 				int objIdx = nodeCollided[idx];
@@ -613,14 +612,14 @@ void TestGrid::testImplicitUpdate()
 	// so.... did it work?
 	
 	// ok - so it should have solved this equation:
-	// P * ( M * ( g.velocities - vc ) - DF * g.velocities * dt * dt ) = explicitMomenta
+	// P * ( M * ( g.m_velocities - vc ) - DF * g.m_velocities * dt * dt ) = explicitMomenta
 	// (here, P means we project out the collided velocity components)
 	
-	for( int i=0; i < g.n()[0]; ++i )
+	for( int i=0; i < g.m_n[0]; ++i )
 	{
-		for( int j=0; j < g.n()[1]; ++j )
+		for( int j=0; j < g.m_n[1]; ++j )
 		{
-			for( int k=0; k < g.n()[2]; ++k )
+			for( int k=0; k < g.m_n[2]; ++k )
 			{
 				int idx = g.coordsToIndex( i, j, k );
 				
@@ -631,9 +630,9 @@ void TestGrid::testImplicitUpdate()
 					
 					// find object normal:
 					Vector3f x(
-						g.gridSize() * i + g.minCoord()[0],
-						g.gridSize() * j + g.minCoord()[1],
-						g.gridSize() * k + g.minCoord()[2]
+						g.m_gridSize * i + g.m_min[0],
+						g.m_gridSize * j + g.m_min[1],
+						g.m_gridSize * k + g.m_min[2]
 					);
 					
 					Vector3f vObj;
@@ -648,24 +647,24 @@ void TestGrid::testImplicitUpdate()
 		}
 	}
 	
-	// work out DF * g.velocities:
-	VectorXf df( g.velocities.size() );
-	g.calculateForceDifferentials( df, g.velocities, snowModel, fields );
+	// work out DF * g.m_velocities:
+	VectorXf df( g.m_velocities.size() );
+	g.calculateForceDifferentials( df, g.m_velocities, snowModel, fields );
 
-	//  M * ( g.velocities - vc ) - DF * g.velocities * dt * dt 
-	VectorXf lhs( g.velocities.size() );
-	for( int idx=0; idx < g.masses.size(); ++idx )
+	//  M * ( g.m_velocities - vc ) - DF * g.m_velocities * dt * dt 
+	VectorXf lhs( g.m_velocities.size() );
+	for( int idx=0; idx < g.m_masses.size(); ++idx )
 	{
 		lhs.segment<3>( 3 * idx ) =
-			g.masses[idx] * ( g.velocities.segment<3>( 3 * idx ) - vc.segment<3>( 3 * idx ) ) - df.segment<3>( 3 * idx ) * timeStep * timeStep;
+			g.m_masses[idx] * ( g.m_velocities.segment<3>( 3 * idx ) - vc.segment<3>( 3 * idx ) ) - df.segment<3>( 3 * idx ) * timeStep * timeStep;
 	}
 	
 	// run the projection again:
-	for( int i=0; i < g.n()[0]; ++i )
+	for( int i=0; i < g.m_n[0]; ++i )
 	{
-		for( int j=0; j < g.n()[1]; ++j )
+		for( int j=0; j < g.m_n[1]; ++j )
 		{
-			for( int k=0; k < g.n()[2]; ++k )
+			for( int k=0; k < g.m_n[2]; ++k )
 			{
 				int idx = g.coordsToIndex( i, j, k );
 				
@@ -676,9 +675,9 @@ void TestGrid::testImplicitUpdate()
 					
 					// find object normal:
 					Vector3f x(
-						g.gridSize() * i + g.minCoord()[0],
-						g.gridSize() * j + g.minCoord()[1],
-						g.gridSize() * k + g.minCoord()[2]
+						g.m_gridSize * i + g.m_min[0],
+						g.m_gridSize * j + g.m_min[1],
+						g.m_gridSize * k + g.m_min[2]
 					);
 					
 					Vector3f momentum = lhs.segment<3>( 3 * idx );
@@ -699,7 +698,7 @@ void TestGrid::testImplicitUpdate()
 	}
 	
 	float maxNorm(0);
-	for( int idx=0; idx < g.masses.size(); ++idx )
+	for( int idx=0; idx < g.m_masses.size(); ++idx )
 	{
 		float norm = ( lhs.segment<3>( 3 * idx ) - explicitMomenta.segment<3>( 3 * idx ) ).norm();
 		if( norm > maxNorm )
@@ -759,7 +758,7 @@ void TestGrid::testMovingGrid()
 		100000.0f	// tensile strength
 	);
 	float voxelSize( 2 * shapeFunction.supportRadius() * gridSize );
-	Sim::voxelSort(
+	Grid::voxelSort(
 		inds.begin(),
 		inds.end(),
 		voxelSize,
@@ -776,8 +775,7 @@ void TestGrid::testMovingGrid()
 	collisionObjects.objects.push_back( plane1 );
 	
 	std::vector<const ForceField*> fields;
-	SquareMagnitudeTermination t( 400, 0.0f );
-	ConjugateResiduals solver( t );
+	SquareMagnitudeTermination t( 40, 0.0f );
 	
 	VectorXf explicitMomenta;
 	std::vector<char> nodeCollided;
@@ -799,7 +797,7 @@ void TestGrid::testMovingGrid()
 			snowModel,
 			collisionObjects,
 			fields,
-			solver,
+			t,
 			&d
 		);
 	}

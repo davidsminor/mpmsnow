@@ -347,19 +347,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\MpmSim\DiagonalPreconditioner.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\src\MpmSim\GravityField.cpp"
 				>
 			</File>
 			<File
 				RelativePath=".\src\MpmSim\Grid.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\MpmSim\ImplicitUpdateMatrix.cpp"
 				>
 			</File>
 			<File
@@ -407,14 +399,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\MpmSim\DiagonalPreconditioner.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\MpmSim\FlatGrid.h"
-				>
-			</File>
-			<File
 				RelativePath=".\include\MpmSim\ForceField.h"
 				>
 			</File>
@@ -424,10 +408,6 @@
 			</File>
 			<File
 				RelativePath=".\include\MpmSim\Grid.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\MpmSim\ImplicitUpdateMatrix.h"
 				>
 			</File>
 			<File
