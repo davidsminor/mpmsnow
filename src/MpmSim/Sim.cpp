@@ -14,95 +14,14 @@ using namespace MpmSim;
 using namespace Eigen;
 
 
-int Sim::CollisionObjectSet::collide(
-	Vector3f& v,
-	const Vector3f& x,
-	const Vector3f& frameVelocity,
-	bool addCollisionVelocity
-) const
-{
-	int collisionObject(-1);
-	bool intersectedAlready(false);
-	for( size_t objIdx = 0; objIdx < objects.size(); ++objIdx )
-	{
-		float phi = objects[objIdx]->phi( x );
-		if( phi <= 0 )
-		{
-			if( intersectedAlready )
-			{
-				// colliding with more than one object: set
-				// velocity to zero and bail
-				collisionObject = -2;
-				v.setZero();
-				break;
-			}
-			intersectedAlready = true;
-
-			// intersecting the object
-			Vector3f vObj;
-			objects[objIdx]->velocity( x, vObj );
-			
-			// express object velocity relative to moving frame:
-			vObj -= frameVelocity;
-
-			// subtract off object velocity:
-			v -= vObj;
-			
-			Vector3f n;
-			objects[objIdx]->grad( x, n );
-			n.normalize();
-			
-			float nDotV = n.dot( v );
-			if( nDotV < 0 )
-			{
-				// trying to move into the object:
-				collisionObject = (int)objIdx;
-
-				if( objects[objIdx]->sticky() )
-				{
-					v.setZero();
-				}
-				else
-				{
-					
-					// velocity perpendicular to the object
-					Vector3f vPerp = nDotV * n;
-					
-					// remaining component is velocity paralell to the object:
-					Vector3f vTangent = v - vPerp;
-					float vtNorm = vTangent.norm();
-					float coulombFriction = objects[objIdx]->coulombFriction();
-					if( vtNorm >= -nDotV * coulombFriction )
-					{
-						v = vTangent * ( 1 + coulombFriction * nDotV / vTangent.norm() );
-					}
-					else
-					{
-						v.setZero();
-					}
-				}
-			}
-			
-			if( addCollisionVelocity )
-			{
-				v += vObj;
-			}
-		}
-	}
-	
-	return collisionObject;
-}
-
-
-
 Sim::Sim(
 	const std::vector<Vector3f>& x,
 	const std::vector<float>& masses,
 	float gridSize,
 	const ShapeFunction& shapeFunction,
 	ConstitutiveModel& model,
-	const CollisionObjectSet& collisionObjects,
-	const ForceFieldSet& forceFields,
+	const CollisionObject::CollisionObjectSet& collisionObjects,
+	const ForceField::ForceFieldSet& forceFields,
 	int dimension
 ) :
 	m_gridSize( gridSize ),
@@ -148,10 +67,7 @@ void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolv
 	{
 		int p = *it;
 		Eigen::Vector3f accn = Eigen::Vector3f::Zero();
-		for( size_t i=0; i < m_forceFields.fields.size(); ++i )
-		{
-			accn += m_forceFields.fields[i]->force( particleX[p], particleMasses[p] );
-		}
+		m_forceFields.force( accn, particleX[p], particleMasses[p] );
 		accn /= particleMasses[p];
 		particleV[p] += timeStep * accn;
 	}
@@ -184,7 +100,7 @@ void Sim::advance( float timeStep, TerminationCriterion& termination, LinearSolv
 			timeStep,
 			m_constitutiveModel,
 			m_collisionObjects,
-			m_forceFields.fields,
+			m_forceFields,
 			termination,
 			d
 		);
@@ -284,30 +200,4 @@ void Sim::calculateBodies()
 			}
 		}
 	}
-}
-
-Sim::CollisionObjectSet::~CollisionObjectSet()
-{
-	for( size_t i=0; i < objects.size(); ++i )
-	{
-		delete objects[i];
-	}
-}
-
-void Sim::CollisionObjectSet::add( CollisionObject* o )
-{
-	objects.push_back( o );
-}
-
-Sim::ForceFieldSet::~ForceFieldSet()
-{
-	for( size_t i=0; i < fields.size(); ++i )
-	{
-		delete fields[i];
-	}
-}
-
-void Sim::ForceFieldSet::add( ForceField* f )
-{
-	fields.push_back( f );
 }

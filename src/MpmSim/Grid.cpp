@@ -438,26 +438,25 @@ private:
 void Grid::calculateForces(
 	VectorXf& forces,
 	const ConstitutiveModel& constitutiveModel,
-	const std::vector<const ForceField*>& fields ) const
+	const ForceField::ForceFieldSet& fields ) const
 {
 	forces.setZero();
 
 	// force fields:
-	for( size_t n=0; n < fields.size(); ++n )
+	for( int i=0; i < m_n[0]; ++i )
 	{
-		for( int i=0; i < m_n[0]; ++i )
+		for( int j=0; j < m_n[1]; ++j )
 		{
-			for( int j=0; j < m_n[1]; ++j )
+			for( int k=0; k < m_n[2]; ++k )
 			{
-				for( int k=0; k < m_n[2]; ++k )
-				{
-					int idx = coordsToIndex( i, j, k );
-					forces.segment<3>(3 * idx) += fields[n]->force( Eigen::Vector3f( float(i), float(j), float(k) ) * m_gridSize + m_min, m_masses[idx] );
-				}
+				int idx = coordsToIndex( i, j, k );
+				Eigen::Vector3f f = forces.segment<3>(3 * idx);
+				fields.force( f, Eigen::Vector3f( float(i), float(j), float(k) ) * m_gridSize + m_min, m_masses[idx] );
+				forces.segment<3>(3 * idx) = f;
 			}
 		}
 	}
-
+	
 	// add on internal forces:
 	ForceSplatter s( *this, forces, constitutiveModel );
 	splat( s );
@@ -622,7 +621,7 @@ void Grid::calculateForceDifferentials(
 		VectorXf& df,
 		const VectorXf& dx,
 		const ConstitutiveModel& constitutiveModel,
-		const std::vector<const ForceField*>& fields
+		const ForceField::ForceFieldSet& fields
 ) const
 {
 	// TODO: this doesn't deal with force fields which vary in space
@@ -637,8 +636,8 @@ void Grid::calculateExplicitMomenta(
 	std::vector<char>& nodeCollided,
 	float timeStep,
 	const ConstitutiveModel& constitutiveModel,
-	const Sim::CollisionObjectSet& collisionObjects,
-	const std::vector<const ForceField*>& fields
+	const CollisionObject::CollisionObjectSet& collisionObjects,
+	const ForceField::ForceFieldSet& fields
 )
 {
 	// work out forces on grid points:
@@ -692,7 +691,7 @@ void Grid::calculateExplicitMomenta(
 
 void Grid::collisionVelocities(
 	Eigen::VectorXf& vc,
-	const std::vector<const CollisionObject*>& collisionObjects,
+	const CollisionObject::CollisionObjectSet& collisionObjects,
 	const std::vector<char>& nodeCollided
 ) const
 {
@@ -711,7 +710,7 @@ void Grid::collisionVelocities(
 				else
 				{
 					Vector3f x( m_gridSize * i + m_min[0], m_gridSize * j + m_min[1], m_gridSize * k + m_min[2] );
-					const CollisionObject* obj = collisionObjects[ nodeCollided[idx] ];
+					const CollisionObject* obj = collisionObjects.object( nodeCollided[idx] );
 					
 					Vector3f vObj;
 					obj->velocity( x, vObj );
@@ -734,8 +733,8 @@ public:
 		const MaterialPointData& d,
 		const Grid& g,
 		const ConstitutiveModel& constitutiveModel,
-		const std::vector<const CollisionObject*>& collisionObjects,
-		const std::vector<const ForceField*>& fields,
+		const CollisionObject::CollisionObjectSet& collisionObjects,
+		const ForceField::ForceFieldSet& fields,
 		float timeStep
 	) :
 		m_d( d ),
@@ -798,7 +797,7 @@ public:
 					}
 					else
 					{
-						const CollisionObject* obj = m_collisionObjects[ objIdx ];
+						const CollisionObject* obj = m_collisionObjects.object( objIdx );
 						Vector3f v = toProject.segment<3>( 3 * idx );
 						
 						// find object normal:
@@ -823,8 +822,8 @@ private:
 	const MaterialPointData& m_d;
 	const Grid& m_g;
 	const ConstitutiveModel& m_constitutiveModel;
-	const std::vector< const CollisionObject* >& m_collisionObjects;
-	const std::vector<const ForceField*>& m_fields;
+	const CollisionObject::CollisionObjectSet& m_collisionObjects;
+	const ForceField::ForceFieldSet& m_fields;
 	float m_timeStep;
 
 	typedef std::vector< const CollisionObject* >::const_iterator CollisionIterator;
@@ -890,8 +889,8 @@ private:
 void Grid::updateGridVelocities(
 	float timeStep,
 	const ConstitutiveModel& constitutiveModel,
-	const Sim::CollisionObjectSet& collisionObjects,
-	const std::vector<const ForceField*>& fields,
+	const CollisionObject::CollisionObjectSet& collisionObjects,
+	const ForceField::ForceFieldSet& fields,
 	TerminationCriterion& termination,
 	LinearSolver::Debug* d )
 {
@@ -907,7 +906,7 @@ void Grid::updateGridVelocities(
 	
 	// so, lets work out vc:
 	VectorXf vc;
-	collisionVelocities( vc, collisionObjects.objects, m_nodeCollided );
+	collisionVelocities( vc, collisionObjects, m_nodeCollided );
 	
 	// work out new centre of mass velocity, and set all velocities to that
 	// to provide an initial guess for the solver:
@@ -956,7 +955,7 @@ void Grid::updateGridVelocities(
 	// solver finds most difficult to resolve, and this gets the lowest frequency mode
 	// right first time
 
-	ImplicitUpdateMatrix implicitMatrix( m_d, *this, constitutiveModel, collisionObjects.objects, fields, timeStep );
+	ImplicitUpdateMatrix implicitMatrix( m_d, *this, constitutiveModel, collisionObjects, fields, timeStep );
 	
 	// what's the forward update gonna look like?
 	// v^(n) = collide ( v^(n+1) - M^-1 f^(n+1) dt - vc ) + vc

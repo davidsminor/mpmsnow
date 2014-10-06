@@ -2,6 +2,7 @@
 #define MPMSIM_COLLISIONOBJECT_H
 
 #include <Eigen/Dense>
+#include <vector>
 
 namespace MpmSim
 {
@@ -28,6 +29,24 @@ public:
 	virtual bool sticky() const = 0;
 
 	virtual void draw() const = 0;
+	
+	class CollisionObjectSet
+	{
+	public:
+		~CollisionObjectSet();
+		void add( CollisionObject* o );
+		const CollisionObject* object( size_t i ) const;
+		size_t numObjects() const;
+		int collide(
+			Eigen::Vector3f& v,
+			const Eigen::Vector3f& x,
+			const Eigen::Vector3f& frameVelocity,
+			bool addCollisionVelocity = false
+		) const;
+	private:
+		std::vector<const CollisionObject*> m_objects;
+	};
+	
 };
 
 } // namespace MpmSim

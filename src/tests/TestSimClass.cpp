@@ -84,8 +84,8 @@ void TestSimClass::testInitialization()
 	
 	CubicBsplineShapeFunction shapeFunction;
 	DummyModel constitutiveModel;
-	Sim::CollisionObjectSet collisionObjects;
-	Sim::ForceFieldSet forceFields;
+	CollisionObject::CollisionObjectSet collisionObjects;
+	ForceField::ForceFieldSet forceFields;
 	Sim sim( positions, masses, gridSize, shapeFunction, constitutiveModel, collisionObjects, forceFields );
 	
 	// sensible particle variables?
@@ -164,9 +164,9 @@ void TestSimClass::testTimestepAdvance()
 		100000.0f, // compressive strength
 		100000.0f	// tensile strength
 	);
-	Sim::CollisionObjectSet collisionObjects;
-	Sim::ForceFieldSet forceFields;
-	forceFields.fields.push_back( new GravityField( Eigen::Vector3f( 0, 1.f, 0 ) ) );
+	CollisionObject::CollisionObjectSet collisionObjects;
+	ForceField::ForceFieldSet forceFields;
+	forceFields.add( new GravityField( Eigen::Vector3f( 0, 1.f, 0 ) ) );
 	Sim sim( positions, masses, gridSize, shapeFunction, constitutiveModel, collisionObjects, forceFields );
 	
 	SquareMagnitudeTermination t( 10, 0.0f );

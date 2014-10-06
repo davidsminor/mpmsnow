@@ -7,6 +7,9 @@
 #include "MpmSim/ShapeFunction.h"
 #include "MpmSim/TerminationCriterion.h"
 #include "MpmSim/LinearSolver.h"
+#include "MpmSim/ForceField.h"
+#include "MpmSim/CollisionObject.h"
+#include "MpmSim/ConstitutiveModel.h"
 
 #include <vector>
 #include <map>
@@ -20,36 +23,10 @@ class TestSimClass;
 namespace MpmSim
 {
 
-class ConstitutiveModel;
-class CollisionObject;
-class ForceField;
-
 class Sim
 {
 
 public:
-
-	class CollisionObjectSet
-	{
-	public:
-		~CollisionObjectSet();
-		void add( CollisionObject* o );
-		std::vector<const CollisionObject*> objects;
-		int collide(
-			Eigen::Vector3f& v,
-			const Eigen::Vector3f& x,
-			const Eigen::Vector3f& frameVelocity,
-			bool addCollisionVelocity = false
-		) const;
-	};
-
-	class ForceFieldSet
-	{
-	public:
-		~ForceFieldSet();
-		void add( ForceField* f );
-		std::vector<const ForceField*> fields;
-	};
 
 	// construct a sim from initial conditions:
 	Sim(
@@ -58,8 +35,8 @@ public:
 		float gridSize,
 		const ShapeFunction& shapeFunction,
 		ConstitutiveModel& model,
-		const CollisionObjectSet& collisionObjects,
-		const ForceFieldSet& forceFields,
+		const CollisionObject::CollisionObjectSet& collisionObjects,
+		const ForceField::ForceFieldSet& forceFields,
 		int dimension=3
 	);
 	
@@ -103,10 +80,10 @@ private:
 	ConstitutiveModel& m_constitutiveModel;
 	
 	// collision objects:
-	const CollisionObjectSet& m_collisionObjects;
+	const CollisionObject::CollisionObjectSet& m_collisionObjects;
 
 	// force fields:
-	const ForceFieldSet& m_forceFields;
+	const ForceField::ForceFieldSet& m_forceFields;
 
 	// dimension:
 	int m_dimension;

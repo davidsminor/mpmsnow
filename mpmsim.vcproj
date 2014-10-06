@@ -335,6 +335,10 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\src\CollisionObject.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\MpmSim\CollisionPlane.cpp"
 				>
 			</File>
@@ -344,6 +348,10 @@
 			</File>
 			<File
 				RelativePath=".\src\MpmSim\CubicBsplineShapeFunction.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\ForceField.cpp"
 				>
 			</File>
 			<File

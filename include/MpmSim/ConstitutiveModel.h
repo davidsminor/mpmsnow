@@ -1,9 +1,9 @@
-#ifndef MPMSIM_ConstitutiveMODEL_H
-#define MPMSIM_ConstitutiveMODEL_H
-
-#include "Sim.h"
+#ifndef MPMSIM_CONSTITUTIVEMODEL_H
+#define MPMSIM_CONSTITUTIVEMODEL_H
 
 #include <Eigen/Dense>
+
+#include "MaterialPointData.h"
 
 namespace MpmSim
 {

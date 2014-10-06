@@ -35,8 +35,8 @@ void TestSnowConstitutiveModel::test()
 		0.2f	// tensile strength
 	);
 
-	Sim::CollisionObjectSet collisionObjects;
-	Sim::ForceFieldSet forceFields;
+	CollisionObject::CollisionObjectSet collisionObjects;
+	ForceField::ForceFieldSet forceFields;
 	Sim sim( positions, masses, gridSize, shapeFunction, snowModel, collisionObjects, forceFields );
 	Matrix3f p = Matrix3f::Random();
 	p = p * p;

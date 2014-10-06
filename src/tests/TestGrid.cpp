@@ -316,9 +316,9 @@ void TestGrid::testForces()
 	Grid g( particleData, inds, gridSize, shapeFunction );
 
 	// at equilibrium, so no forces on the grid nodes:
-	Sim::ForceFieldSet forceFields;
+	ForceField::ForceFieldSet forceFields;
 	Eigen::VectorXf forces( g.m_velocities.size() );
-	g.calculateForces( forces, constitutiveModel, forceFields.fields );
+	g.calculateForces( forces, constitutiveModel, forceFields );
 	float minF = fabs( forces.minCoeff() );
 	float maxF = fabs( forces.maxCoeff() );
 	assert( minF < 1.e-4 && maxF < 1.e-4 );
@@ -330,7 +330,7 @@ void TestGrid::testForces()
 	constitutiveModel.updateParticleData();
 	
 	// recompute forces on grid nodes:
-	g.calculateForces( forces, constitutiveModel, forceFields.fields );
+	g.calculateForces( forces, constitutiveModel, forceFields );
 	
 	Eigen::Vector3f fracDimPos = ( Eigen::Vector3f::Zero() - g.m_min ) / gridSize;
 	const Eigen::Vector3i& n = g.m_n;
@@ -360,7 +360,7 @@ void TestGrid::testForces()
 			df,
 			g.m_velocities,
 			constitutiveModel,
-			forceFields.fields );
+			forceFields );
 
 		// use the deformation gradient update to move one of the nodes
 		// a small distance along one of the axes, so it squishes the
@@ -371,7 +371,7 @@ void TestGrid::testForces()
 		g.updateDeformationGradients( 1.0f );
 		constitutiveModel.updateParticleData();
 		float ePlus = constitutiveModel.energyDensity( 0 ) * volume[0];
-		g.calculateForces( forcesPerturbed, constitutiveModel, forceFields.fields );
+		g.calculateForces( forcesPerturbed, constitutiveModel, forceFields );
 		
 		// now deform it the other way and work out the energy:
 		g.m_velocities[i] = -dx;
@@ -379,7 +379,7 @@ void TestGrid::testForces()
 		g.updateDeformationGradients( 1.0f );
 		constitutiveModel.updateParticleData();
 		float eMinus = constitutiveModel.energyDensity( 0 ) * volume[0];
-		g.calculateForces( forcesPerturbedNegative, constitutiveModel, forceFields.fields );
+		g.calculateForces( forcesPerturbedNegative, constitutiveModel, forceFields );
 		
 		// x component of force on this node is -dE/dx, same for y and z. Make fd and analytic values
 		// agree within a percent:
@@ -402,7 +402,7 @@ public:
 	ImplicitUpdateRecord(
 		const Grid& g,
 		const Eigen::VectorXf& explicitMomenta,
-		const std::vector<const CollisionObject*>& collisionObjects,
+		const CollisionObject::CollisionObjectSet& collisionObjects,
 		const std::vector<char>& nodeCollided,
 		const std::string& fileName
 	) :
@@ -525,16 +525,16 @@ void TestGrid::testImplicitUpdate()
 	g.computeParticleVolumes();
 	
 	float timeStep = 0.002f;
-	Sim::CollisionObjectSet collisionObjects;
+	CollisionObject::CollisionObjectSet collisionObjects;
 	CollisionPlane* plane1 = new CollisionPlane( Eigen::Vector4f( -1,-1,-1,1 ) );
 	plane1->setV( Eigen::Vector3f( -.1f, -.2f, -.3f ) );
-	collisionObjects.objects.push_back( plane1 );
+	collisionObjects.add( plane1 );
 
 	CollisionPlane* plane2 = new CollisionPlane( Eigen::Vector4f( -1,0,0,1.5 ) );
 	plane2->setV( Eigen::Vector3f( -.2f, -.1f, -.4f ) );
-	collisionObjects.objects.push_back( plane2 );
+	collisionObjects.add( plane2 );
 
-	std::vector<const ForceField*> fields;
+	ForceField::ForceFieldSet fields;
 	
 	SquareMagnitudeTermination t( 40, 0.0f );
 	
@@ -550,7 +550,7 @@ void TestGrid::testImplicitUpdate()
 	);
 
 	{
-		ImplicitUpdateRecord d( g, explicitMomenta, collisionObjects.objects, nodeCollided, "debug.dat" );
+		ImplicitUpdateRecord d( g, explicitMomenta, collisionObjects, nodeCollided, "debug.dat" );
 		g.updateGridVelocities(
 			timeStep, 
 			snowModel,
@@ -565,7 +565,7 @@ void TestGrid::testImplicitUpdate()
 
 	// check nothing's moving in or out of the collision objects:
 	VectorXf vc( g.m_velocities.size() );
-	g.collisionVelocities( vc, collisionObjects.objects, nodeCollided );
+	g.collisionVelocities( vc, collisionObjects, nodeCollided );
 	for( int i=0; i < g.m_n[0]; ++i )
 	{
 		for( int j=0; j < g.m_n[1]; ++j )
@@ -583,7 +583,7 @@ void TestGrid::testImplicitUpdate()
 				int objIdx = nodeCollided[idx];
 				if( objIdx >= 0 )
 				{
-					const CollisionObject* obj = collisionObjects.objects[ objIdx ];
+					const CollisionObject* obj = collisionObjects.object( objIdx );
 					
 					// express velocity and momentum relative to this object:
 					Vector3f vObj;
@@ -624,7 +624,7 @@ void TestGrid::testImplicitUpdate()
 				// apply P to velocities:
 				if( nodeCollided[idx] >= 0 )
 				{
-					const CollisionObject* obj = collisionObjects.objects[ nodeCollided[idx] ];
+					const CollisionObject* obj = collisionObjects.object( nodeCollided[idx] );
 					
 					// find object normal:
 					Vector3f x(
@@ -669,7 +669,7 @@ void TestGrid::testImplicitUpdate()
 				// apply P:
 				if( nodeCollided[idx] >= 0 )
 				{
-					const CollisionObject* obj = collisionObjects.objects[ nodeCollided[idx] ];
+					const CollisionObject* obj = collisionObjects.object( nodeCollided[idx] );
 					
 					// find object normal:
 					Vector3f x(
@@ -767,11 +767,11 @@ void TestGrid::testMovingGrid()
 	g.computeParticleVolumes();
 	
 	float timeStep = 0.002f;
-	Sim::CollisionObjectSet collisionObjects;
+	CollisionObject::CollisionObjectSet collisionObjects;
 	CollisionPlane* plane1 = new CollisionPlane( Eigen::Vector4f( 0,1,0,1 ) );
-	collisionObjects.objects.push_back( plane1 );
+	collisionObjects.add( plane1 );
 	
-	std::vector<const ForceField*> fields;
+	ForceField::ForceFieldSet fields;
 	SquareMagnitudeTermination t( 40, 0.0f );
 	
 	VectorXf explicitMomenta;
@@ -788,7 +788,7 @@ void TestGrid::testMovingGrid()
 	// ok, at the moment I'm just doing something and eyeballing the result - how about
 	// I do a proper unit test for this some time?
 	{
-		ImplicitUpdateRecord d( g, explicitMomenta, collisionObjects.objects, nodeCollided, "debug.dat" );
+		ImplicitUpdateRecord d( g, explicitMomenta, collisionObjects, nodeCollided, "debug.dat" );
 		g.updateGridVelocities(
 			timeStep, 
 			snowModel,
@@ -835,7 +835,7 @@ void TestGrid::testDfiDxi()
 	Eigen::VectorXf dfidxi;
 	g.dForceidXi( dfidxi, constitutiveModel );
 
-	std::vector<const ForceField*> fields;
+	ForceField::ForceFieldSet fields;
 	Eigen::VectorXf dx = Eigen::VectorXf::Constant(dfidxi.size(),0);
 	Eigen::VectorXf df( dfidxi.size() );
 	for( int i=0; i < dfidxi.size(); ++i )

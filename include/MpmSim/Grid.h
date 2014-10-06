@@ -7,6 +7,7 @@
 #include "MaterialPointData.h"
 #include "CollisionObject.h"
 #include "ConstitutiveModel.h"
+#include "Sim.h"
 
 #include <Eigen/Dense>
 
@@ -40,8 +41,8 @@ public:
 	void updateGridVelocities(
 		float timeStep, 
 		const ConstitutiveModel& constitutiveModel,
-		const Sim::CollisionObjectSet& collisionObjects,
-		const std::vector<const ForceField*>& fields,
+		const CollisionObject::CollisionObjectSet& collisionObjects,
+		const ForceField::ForceFieldSet& fields,
 		TerminationCriterion& termination,
 		LinearSolver::Debug* d = 0
 	);
@@ -152,7 +153,7 @@ private:
 	void calculateForces(
 		Eigen::VectorXf& forces, 
 		const ConstitutiveModel& constitutiveModel,
-		const std::vector<const ForceField*>& fields ) const;
+		const ForceField::ForceFieldSet& fields ) const;
 	
 	// calculate the change in the forces on the grid nodes if their positions are offset
 	// by df. Used in the implicit solve:
@@ -161,7 +162,7 @@ private:
 		Eigen::VectorXf& df,
 		const Eigen::VectorXf& dx,
 		const ConstitutiveModel& constitutiveModel,
-		const std::vector<const ForceField*>& fields ) const;
+		const ForceField::ForceFieldSet& fields ) const;
 	
 	// work out momenta in next frame using explicit Euler: calculate forces in this frame,
 	// multiply by the time step and add onto the existing momenta
@@ -170,14 +171,14 @@ private:
 		std::vector<char>& nodeCollided,
 		float timeStep,
 		const ConstitutiveModel& constitutiveModel,
-		const Sim::CollisionObjectSet& collisionObjects,
-		const std::vector<const ForceField*>& fields
+		const CollisionObject::CollisionObjectSet& collisionObjects,
+		const ForceField::ForceFieldSet& fields
 	);
 	
 	// velocities of the collision objects, for the cells in which they're active:
 	void collisionVelocities(
 		Eigen::VectorXf& vc,
-		const std::vector<const CollisionObject*>& collisionObjects,
+		const CollisionObject::CollisionObjectSet& collisionObjects,
 		const std::vector<char>& nodeCollided
 	) const;
 	
